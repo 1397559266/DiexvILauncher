@@ -233,13 +233,15 @@
                                 <TextBlock Text="导出实例 ZIP" Margin="6,0,0,0" FontSize="11.5" />
                             </StackPanel>
                         </Button>
-                        <Button Style="{StaticResource SecondaryButton}" Height="36" Margin="0,0,9,0" Command="{Binding ChangeIconCommand}">
+                        <Button Style="{StaticResource SecondaryButton}" Height="36" Margin="0,0,9,0" Command="{Binding ChangeIconCommand}"
+                                ToolTip="选择 PNG，保存为 versions/&lt;版本&gt;/icon.png">
                             <StackPanel Orientation="Horizontal">
                                 <controls:Icon Data="{StaticResource IconEdit}" Fill="#FF3A5674" Width="13" Height="13" />
-                                <TextBlock Text="更换图标" Margin="6,0,0,0" FontSize="11.5" />
+                                <TextBlock Text="更换本地图标" Margin="6,0,0,0" FontSize="11.5" />
                             </StackPanel>
                         </Button>
-                        <Button Style="{StaticResource GhostButton}" Height="36" Margin="0,0,9,0" Command="{Binding ResetIconCommand}" Content="重置图标" />
+                        <Button Style="{StaticResource GhostButton}" Height="36" Margin="0,0,9,0" Command="{Binding ResetIconCommand}" Content="恢复默认图标"
+                                ToolTip="删除版本目录中的 icon.png，恢复加载器/方块图标" />
                         <Button Style="{StaticResource GhostButton}" Height="36" Command="{Binding CopyPathCommand}">
                             <StackPanel Orientation="Horizontal">
                                 <controls:Icon Data="{StaticResource IconCopy}" Fill="{StaticResource BrushTextSecondary}" Width="13" Height="13" />

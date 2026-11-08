@@ -253,7 +253,7 @@ public sealed class OverviewViewModel : ObservableObject
         {
             InstanceIconService.SetIcon(Instance, dialog.FileName);
             OnPropertyChanged(nameof(IconSource));
-            _toast("版本图标已更新，返回主页即可看到。", false);
+            _toast("本地版本图标已保存到 versions\\<版本>\\icon.png。", false);
         }
         catch (Exception ex)
         {
@@ -267,7 +267,7 @@ public sealed class OverviewViewModel : ObservableObject
         {
             InstanceIconService.ResetIcon(Instance);
             OnPropertyChanged(nameof(IconSource));
-            _toast("已恢复默认方块图标。", false);
+            _toast("已删除本地图标，恢复加载器/方块图标。", false);
         }
         catch (Exception ex)
         {

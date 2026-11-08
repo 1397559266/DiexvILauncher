@@ -106,19 +106,30 @@ public static class InstanceIconService
             throw new InvalidOperationException("图标尺寸太小，请选择至少 16×16 的 PNG。");
         }
 
-        Directory.CreateDirectory(IconsDirectory);
-        var target = CustomIconPath(instance);
-        File.Copy(sourcePath, target, overwrite: true);
+        // PCL-compatible location: versions/<id>/icon.png. Keeping the icon
+        // beside the version also makes it survive an instance export.
+        var target = Path.Combine(instance.Directory, "icon.png");
+        if (!string.Equals(Path.GetFullPath(sourcePath), Path.GetFullPath(target), StringComparison.OrdinalIgnoreCase))
+        {
+            File.Copy(sourcePath, target, overwrite: true);
+        }
+
         Changed?.Invoke(null, instance.Id);
         return target;
     }
 
     public static void ResetIcon(GameInstance instance)
     {
-        var custom = CustomIconPath(instance);
-        if (File.Exists(custom))
+        foreach (var path in new[]
+                 {
+                     Path.Combine(instance.Directory, "icon.png"),
+                     CustomIconPath(instance)
+                 })
         {
-            File.Delete(custom);
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
         }
 
         Changed?.Invoke(null, instance.Id);

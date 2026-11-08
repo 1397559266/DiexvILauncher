@@ -108,6 +108,8 @@ public sealed class ModpackService
                 }
             }
 
+            CopyPackIcon(temp, instanceDirectory);
+
             var files = new List<(string Path, string Url)>();
             if (root.TryGetProperty("files", out var fileArray))
             {
@@ -173,6 +175,41 @@ public sealed class ModpackService
             catch
             {
                 // ignored
+            }
+        }
+    }
+
+    private static void CopyPackIcon(string extractedDirectory, string instanceDirectory)
+    {
+        var target = Path.Combine(instanceDirectory, "icon.png");
+        if (File.Exists(target))
+        {
+            return;
+        }
+
+        foreach (var relative in new[]
+                 {
+                     "icon.png",
+                     "pack.png",
+                     Path.Combine("overrides", "icon.png"),
+                     Path.Combine("client-overrides", "icon.png")
+                 })
+        {
+            var source = Path.Combine(extractedDirectory, relative);
+            if (!File.Exists(source))
+            {
+                continue;
+            }
+
+            try
+            {
+                Directory.CreateDirectory(instanceDirectory);
+                File.Copy(source, target);
+                return;
+            }
+            catch
+            {
+                // A missing icon is not fatal; the loader or block icon is used.
             }
         }
     }

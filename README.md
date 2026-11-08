@@ -17,7 +17,7 @@
 | 皮肤 | 从本机客户端 jar 提取的 9 个 Mojang 默认皮肤、导入 64×64 皮肤、多图层（帽子/外套/袖子/裤子）渲染、Steve/Alex 模型切换、像素化 3D 旋转/缩放预览、披风显示、皮肤库、头像同步到标题栏和主页 |
 | 正版登录 | 微软设备码登录（Xbox Live → XSTS → Minecraft Services），需要在登录窗口填写自己的 Azure 应用 ID；也可尝试导入官方启动器本地令牌；登录后可正版启动 |
 | 正版皮肤 | 按玩家名或 UUID 查询 Mojang 档案，下载皮肤/披风并加入本地皮肤库 |
-| 图标 | 版本自定义 PNG 图标；Fabric/Quilt/Forge/NeoForge/OptiFine 加载器徽标；模组 jar 内图标、资源包 `pack.png`、存档 `icon.png`、服务器图标 |
+| 图标 | 版本本地 PNG 图标、整合包内图标；Fabric/Quilt/Forge/NeoForge/OptiFine 加载器徽标；模组 jar 内图标、资源包 `pack.png`、存档 `icon.png`、服务器图标 |
 | 下载 | Mojang 官方版本列表（正式版/快照/旧版筛选 + 版本号搜索）、原版安装、Fabric/Quilt、Forge/NeoForge 官方安装器、`.mrpack` 导入 |
 | Modrinth | 搜索并安装模组/资源包/光影；可按当前/全部 MC 版本、加载器、类型/分辨率/风格筛选；模组更新检查与一键更新 |
 | 资源管理 | 资源包/光影导入 ZIP、删除、打开；存档浏览、备份 ZIP、删除；截图浏览/打开/删除；服务器列表读取、添加、编辑、删除和自动连接 |
@@ -84,9 +84,10 @@ $env:MS_CLIENT_ID = "你的 Azure Application (client) ID"
 
 ### 版本图标
 
-- 在版本概览的「快捷操作 → 更换图标」中选择 PNG，图标保存到 `%APPDATA%\ILauncher\icons\<版本>.png`。
-- 主页版本列表支持按 **加载器（原版/Forge/Fabric/NeoForge/Quilt/OptiFine）**、**正式版/快照/旧版** 和版本名筛选，数量会显示为“筛选结果 / 总数”。\n- 版本卡片、主页大卡、版本页侧栏、概览都会使用自定义图标；未设置时按加载器自动使用 **Fabric / Quilt / Forge / NeoForge / OptiFine** 官方徽标，原版使用方块图标。徽标来源见 `Assets/Loaders/README.md`。
-- 也支持版本目录里的 `icon.png` 作为图标。
+- 在版本概览的「快捷操作 → 更换本地图标」中选择 PNG，图标保存到 `versions\<版本>\icon.png`，与 PCL 的版本本地图标兼容；「恢复默认图标」会删除它。
+- 导入 `.mrpack` 时自动读取根目录 `icon.png`、`pack.png`，以及 `overrides/`、`client-overrides/` 中的 `icon.png`，复制为对应版本的本地图标。
+- 主页版本列表支持按 **加载器（原版/Forge/Fabric/NeoForge/Quilt/OptiFine）**、**正式版/快照/旧版** 和版本名筛选，数量会显示为“筛选结果 / 总数”。
+- 版本卡片、主页大卡、版本页侧栏、概览都会使用本地图标；未设置时按加载器自动使用 **Fabric / Quilt / Forge / NeoForge / OptiFine** 官方徽标，原版使用方块图标。徽标来源见 `Assets/Loaders/README.md`。
 - 模组图标从 jar 内部读取（Fabric/Quilt/Forge/NeoForge 元数据），资源包读取 `pack.png`，存档读取 `icon.png`。
 
 ### 下载中心
@@ -95,7 +96,7 @@ $env:MS_CLIENT_ID = "你的 Azure Application (client) ID"
 
 - **游戏版本**：Mojang 版本清单，默认 **正式版**，可按 **全部 / 正式版 / 快照 / 旧版** 筛选，也可按版本号搜索；点击安装会下载版本 JSON、客户端 jar、Windows 库、资源索引和资源对象。
 - **加载器**：Fabric / Quilt 直接走 Meta API 创建新版本；Forge / NeoForge 调用官方安装器 jar（需要 Java 与网络），全新目录缺少 `launcher_profiles.json` 时会自动补一个最小档案文件。
-- **整合包**：支持 Modrinth `.mrpack` 导入，读取依赖中的 Minecraft/加载器版本，安装加载器、下载文件并复制 `overrides`。
+- **整合包**：支持 Modrinth `.mrpack` 导入，读取依赖中的 Minecraft/加载器版本，安装加载器、下载文件并复制 `overrides`；同时读取包内 `icon.png`/`pack.png` 作为版本本地图标。
 - **Modrinth 内容**：模组、资源包、光影搜索与安装。筛选栏支持 **当前版本 / 全部版本**；模组支持 **当前加载器 / 全部加载器 / Fabric / Forge / NeoForge / Quilt** 和 **优化/科技/魔法/冒险/装饰/辅助/前置库** 类型；资源包按 **16×/32×/64×/128×/256×** 分辨率筛选；光影按写实/奇幻/卡通/半写实/原版风筛选。
 - **进度与取消**：下载面板实时显示阶段、文件名、百分比，支持取消。
 
@@ -217,7 +218,7 @@ dotnet publish src/ILauncher/ILauncher.csproj -c Release -r win-x64 `
 | 设置 | `%APPDATA%\ILauncher\settings.json` |
 | 启动日志 | `%APPDATA%\ILauncher\logs\` |
 | 皮肤库 | `%APPDATA%\ILauncher\skins\` |
-| 版本图标 | `%APPDATA%\ILauncher\icons\` |
+| 版本图标 | `versions\<版本>\icon.png`（旧版 `%APPDATA%\ILauncher\icons\` 仍可读取） |
 | 原生库缓存 | `%APPDATA%\ILauncher\cache\natives\` |
 | 下载的 Java | `%APPDATA%\ILauncher\java\` |
 | 存档备份 | `%APPDATA%\ILauncher\backups\saves\` |
@@ -267,6 +268,7 @@ docs/screenshots/            README 截图
 - 模组安装不会自动解析并安装前置依赖；只安装主文件。
 - Forge/NeoForge 走官方安装器，不保证所有版本都能在无界面模式下成功。
 - 启动器自身更新、主题/语言切换等非 Minecraft 功能未实现。
+
 
 
 
