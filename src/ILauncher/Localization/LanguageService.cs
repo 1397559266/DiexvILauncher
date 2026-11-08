@@ -45,6 +45,18 @@ public static class LanguageService
             new RoutedEventHandler((sender, _) => TranslateElement((DependencyObject)sender)));
         EventManager.RegisterClassHandler(typeof(AccessText), FrameworkElement.LoadedEvent,
             new RoutedEventHandler((sender, _) => TranslateElement((DependencyObject)sender)));
+        EventManager.RegisterClassHandler(typeof(Window), FrameworkElement.LoadedEvent,
+            new RoutedEventHandler((sender, _) =>
+            {
+                var window = (Window)sender;
+                window.Dispatcher.BeginInvoke(new Action(() => ApplyTo(window)), DispatcherPriority.Loaded);
+            }));
+        EventManager.RegisterClassHandler(typeof(UserControl), FrameworkElement.LoadedEvent,
+            new RoutedEventHandler((sender, _) =>
+            {
+                var control = (UserControl)sender;
+                control.Dispatcher.BeginInvoke(new Action(() => ApplyTo(control)), DispatcherPriority.Loaded);
+            }));
     }
 
     public static void SetLanguage(string? language)
@@ -74,6 +86,8 @@ public static class LanguageService
         };
         timer.Start();
     }
+
+    public static void ApplyTo(DependencyObject root) => TranslateTree(root);
 
     public static string Translate(string? text)
     {

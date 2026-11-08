@@ -56,6 +56,7 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
         _installMissingDependencies = installMissingDependencies;
         _installDependency = installDependency;
         InitializeComponent();
+        _selectedReleaseFilter = ReleaseFilters[0];
         InstallDependencyCommand = new AsyncRelayCommand(async parameter =>
         {
             if (parameter is ModDependencyItem item && item.CanInstall && SelectedVersion != null)
@@ -85,7 +86,9 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
     public IReadOnlyList<string> GameVersions { get; }
     public IReadOnlyList<string> Loaders { get; }
     public bool ShowLoader { get; }
-    public IReadOnlyList<string> ReleaseFilters { get; } = new[] { "全部", "正式版", "Beta", "Alpha" };
+    public IReadOnlyList<string> ReleaseFilters => LanguageService.CurrentLanguage == LanguageService.English
+        ? new[] { "All", "Release", "Beta", "Alpha" }
+        : new[] { "全部", "正式版", "Beta", "Alpha" };
     public ObservableCollection<ModrinthVersion> Versions { get; } = new();
     public ObservableCollection<ModDependencyItem> Dependencies { get; } = new();
     public AsyncRelayCommand InstallDependencyCommand { get; }
@@ -203,7 +206,7 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
     public string StatusText
     {
         get => _statusText;
-        private set => Set(ref _statusText, value);
+        private set => Set(ref _statusText, LanguageService.Translate(value));
     }
 
     public string DependencyStatus
@@ -288,7 +291,7 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
         {
             var include = SelectedReleaseFilter switch
             {
-                "正式版" => version.ReleaseType == "release",
+                "正式版" or "Release" => version.ReleaseType == "release",
                 "Beta" => version.ReleaseType == "beta",
                 "Alpha" => version.ReleaseType == "alpha",
                 _ => true

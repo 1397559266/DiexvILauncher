@@ -606,7 +606,7 @@ public sealed class DownloadViewModel : ObservableObject
     public string LoaderVersionStatus
     {
         get => _loaderVersionStatus;
-        private set => SetProperty(ref _loaderVersionStatus, value);
+        private set => SetProperty(ref _loaderVersionStatus, LanguageService.Translate(value));
     }
 
     public string SelectedVersionTitle => SelectedRemoteVersion?.Id ?? LanguageService.Translate("未选择版本");
@@ -877,7 +877,7 @@ public sealed class DownloadViewModel : ObservableObject
             switch (loader)
             {
                 case "vanilla":
-                    values.Add("原版");
+                    values.Add(LanguageService.CurrentLanguage == LanguageService.English ? "Vanilla" : "原版");
                     break;
                 case "fabric":
                     values.AddRange((await _fabric.GetLoadersAsync(version.Id, cts.Token)).Select(item => item.Version));
