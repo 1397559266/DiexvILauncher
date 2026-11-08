@@ -1,4 +1,7 @@
+using System.ComponentModel;
+using System.Globalization;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -32,7 +35,12 @@ public static class LanguageService
         EventManager.RegisterClassHandler(typeof(FrameworkElement), FrameworkElement.LoadedEvent,
             new RoutedEventHandler((sender, _) => TranslateElement((DependencyObject)sender)));
         EventManager.RegisterClassHandler(typeof(TextBlock), FrameworkElement.LoadedEvent,
-            new RoutedEventHandler((sender, _) => TranslateElement((DependencyObject)sender)));
+            new RoutedEventHandler((sender, _) =>
+            {
+                var textBlock = (TextBlock)sender;
+                AttachDynamicText(textBlock);
+                TranslateElement(textBlock);
+            }));
         EventManager.RegisterClassHandler(typeof(ContentControl), FrameworkElement.LoadedEvent,
             new RoutedEventHandler((sender, _) => TranslateElement((DependencyObject)sender)));
         EventManager.RegisterClassHandler(typeof(AccessText), FrameworkElement.LoadedEvent,
@@ -74,7 +82,89 @@ public static class LanguageService
         }
 
         var dictionary = CurrentLanguage == English ? EnglishText : ChineseText;
-        return dictionary.TryGetValue(text, out var translated) ? translated : text;
+        if (dictionary.TryGetValue(text, out var translated))
+        {
+            return translated;
+        }
+
+        if (CurrentLanguage == English)
+        {
+            return TranslatePattern(text);
+        }
+
+        return TranslatePatternToChinese(text);
+    }
+
+    private static string TranslatePatternToChinese(string text)
+    {
+        Match match;
+        if ((match = Regex.Match(text, @"^(\d+) mods$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"{match.Groups[1].Value} 个模组";
+        }
+
+        if ((match = Regex.Match(text, @"^Page (\d+) / (\d+) · (\d+) total$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"第 {match.Groups[1].Value} / {match.Groups[2].Value} 页 · 共 {match.Groups[3].Value} 个";
+        }
+
+        if ((match = Regex.Match(text, @"^Found (\d+) projects$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"找到 {match.Groups[1].Value} 个项目";
+        }
+
+        if ((match = Regex.Match(text, @"^Refreshed\. (\d+) versions found\.$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"已刷新，共 {match.Groups[1].Value} 个版本。";
+        }
+
+        if ((match = Regex.Match(text, @"^This version requires Java (\d+)\+$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"此版本需要 Java {match.Groups[1].Value}+";
+        }
+
+        return text;
+    }
+
+    private static string TranslatePattern(string text)
+    {
+        Match match;
+        if ((match = Regex.Match(text, @"^(\d+) 个模组$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"{match.Groups[1].Value} mods";
+        }
+
+        if ((match = Regex.Match(text, @"^第 (\d+) / (\d+) 页 · 共 (\d+) 个$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"Page {match.Groups[1].Value} / {match.Groups[2].Value} · {match.Groups[3].Value} total";
+        }
+
+        if ((match = Regex.Match(text, @"^找到 (\d+) 个项目$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"Found {match.Groups[1].Value} projects";
+        }
+
+        if ((match = Regex.Match(text, @"^已刷新，共 (\d+) 个版本。$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"Refreshed. {match.Groups[1].Value} versions found.";
+        }
+
+        if ((match = Regex.Match(text, @"^共 (\d+) 个模组 · (\d+) 启用 · (\d+) 禁用$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"{match.Groups[1].Value} mods · {match.Groups[2].Value} enabled · {match.Groups[3].Value} disabled";
+        }
+
+        if ((match = Regex.Match(text, @"^共 (\d+) 个前置 · 缺少 (\d+) 个必需$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"{match.Groups[1].Value} prerequisites · {match.Groups[2].Value} required missing";
+        }
+
+        if ((match = Regex.Match(text, @"^此版本需要 Java (\d+)\+$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"This version requires Java {match.Groups[1].Value}+";
+        }
+
+        return text;
     }
 
     private static void ApplyToOpenWindows()
@@ -154,6 +244,22 @@ public static class LanguageService
 
     private static bool IsBound(DependencyObject target, DependencyProperty property)
         => BindingOperations.GetBindingExpressionBase(target, property) != null;
+
+    private static void AttachDynamicText(TextBlock textBlock)
+    {
+        // C# view models produce dynamic strings (status, counts, errors). Keep
+        // their binding alive and translate the effective value as it changes.
+        var descriptor = DependencyPropertyDescriptor.FromProperty(TextBlock.TextProperty, typeof(TextBlock));
+        descriptor?.AddValueChanged(textBlock, (_, _) =>
+        {
+            var current = textBlock.Text;
+            var translated = Translate(current);
+            if (!string.Equals(current, translated, StringComparison.Ordinal))
+            {
+                textBlock.SetCurrentValue(TextBlock.TextProperty, translated);
+            }
+        });
+    }
 
     private static Dictionary<string, string> LoadEnglish()
     {

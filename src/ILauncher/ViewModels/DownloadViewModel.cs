@@ -701,16 +701,23 @@ public sealed class DownloadViewModel : ObservableObject
         {
             if (_contextInstance == null)
             {
-                return "请先在主页选择一个版本，安装时会使用它的目录";
+                return LanguageService.Translate("请先在主页选择一个版本，安装时会使用它的目录");
             }
 
-            var loader = _contextInstance.Loader;
+            var loader = _contextInstance.LoaderLabel;
             var scope = CurrentTab == DownloadTab.Game
-                ? SelectedGameType?.Title ?? "全部"
-                : SelectedSearchGameVersion?.Title ?? "当前目标版本";
+                ? SelectedGameType?.Title ?? LanguageService.Translate("全部")
+                : SelectedSearchGameVersion?.Title ?? LanguageService.Translate("当前目标版本");
             var suffix = CurrentTab == DownloadTab.Mods
-                ? $" · {SelectedLoader?.Title ?? "当前加载器"}"
+                ? $" · {SelectedLoader?.Title ?? LanguageService.Translate("当前加载器")}"
                 : "";
+            if (LanguageService.CurrentLanguage == LanguageService.English)
+            {
+                return CurrentTab == DownloadTab.Game
+                    ? $"Target: Minecraft {_contextInstance.MinecraftVersion} · {loader} · {scope}{suffix}"
+                    : $"Install target: Minecraft {_contextInstance.MinecraftVersion} · {loader} · Search version: {scope}{suffix}";
+            }
+
             return CurrentTab == DownloadTab.Game
                 ? $"目标：Minecraft {_contextInstance.MinecraftVersion} · {loader} · {scope}{suffix}"
                 : $"安装目标：Minecraft {_contextInstance.MinecraftVersion} · {loader} · 搜索版本：{scope}{suffix}";
