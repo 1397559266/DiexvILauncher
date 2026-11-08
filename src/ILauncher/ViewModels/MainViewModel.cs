@@ -10,6 +10,7 @@ using ILauncher.Core;
 using ILauncher.Core.Models;
 using ILauncher.Core.Services;
 using ILauncher.Models;
+using ILauncher.Services;
 
 namespace ILauncher.ViewModels;
 
@@ -52,6 +53,8 @@ public sealed class MainViewModel : ObservableObject
                     Convert.FromBase64String(SettingsService.Settings.MicrosoftAccessTokenProtected), null,
                     DataProtectionScope.CurrentUser);
                 SettingsService.Settings.MicrosoftAccessToken = Encoding.UTF8.GetString(bytes);
+                SettingsService.Settings.MicrosoftRefreshToken =
+                    TokenProtection.Unprotect(SettingsService.Settings.MicrosoftRefreshTokenProtected);
             }
             catch
             {

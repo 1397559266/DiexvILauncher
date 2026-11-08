@@ -12,6 +12,7 @@ using ILauncher.Core;
 using ILauncher.Core.Models;
 using ILauncher.Core.Services;
 using ILauncher.Models;
+using ILauncher.Services;
 
 namespace ILauncher.ViewModels;
 
@@ -304,40 +305,43 @@ public sealed class LaunchLogViewModel : ObservableObject
         _flushTimer.Start();
         _clockTimer.Start();
 
-        var overrides = _settings.GetInstanceSettings(instance.Id);
-        var memory = overrides.MemoryMb ?? _settings.Settings.MemoryMb;
-        var javaPath = string.IsNullOrWhiteSpace(overrides.JavaPath) ? _settings.Settings.JavaPath : overrides.JavaPath;
-        var owner = Application.Current?.MainWindow;
-        var (width, height) = _settings.ResolveWindowSize(instance.Id, owner?.ActualWidth, owner?.ActualHeight);
-
-        var isMicrosoft = string.Equals(_settings.Settings.AccountType, "微软账户", StringComparison.Ordinal) &&
-                         !string.IsNullOrWhiteSpace(_settings.Settings.MicrosoftAccessToken);
-
-        var request = new LaunchRequest
-        {
-            Instance = instance,
-            PlayerName = _settings.ResolvePlayerName(),
-            MemoryMb = memory,
-            JavaPath = string.IsNullOrWhiteSpace(javaPath) ? null : javaPath,
-            Width = width,
-            Height = height,
-            TestMode = testMode,
-            ServerAddress = serverAddress,
-            AccessToken = isMicrosoft ? _settings.Settings.MicrosoftAccessToken : null,
-            UserUuid = isMicrosoft ? _settings.Settings.MicrosoftUuid : null,
-            UserType = isMicrosoft ? "msa" : null,
-            LogDirectory = AppPaths.LogsDirectory
-        };
-
         _cts = new CancellationTokenSource();
-        _ = RunAsync(request, testMode);
+        _ = RunAsync(instance, testMode, serverAddress);
     }
 
-    private async Task RunAsync(LaunchRequest request, bool testMode)
+    private async Task RunAsync(GameInstance instance, bool testMode, string? serverAddress)
     {
         LaunchResult? result = null;
         try
         {
+            await EnsureMicrosoftSessionAsync(_cts?.Token ?? CancellationToken.None);
+            var overrides = _settings.GetInstanceSettings(instance.Id);
+            var memory = overrides.MemoryMb ?? _settings.Settings.MemoryMb;
+            var javaPath = string.IsNullOrWhiteSpace(overrides.JavaPath)
+                ? _settings.Settings.JavaPath
+                : overrides.JavaPath;
+            var owner = Application.Current?.MainWindow;
+            var (width, height) = _settings.ResolveWindowSize(instance.Id, owner?.ActualWidth, owner?.ActualHeight);
+
+            var isMicrosoft = string.Equals(_settings.Settings.AccountType, "微软账户", StringComparison.Ordinal) &&
+                             !string.IsNullOrWhiteSpace(_settings.Settings.MicrosoftAccessToken);
+
+            var request = new LaunchRequest
+            {
+                Instance = instance,
+                PlayerName = _settings.ResolvePlayerName(),
+                MemoryMb = memory,
+                JavaPath = string.IsNullOrWhiteSpace(javaPath) ? null : javaPath,
+                Width = width,
+                Height = height,
+                TestMode = testMode,
+                ServerAddress = serverAddress,
+                AccessToken = isMicrosoft ? _settings.Settings.MicrosoftAccessToken : null,
+                UserUuid = isMicrosoft ? _settings.Settings.MicrosoftUuid : null,
+                UserType = isMicrosoft ? "msa" : null,
+                LogDirectory = AppPaths.LogsDirectory
+            };
+
             result = await _launch.RunAsync(request, _cts?.Token ?? CancellationToken.None);
         }
         catch (Exception ex)
@@ -398,6 +402,54 @@ public sealed class LaunchLogViewModel : ObservableObject
             OnPropertyChanged(nameof(ErrorCountText));
             OnPropertyChanged(nameof(WarnCountText));
             RetryCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    private async Task EnsureMicrosoftSessionAsync(CancellationToken cancellationToken)
+    {
+        if (!string.Equals(_settings.Settings.AccountType, "微软账户", StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var refreshToken = TokenProtection.Unprotect(_settings.Settings.MicrosoftRefreshTokenProtected);
+        if (string.IsNullOrWhiteSpace(refreshToken))
+        {
+            refreshToken = _settings.Settings.MicrosoftRefreshToken;
+        }
+
+        if (string.IsNullOrWhiteSpace(refreshToken))
+        {
+            if (string.IsNullOrWhiteSpace(_settings.Settings.MicrosoftAccessToken))
+            {
+                throw new InvalidOperationException("微软登录信息已失效，请在账户页重新登录。");
+            }
+
+            return;
+        }
+
+        try
+        {
+            _pending.Enqueue(LogEntryParser.Parse("[启动器] 正在刷新微软登录…", DateTime.Now, true));
+            var clientId = string.IsNullOrWhiteSpace(_settings.Settings.MicrosoftClientId)
+                ? SettingsService.BundledMicrosoftClientId
+                : _settings.Settings.MicrosoftClientId;
+            var account = await new MicrosoftAuthService().RefreshAsync(clientId, refreshToken,
+                status => _pending.Enqueue(LogEntryParser.Parse($"[启动器] {status}", DateTime.Now, true)),
+                cancellationToken);
+            _settings.Settings.MicrosoftAccessToken = account.AccessToken;
+            _settings.Settings.MicrosoftRefreshToken = account.RefreshToken;
+            _settings.Settings.MicrosoftUuid = account.Uuid;
+            _settings.Settings.MicrosoftAccessTokenProtected = TokenProtection.Protect(account.AccessToken);
+            _settings.Settings.MicrosoftRefreshTokenProtected = TokenProtection.Protect(account.RefreshToken);
+            _settings.Settings.ProfileUuid = account.Uuid;
+            _settings.Settings.PlayerName = account.Name;
+            _settings.Save();
+        }
+        catch (Exception ex) when (!string.IsNullOrWhiteSpace(_settings.Settings.MicrosoftAccessToken))
+        {
+            _pending.Enqueue(LogEntryParser.Parse(
+                $"[启动器] 微软登录刷新失败，使用本地旧令牌：{ex.Message}", DateTime.Now, true));
         }
     }
 

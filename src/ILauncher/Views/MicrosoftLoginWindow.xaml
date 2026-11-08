@@ -24,7 +24,7 @@
             <StackPanel x:Name="SetupPanel" Visibility="Collapsed">
                 <Border Background="#FFFFF8E8" BorderBrush="#FFF0D79A" BorderThickness="1" CornerRadius="10" Padding="12">
                     <TextBlock TextWrapping="Wrap" FontSize="10.5" LineHeight="17" Foreground="#FF7A5A1A"
-                               Text="启动器不内置第三方 OAuth 应用，避免冒用他人应用 ID。请先注册一个自己的 Azure 应用（免费），再填入 Application (client) ID。" />
+                               Text="公开构建默认使用已提交审核的 Client ID，普通玩家无需填写。只有测试自己的 Azure 应用时才需要更换；请勿使用 PCL2、HMCL 等项目的 Client ID。" />
                 </Border>
                 <TextBlock Margin="0,14,0,0" FontSize="10.5" Foreground="{StaticResource BrushTextSecondary}">
                     <Run Text="1. 打开" />

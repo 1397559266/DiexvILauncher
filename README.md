@@ -15,7 +15,7 @@
 | 模块 | 功能 |
 | --- | --- |
 | 皮肤 | 从本机客户端 jar 提取的 9 个 Mojang 默认皮肤、导入 64×64 皮肤、多图层（帽子/外套/袖子/裤子）渲染、Steve/Alex 模型切换、像素化 3D 旋转/缩放预览、披风显示、皮肤库、头像同步到标题栏和主页 |
-| 正版登录 | 微软设备码登录（Xbox Live → XSTS → Minecraft Services），需要在登录窗口填写自己的 Azure 应用 ID；也可尝试导入官方启动器本地令牌；登录后可正版启动 |
+| 正版登录 | 微软设备码登录（Xbox Live → XSTS → Minecraft Services），公开构建内置已提交审核的 Client ID；也可尝试导入官方启动器本地令牌；登录后可正版启动 |
 | 正版皮肤 | 按玩家名或 UUID 查询 Mojang 档案，下载皮肤/披风并加入本地皮肤库 |
 | 图标 | 版本本地 PNG 图标、整合包内图标；Fabric/Quilt/Forge/NeoForge/OptiFine 加载器徽标；模组 jar 内图标、资源包 `pack.png`、存档 `icon.png`、服务器图标 |
 | 下载 | Mojang 官方版本列表（版本类型下拉筛选 + 版本号搜索）、原版安装、Fabric/Quilt、Forge/NeoForge 官方安装器、`.mrpack` 导入 |
@@ -32,7 +32,7 @@
 - **多图层皮肤**：支持 64×64 皮肤的帽子层、外套层、左右袖子层、左右裤腿层；透明像素按 alpha 混合，外层几何略微外扩，避免与基础层 z-fighting。64×32 旧皮肤只显示基础层。
 - **头像同步**：标题栏账户、主页账户卡、皮肤库头像都使用当前皮肤的头部（含帽子层）。
 - **皮肤库**：启动时扫描本机 `.minecraft/versions/*/*.jar`，从客户端资源中提取 Mojang 默认 Steve / Alex / Ari / Efe / Kai / Makena / Noor / Sunny / Zuri；仓库不打包 Mojang 皮肤纹理。没有可用客户端时生成一个中性占位皮肤。
-- **正版登录**：账户页右上角「正版登录」使用微软设备码流程。启动器不内置第三方 OAuth 应用 ID，首次使用需要在窗口中注册/填写自己的 Azure Application (client) ID；完成后会走 Xbox Live、XSTS 和 Minecraft Services，启动时使用正版访问令牌。
+- **正版登录**：账户页右上角「正版登录」使用微软设备码流程。公开构建内置了已提交 Minecraft API 审核的 Azure Application (client) ID，玩家无需自己注册 Azure 应用；高级用户仍可通过「更换应用 ID」或 `MS_CLIENT_ID` 覆盖。登录后会走 Xbox Live、XSTS 和 Minecraft Services，刷新令牌使用 Windows DPAPI 加密保存在本机，启动时自动续期。
 - **正版皮肤查询**：输入正版 ID 或 UUID，调用 Mojang 公开档案接口下载皮肤，不保存任何账号密码。
 - 皮肤文件保存于 `%APPDATA%\ILauncher\skins\`，支持 64×64 与旧版 64×32。
 
@@ -61,18 +61,21 @@
 
 如果不想绑定信用卡/借记卡，可以尝试以下路径：
 
-#### 使用自己的内置 Client ID（可选）
+#### 开发者：使用自己的 Client ID（可选）
 
-PCL2 发布版之所以能“点一下正版登录”，是因为构建时通过 `MS_CLIENT_ID` 注入了它自己的 Azure 应用 ID（见 `PCL.Core/App/Secrets.cs`）。本项目也支持同名环境变量：
+公开构建默认使用 `SettingsService.BundledMicrosoftClientId`。开发和测试时可以用环境变量覆盖：
 
 ```powershell
 $env:MS_CLIENT_ID = "你的 Azure Application (client) ID"
 .\DiexvMinecraftLauncher.exe
 ```
 
-或使用 `ILAUNCHER_MS_CLIENT_ID`。设置后，登录窗口不再要求填写客户端 ID，直接进入设备码流程。这个 ID 仍然必须是你自己注册的 Azure 应用，不能使用 PCL2、HMCL 或其他项目的应用 ID。
+或使用 `ILAUNCHER_MS_CLIENT_ID`。这个 ID 必须是你自己注册的 Azure 应用，不能使用 PCL2、HMCL 或其他项目的应用 ID。普通玩家不需要设置；发布版直接使用内置 Client ID。
 
-如果要分发给别人一键登录，需要在发布环境中提供这个变量（或把自己的 Client ID 编译进构建）；仓库默认不带任何公共 Client ID。
+> 修改内置 Client ID 后，需要重新提交 Minecraft API 的 AppID Review。
+
+
+公开构建默认使用内置 Client ID；分发时不需要让玩家配置环境变量。修改内置 ID 后需要重新提交 Minecraft API 审核。
 
 
 - **学生**：使用 [Azure for Students](https://azure.microsoft.com/free/students/)，通过学校邮箱/学生身份验证，通常不需要信用卡，会创建 Azure 订阅和默认目录。
@@ -289,6 +292,7 @@ docs/screenshots/            README 截图
 - 模组安装不会自动解析并安装前置依赖；只安装主文件。
 - Forge/NeoForge 走官方安装器，不保证所有版本都能在无界面模式下成功。
 - 启动器自身更新、主题/语言切换等非 Minecraft 功能未实现。
+
 
 
 

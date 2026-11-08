@@ -49,6 +49,7 @@ public sealed class AccountViewModel : ObservableObject
         if (string.Equals(settings.Settings.AccountType, "微软账户", StringComparison.Ordinal))
         {
             settings.Settings.MicrosoftAccessToken = Unprotect(settings.Settings.MicrosoftAccessTokenProtected);
+            settings.Settings.MicrosoftRefreshToken = Unprotect(settings.Settings.MicrosoftRefreshTokenProtected);
         }
 
         Skins = new ObservableCollection<SkinEntry>();
@@ -58,6 +59,7 @@ public sealed class AccountViewModel : ObservableObject
         OpenFolderCommand = new RelayCommand(OpenFolder);
         LookupCommand = new AsyncRelayCommand(LookupAsync, () => !IsLookingUp && !string.IsNullOrWhiteSpace(ProfileLookup));
         MicrosoftLoginCommand = new AsyncRelayCommand(MicrosoftLoginAsync);
+        SignOutMicrosoftCommand = new RelayCommand(SignOutMicrosoft);
         SelectSkinCommand = new RelayCommand(parameter =>
         {
             if (parameter is SkinEntry entry)
@@ -86,6 +88,7 @@ public sealed class AccountViewModel : ObservableObject
     public RelayCommand OpenFolderCommand { get; }
     public AsyncRelayCommand LookupCommand { get; }
     public AsyncRelayCommand MicrosoftLoginCommand { get; }
+    public RelayCommand SignOutMicrosoftCommand { get; }
     public RelayCommand SelectSkinCommand { get; }
     public RelayCommand SetModelCommand { get; }
     public RelayCommand RefreshLibraryCommand { get; }
@@ -166,10 +169,14 @@ public sealed class AccountViewModel : ObservableObject
     public string SkinName => string.IsNullOrWhiteSpace(SkinPath) ? "Steve" : Path.GetFileNameWithoutExtension(SkinPath);
 
     public string AccountTypeText =>
-        string.Equals(_settings.Settings.AccountType, "微软账户", StringComparison.Ordinal) &&
-        !string.IsNullOrWhiteSpace(_settings.Settings.MicrosoftAccessToken)
+        IsMicrosoftAccount
             ? "微软账户 · 正版登录"
             : "离线账户 · 本地启动";
+
+    public bool IsMicrosoftAccount =>
+        string.Equals(_settings.Settings.AccountType, "微软账户", StringComparison.Ordinal) &&
+        (!string.IsNullOrWhiteSpace(_settings.Settings.MicrosoftAccessToken) ||
+         !string.IsNullOrWhiteSpace(_settings.Settings.MicrosoftRefreshToken));
 
     public string UuidText
     {
@@ -249,6 +256,7 @@ public sealed class AccountViewModel : ObservableObject
         _settings.Settings.MicrosoftRefreshToken = account.RefreshToken;
         _settings.Settings.MicrosoftUuid = account.Uuid;
         _settings.Settings.MicrosoftAccessTokenProtected = Protect(account.AccessToken);
+        _settings.Settings.MicrosoftRefreshTokenProtected = Protect(account.RefreshToken);
         _settings.Settings.ProfileUuid = account.Uuid;
         _settings.Save();
 
@@ -271,7 +279,33 @@ public sealed class AccountViewModel : ObservableObject
 
         Save();
         OnPropertyChanged(nameof(AccountTypeText));
+        OnPropertyChanged(nameof(IsMicrosoftAccount));
         _toast("微软账户登录成功。", false);
+    }
+
+    private void SignOutMicrosoft()
+    {
+        if (!IsMicrosoftAccount)
+        {
+            return;
+        }
+
+        _settings.Settings.AccountType = "离线账户";
+        _settings.Settings.MicrosoftAccessToken = "";
+        _settings.Settings.MicrosoftRefreshToken = "";
+        _settings.Settings.MicrosoftUuid = "";
+        _settings.Settings.MicrosoftAccessTokenProtected = "";
+        _settings.Settings.MicrosoftRefreshTokenProtected = "";
+        _settings.Settings.ProfileUuid = "";
+        _settings.Save();
+
+        _profileUuid = "";
+        PlayerName = _settings.ResolvePlayerName();
+        OnPropertyChanged(nameof(AccountTypeText));
+        OnPropertyChanged(nameof(IsMicrosoftAccount));
+        OnPropertyChanged(nameof(UuidText));
+        _saved?.Invoke();
+        _toast("已注销微软账号，当前为离线账户。", false);
     }
 
     private static string Protect(string token)

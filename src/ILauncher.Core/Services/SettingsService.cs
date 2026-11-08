@@ -21,6 +21,8 @@ public sealed class LauncherSettings
     [System.Text.Json.Serialization.JsonIgnore]
     public string MicrosoftRefreshToken { get; set; } = "";
 
+    public string MicrosoftRefreshTokenProtected { get; set; } = "";
+
     [System.Text.Json.Serialization.JsonIgnore]
     public string MicrosoftUuid { get; set; } = "";
     public string JavaPath { get; set; } = "";
@@ -46,6 +48,10 @@ public sealed class InstanceOverrides
 
 public sealed class SettingsService
 {
+    // Public Azure client ID. This is not a secret; it is the application ID
+    // submitted for the Minecraft API review. MS_CLIENT_ID can override it.
+    public const string BundledMicrosoftClientId = "24255f36-74b9-48be-83b0-6b738d829b39";
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
@@ -66,16 +72,15 @@ public sealed class SettingsService
 
     private void ApplyClientIdFromEnvironment()
     {
-        if (!string.IsNullOrWhiteSpace(Settings.MicrosoftClientId))
-        {
-            return;
-        }
-
         var clientId = Environment.GetEnvironmentVariable("MS_CLIENT_ID")
                        ?? Environment.GetEnvironmentVariable("ILAUNCHER_MS_CLIENT_ID");
         if (!string.IsNullOrWhiteSpace(clientId))
         {
             Settings.MicrosoftClientId = clientId.Trim();
+        }
+        else if (string.IsNullOrWhiteSpace(Settings.MicrosoftClientId))
+        {
+            Settings.MicrosoftClientId = BundledMicrosoftClientId;
         }
     }
 

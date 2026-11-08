@@ -4,6 +4,7 @@
              xmlns:controls="clr-namespace:ILauncher.Controls">
 
     <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
         <Style x:Key="SkinCardButton" TargetType="Button">
             <Setter Property="Width" Value="112" />
             <Setter Property="Height" Value="126" />
@@ -97,6 +98,15 @@
                             <StackPanel Orientation="Horizontal">
                                 <controls:Icon Data="{StaticResource IconUser}" Fill="#FF3A5674" Width="13" Height="13" />
                                 <TextBlock Text="正版登录" Margin="6,0,0,0" FontSize="11.5" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource SecondaryButton}" Height="36" Margin="8,0,0,0"
+                                Command="{Binding SignOutMicrosoftCommand}"
+                                Visibility="{Binding IsMicrosoftAccount, Converter={StaticResource BoolToVisibility}}"
+                                AutomationProperties.Name="注销微软账号">
+                            <StackPanel Orientation="Horizontal">
+                                <controls:Icon Data="{StaticResource IconUser}" Fill="#FF3A5674" Width="13" Height="13" />
+                                <TextBlock Text="注销微软账号" Margin="6,0,0,0" FontSize="11.5" />
                             </StackPanel>
                         </Button>
                         <Button Style="{StaticResource SecondaryButton}" Height="36" Margin="8,0,0,0" Command="{Binding OpenFolderCommand}">

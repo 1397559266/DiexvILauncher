@@ -111,6 +111,55 @@ public sealed class MicrosoftAuthService
         }
 
         status?.Invoke("正在登录 Xbox Live…");
+        return await CompleteMinecraftAsync(accessToken, refreshToken, status, cancellationToken);
+    }
+
+    /// <summary>
+    /// Uses a stored OAuth refresh token to obtain a fresh Minecraft session.
+    /// PCL2 also treats the refresh token as the long-lived account credential.
+    /// </summary>
+    public async Task<MicrosoftAccount> RefreshAsync(string clientId, string refreshToken,
+        Action<string>? status = null, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(refreshToken))
+        {
+            throw new InvalidOperationException("没有可用的微软刷新令牌，请在账户页重新登录。");
+        }
+
+        status?.Invoke("正在刷新 Microsoft 登录…");
+        using var content = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["grant_type"] = "refresh_token",
+            ["client_id"] = clientId,
+            ["refresh_token"] = refreshToken,
+            ["scope"] = "XboxLive.signin offline_access"
+        });
+        using var response = await DownloadHelper.HttpClient.PostAsync(TokenEndpoint, content, cancellationToken);
+        var body = await response.Content.ReadAsStringAsync(cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = ReadOAuthErrorCode(body);
+            if (error is "invalid_grant" or "interaction_required")
+            {
+                throw new InvalidOperationException("微软登录已失效，请在账户页重新登录。");
+            }
+
+            throw new InvalidOperationException(ReadOAuthError(body) ?? $"微软登录刷新失败：{(int)response.StatusCode}");
+        }
+
+        using var document = JsonDocument.Parse(body);
+        var root = document.RootElement;
+        var accessToken = root.GetProperty("access_token").GetString() ?? "";
+        var newRefreshToken = root.TryGetProperty("refresh_token", out var refresh)
+            ? refresh.GetString() ?? refreshToken
+            : refreshToken;
+        return await CompleteMinecraftAsync(accessToken, newRefreshToken, status, cancellationToken);
+    }
+
+    private static async Task<MicrosoftAccount> CompleteMinecraftAsync(string accessToken, string refreshToken,
+        Action<string>? status, CancellationToken cancellationToken)
+    {
+        status?.Invoke("正在登录 Xbox Live…");
         var xblToken = await XboxAuthenticateAsync(accessToken, cancellationToken);
         var (xstsToken, uhs) = await XstsAuthorizeAsync(xblToken, cancellationToken);
         status?.Invoke("正在登录 Minecraft…");
