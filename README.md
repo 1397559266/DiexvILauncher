@@ -2,6 +2,8 @@
 
 仓库：<https://github.com/1397559266/DiexvMinecraftLauncher>
 
+> 许可证：**All Rights Reserved（保留所有权利）**，详见 [LICENSE](LICENSE)。源码公开可见，但不授予复制、修改、分发或商用许可。
+
 一个用 **WPF / .NET 8** 编写的 Minecraft 启动器：界面语言参考 **PCL2（Plain Craft Launcher 2 社区版）**，并把 **HMCL 的「测试游戏」** 做成了一个独立的启动日志功能，同时补齐了皮肤、图标、下载、资源管理和启动工具等 MC 相关功能。
 
 > 核心要求：在「模组管理」所在版本的左侧导航栏**左下角**，放一个**不属于导航分组**的独立「测试游戏」按钮。点击后启动游戏，并在右侧打开启动日志面板，实时显示游戏进程的 **全部 stdout + stderr 输出**。
