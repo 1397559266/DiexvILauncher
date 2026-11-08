@@ -38,8 +38,7 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- Brand -->
-                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center"
-                            Visibility="{Binding IsHome, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                     <Image Source="Assets/app.png" Width="36" Height="36"
                            RenderOptions.BitmapScalingMode="NearestNeighbor" />
                     <StackPanel Margin="11,0,0,0" VerticalAlignment="Center">
@@ -49,24 +48,9 @@
                     </StackPanel>
                 </StackPanel>
 
-                <!-- Sub page title -->
-                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center"
-                            Visibility="{Binding IsHome, Converter={StaticResource InverseBoolToVisibility}}">
-                    <Button Style="{StaticResource HeaderRoundButton}" Command="{Binding GoHomeCommand}"
-                            ToolTip="返回主页" Margin="0,0,14,0" AutomationProperties.Name="返回主页">
-                        <controls:Icon Data="{StaticResource IconBack}" Fill="#FFFFFFFF" Width="17" Height="17" />
-                    </Button>
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="{Binding HeaderTitle}" FontSize="17" FontWeight="SemiBold" Foreground="#FFFFFFFF" />
-                        <TextBlock Text="{Binding HeaderSubtitle}" FontSize="10.5" Foreground="#BFFFFFFF"
-                                   TextTrimming="CharacterEllipsis" MaxWidth="520" Margin="0,1,0,0" />
-                    </StackPanel>
-                </StackPanel>
-
                 <!-- Root navigation -->
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="34,0,0,0"
-                            Visibility="{Binding IsHome, Converter={StaticResource BoolToVisibility}}">
-                    <Button Style="{StaticResource HeaderTabButton}" Content="主页" Tag="{Binding IsHome}"
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="34,0,0,0">
+                    <Button Style="{StaticResource HeaderTabButton}" Content="主页" Tag="{Binding IsHomeOrInstance}"
                             Command="{Binding GoHomeCommand}" AutomationProperties.Name="主页" />
                     <Button Style="{StaticResource HeaderTabButton}" Content="下载" Tag="{Binding IsDownloadPage}"
                             Command="{Binding GoDownloadCommand}" Margin="4,0,0,0" AutomationProperties.Name="下载" />

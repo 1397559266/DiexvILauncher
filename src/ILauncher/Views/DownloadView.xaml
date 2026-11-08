@@ -63,7 +63,6 @@
     <Grid Margin="24,18,24,18">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -75,6 +74,12 @@
                            Margin="0,4,0,0" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <TextBlock Text="下载类型" FontSize="9.5" Foreground="{StaticResource BrushTextMuted}"
+                           VerticalAlignment="Center" Margin="0,0,6,0" />
+                <ComboBox Style="{StaticResource FilterCombo}" Width="120" Margin="0,0,10,0"
+                          ItemsSource="{Binding DownloadTypeOptions}"
+                          SelectedItem="{Binding SelectedDownloadType, Mode=TwoWay}"
+                          AutomationProperties.Name="下载类型" />
                 <Border Background="#FFF7FBFF" BorderBrush="{StaticResource BrushBorder}" BorderThickness="1"
                         CornerRadius="8" Padding="10,5" VerticalAlignment="Center">
                     <TextBlock Text="{Binding FilterSummary}" FontSize="9.5" Foreground="{StaticResource BrushTextSecondary}" />
@@ -82,44 +87,8 @@
             </StackPanel>
         </Grid>
 
-        <!-- Tabs -->
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,14">
-            <Button Style="{StaticResource DownloadTabButton}" Tag="{Binding IsGameTab}"
-                          Command="{Binding SetTabCommand}" CommandParameter="Game" AutomationProperties.Name="游戏版本">
-                <StackPanel Orientation="Horizontal">
-                    <controls:Icon Data="{StaticResource IconDownload}" Width="14" Height="14"
-                                   Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
-                    <TextBlock Text="游戏版本" Margin="6,0,0,0" FontSize="11.5" />
-                </StackPanel>
-            </Button>
-            <Button Style="{StaticResource DownloadTabButton}" Tag="{Binding IsModsTab}"
-                          Command="{Binding SetTabCommand}" CommandParameter="Mods" AutomationProperties.Name="模组">
-                <StackPanel Orientation="Horizontal">
-                    <controls:Icon Data="{StaticResource IconPuzzle}" Width="14" Height="14"
-                                   Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
-                    <TextBlock Text="模组" Margin="6,0,0,0" FontSize="11.5" />
-                </StackPanel>
-            </Button>
-            <Button Style="{StaticResource DownloadTabButton}" Tag="{Binding IsResourcePacksTab}"
-                          Command="{Binding SetTabCommand}" CommandParameter="ResourcePacks" AutomationProperties.Name="资源包">
-                <StackPanel Orientation="Horizontal">
-                    <controls:Icon Data="{StaticResource IconLayers}" Width="14" Height="14"
-                                   Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
-                    <TextBlock Text="资源包" Margin="6,0,0,0" FontSize="11.5" />
-                </StackPanel>
-            </Button>
-            <Button Style="{StaticResource DownloadTabButton}" Tag="{Binding IsShadersTab}"
-                          Command="{Binding SetTabCommand}" CommandParameter="Shaders" AutomationProperties.Name="光影">
-                <StackPanel Orientation="Horizontal">
-                    <controls:Icon Data="{StaticResource IconSparkles}" Width="14" Height="14"
-                                   Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
-                    <TextBlock Text="光影" Margin="6,0,0,0" FontSize="11.5" />
-                </StackPanel>
-            </Button>
-        </StackPanel>
-
         <!-- ═══════════ Game tab ═══════════ -->
-        <Grid Grid.Row="2" Visibility="{Binding IsGameTab, Converter={StaticResource BoolToVisibility}}">
+        <Grid Grid.Row="1" Visibility="{Binding IsGameTab, Converter={StaticResource BoolToVisibility}}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="14" />
@@ -288,7 +257,7 @@
         </Grid>
 
         <!-- ═══════════ Content search tab ═══════════ -->
-        <Grid Grid.Row="2" Visibility="{Binding IsContentTab, Converter={StaticResource BoolToVisibility}}">
+        <Grid Grid.Row="1" Visibility="{Binding IsContentTab, Converter={StaticResource BoolToVisibility}}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />

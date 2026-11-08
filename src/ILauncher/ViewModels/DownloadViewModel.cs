@@ -64,8 +64,10 @@ public sealed class DownloadViewModel : ObservableObject
     private DownloadFilterOption? _selectedLoader;
     private DownloadFilterOption? _selectedVersionScope;
     private DownloadFilterOption? _selectedCategory;
+    private DownloadFilterOption? _selectedDownloadType;
     private int _searchOffset;
     private int _searchTotal;
+    private int _searchVersion;
     private const int SearchPageSize = 20;
     private GameInstance? _contextInstance;
     private bool _versionsLoaded;
@@ -119,6 +121,14 @@ public sealed class DownloadViewModel : ObservableObject
             new() { Key = "all", Title = "全部版本" }
         };
         CategoryFilters = new ObservableCollection<DownloadFilterOption>();
+        DownloadTypeOptions = new ObservableCollection<DownloadFilterOption>
+        {
+            new() { Key = "Game", Title = "游戏版本", IsSelected = true },
+            new() { Key = "Mods", Title = "模组" },
+            new() { Key = "ResourcePacks", Title = "资源包" },
+            new() { Key = "Shaders", Title = "光影" }
+        };
+        _selectedDownloadType = DownloadTypeOptions[0];
         _selectedGameType = GameTypeFilters.FirstOrDefault(option => option.IsSelected) ?? GameTypeFilters[0];
         _selectedLoader = LoaderFilters.FirstOrDefault(option => option.IsSelected) ?? LoaderFilters[0];
         _selectedVersionScope = VersionScopeFilters.FirstOrDefault(option => option.IsSelected) ?? VersionScopeFilters[0];
@@ -175,6 +185,7 @@ public sealed class DownloadViewModel : ObservableObject
     public ObservableCollection<DownloadFilterOption> LoaderFilters { get; }
     public ObservableCollection<DownloadFilterOption> VersionScopeFilters { get; }
     public ObservableCollection<DownloadFilterOption> CategoryFilters { get; }
+    public ObservableCollection<DownloadFilterOption> DownloadTypeOptions { get; }
 
     public AsyncRelayCommand RefreshGameVersionsCommand { get; }
     public AsyncRelayCommand InstallVersionCommand { get; }
@@ -210,6 +221,14 @@ public sealed class DownloadViewModel : ObservableObject
             OnPropertyChanged(nameof(ProjectType));
             OnPropertyChanged(nameof(TabTitle));
             OnPropertyChanged(nameof(TabDescription));
+            var typeOption = DownloadTypeOptions.FirstOrDefault(option => option.Key == value.ToString());
+            if (typeOption != null && !ReferenceEquals(_selectedDownloadType, typeOption))
+            {
+                SelectSingle(DownloadTypeOptions, typeOption);
+                _selectedDownloadType = typeOption;
+                OnPropertyChanged(nameof(SelectedDownloadType));
+            }
+
             RebuildCategoryFilters();
             OnPropertyChanged(nameof(FilterSummary));
             if (value != DownloadTab.Game)
@@ -373,6 +392,24 @@ public sealed class DownloadViewModel : ObservableObject
             if (CurrentTab != DownloadTab.Game)
             {
                 _ = SearchAsync();
+            }
+        }
+    }
+
+    public DownloadFilterOption? SelectedDownloadType
+    {
+        get => _selectedDownloadType;
+        set
+        {
+            if (!SetProperty(ref _selectedDownloadType, value) || value == null)
+            {
+                return;
+            }
+
+            SelectSingle(DownloadTypeOptions, value);
+            if (Enum.TryParse<DownloadTab>(value.Key, out var tab))
+            {
+                CurrentTab = tab;
             }
         }
     }
@@ -747,6 +784,7 @@ public sealed class DownloadViewModel : ObservableObject
 
         IsSearching = true;
         SearchStatus = "正在搜索 Modrinth…";
+        var searchVersion = ++_searchVersion;
         try
         {
             var loader = CurrentTab == DownloadTab.Mods ? ResolveLoader() : null;
@@ -754,24 +792,10 @@ public sealed class DownloadViewModel : ObservableObject
             var category = SelectedCategory?.Key is null or "all" ? null : SelectedCategory.Key;
             var result = await _modrinth.SearchAsync(SearchQuery, ProjectType,
                 gameVersion, loader, category, _searchOffset, SearchPageSize);
-            IReadOnlyList<ModrinthProject> hits = result.Hits;
-            if (CurrentTab == DownloadTab.Mods && hits.Count > 0)
-            {
-                SearchStatus = "正在匹配 MC百科中文名…";
-                var lookups = hits.Select(async project =>
-                {
-                    var info = await _mcmod.LookupAsync(project.Title);
-                    return info == null
-                        ? project
-                        : project with { ChineseName = info.Name, McmodUrl = info.Url };
-                });
-                hits = await Task.WhenAll(lookups);
-            }
-
             _searchOffset = result.Offset;
             _searchTotal = result.TotalHits;
             SearchResults.Clear();
-            foreach (var project in hits)
+            foreach (var project in result.Hits)
             {
                 SearchResults.Add(project);
             }
@@ -780,11 +804,15 @@ public sealed class DownloadViewModel : ObservableObject
             OnPropertyChanged(nameof(SearchPage));
             OnPropertyChanged(nameof(SearchTotalPages));
             OnPropertyChanged(nameof(SearchPageText));
-            PreviousPageCommand.RaiseCanExecuteChanged();
-            NextPageCommand.RaiseCanExecuteChanged();
-            SearchStatus = hits.Count == 0
+            SearchStatus = result.Hits.Count == 0
                 ? "没有找到匹配的项目，试试换一个关键词。"
-                : $"找到 {result.TotalHits} 个项目 · 来源 Modrinth";
+                : CurrentTab == DownloadTab.Mods
+                    ? $"找到 {result.TotalHits} 个项目 · 正在匹配 MC百科…"
+                    : $"找到 {result.TotalHits} 个项目 · 来源 Modrinth";
+            if (CurrentTab == DownloadTab.Mods && result.Hits.Count > 0)
+            {
+                _ = EnrichMcmodAsync(result.Hits, searchVersion);
+            }
         }
         catch (Exception ex)
         {
@@ -796,6 +824,44 @@ public sealed class DownloadViewModel : ObservableObject
             InstallProjectCommand.RaiseCanExecuteChanged();
             PreviousPageCommand.RaiseCanExecuteChanged();
             NextPageCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    private async Task EnrichMcmodAsync(IReadOnlyList<ModrinthProject> hits, int searchVersion)
+    {
+        foreach (var project in hits)
+        {
+            if (searchVersion != _searchVersion)
+            {
+                return;
+            }
+
+            var info = await _mcmod.LookupAsync(project.Title);
+            if (searchVersion != _searchVersion)
+            {
+                return;
+            }
+
+            if (info == null)
+            {
+                continue;
+            }
+
+            var index = SearchResults
+                .Select((item, i) => (item, i))
+                .FirstOrDefault(pair => pair.item.Id == project.Id)
+                .i;
+            if (index < 0 || index >= SearchResults.Count || SearchResults[index].Id != project.Id)
+            {
+                continue;
+            }
+
+            SearchResults[index] = project with { ChineseName = info.Name, McmodUrl = info.Url };
+        }
+
+        if (searchVersion == _searchVersion)
+        {
+            SearchStatus = $"找到 {_searchTotal} 个项目 · 来源 Modrinth";
         }
     }
 

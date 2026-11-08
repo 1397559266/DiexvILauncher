@@ -311,7 +311,13 @@ public sealed class MainViewModel : ObservableObject
     public bool IsHome
     {
         get => _isHome;
-        private set => SetProperty(ref _isHome, value);
+        private set
+        {
+            if (SetProperty(ref _isHome, value))
+            {
+                OnPropertyChanged(nameof(IsHomeOrInstance));
+            }
+        }
     }
 
     public bool IsSettingsPage
@@ -335,8 +341,16 @@ public sealed class MainViewModel : ObservableObject
     public bool IsInstancePage
     {
         get => _isInstancePage;
-        private set => SetProperty(ref _isInstancePage, value);
+        private set
+        {
+            if (SetProperty(ref _isInstancePage, value))
+            {
+                OnPropertyChanged(nameof(IsHomeOrInstance));
+            }
+        }
     }
+
+    public bool IsHomeOrInstance => IsHome || IsInstancePage;
 
     public bool ShowBack => !IsHome;
 
