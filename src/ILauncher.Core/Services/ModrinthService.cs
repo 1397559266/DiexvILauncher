@@ -41,7 +41,8 @@ public sealed class ModrinthService
     private const string BaseUrl = "https://api.modrinth.com/v2";
 
     public async Task<List<ModrinthProject>> SearchAsync(string query, string projectType,
-        string? gameVersion, string? loader, int limit = 20, CancellationToken cancellationToken = default)
+        string? gameVersion, string? loader, string? category = null, int limit = 20,
+        CancellationToken cancellationToken = default)
     {
         var facets = new List<List<string>> { new() { $"project_type:{projectType}" } };
         if (!string.IsNullOrWhiteSpace(gameVersion))
@@ -52,6 +53,12 @@ public sealed class ModrinthService
         if (!string.IsNullOrWhiteSpace(loader))
         {
             facets.Add(new List<string> { $"categories:{loader.ToLowerInvariant()}" });
+        }
+
+        if (!string.IsNullOrWhiteSpace(category) &&
+            !string.Equals(category, "all", StringComparison.OrdinalIgnoreCase))
+        {
+            facets.Add(new List<string> { $"categories:{category.ToLowerInvariant()}" });
         }
 
         var facetsJson = JsonSerializer.Serialize(facets);

@@ -17,6 +17,20 @@ public enum DownloadTab
     Shaders
 }
 
+public sealed class DownloadFilterOption : ObservableObject
+{
+    private bool _isSelected;
+
+    public required string Key { get; init; }
+    public required string Title { get; init; }
+
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set => SetProperty(ref _isSelected, value);
+    }
+}
+
 public sealed class DownloadViewModel : ObservableObject
 {
     private readonly SettingsService _settings;
@@ -34,7 +48,6 @@ public sealed class DownloadViewModel : ObservableObject
     private readonly List<RemoteVersion> _allVersions = new();
     private CancellationTokenSource? _downloadCts;
     private DownloadTab _currentTab = DownloadTab.Game;
-    private bool _showSnapshots;
     private bool _isLoadingVersions;
     private bool _isDownloading;
     private bool _isSearching;
@@ -45,6 +58,7 @@ public sealed class DownloadViewModel : ObservableObject
     private double _progressValue;
     private bool _progressIndeterminate;
     private string _targetMinecraftVersion = "";
+    private string _versionSearch = "";
     private GameInstance? _contextInstance;
     private bool _versionsLoaded;
 
@@ -75,6 +89,28 @@ public sealed class DownloadViewModel : ObservableObject
 
         GameVersions = new ObservableCollection<RemoteVersion>();
         SearchResults = new ObservableCollection<ModrinthProject>();
+        GameTypeFilters = new ObservableCollection<DownloadFilterOption>
+        {
+            new() { Key = "all", Title = "全部" },
+            new() { Key = "release", Title = "正式版", IsSelected = true },
+            new() { Key = "snapshot", Title = "快照" },
+            new() { Key = "old", Title = "旧版" }
+        };
+        LoaderFilters = new ObservableCollection<DownloadFilterOption>
+        {
+            new() { Key = "current", Title = "当前加载器", IsSelected = true },
+            new() { Key = "all", Title = "全部加载器" },
+            new() { Key = "fabric", Title = "Fabric" },
+            new() { Key = "forge", Title = "Forge" },
+            new() { Key = "neoforge", Title = "NeoForge" },
+            new() { Key = "quilt", Title = "Quilt" }
+        };
+        VersionScopeFilters = new ObservableCollection<DownloadFilterOption>
+        {
+            new() { Key = "current", Title = "当前版本", IsSelected = true },
+            new() { Key = "all", Title = "全部版本" }
+        };
+        CategoryFilters = new ObservableCollection<DownloadFilterOption>();
 
         RefreshGameVersionsCommand = new AsyncRelayCommand(LoadVersionsAsync);
         InstallVersionCommand = new AsyncRelayCommand(async parameter =>
@@ -104,13 +140,22 @@ public sealed class DownloadViewModel : ObservableObject
                 CurrentTab = tab;
             }
         });
+        SetGameTypeCommand = new RelayCommand(parameter => SelectGameType(parameter));
+        SetLoaderCommand = new RelayCommand(parameter => SelectLoader(parameter));
+        SetVersionScopeCommand = new RelayCommand(parameter => SelectVersionScope(parameter));
+        SetCategoryCommand = new RelayCommand(parameter => SelectCategory(parameter));
         CancelCommand = new RelayCommand(Cancel, () => IsDownloading);
 
+        RebuildCategoryFilters();
         RefreshContext();
     }
 
     public ObservableCollection<RemoteVersion> GameVersions { get; }
     public ObservableCollection<ModrinthProject> SearchResults { get; }
+    public ObservableCollection<DownloadFilterOption> GameTypeFilters { get; }
+    public ObservableCollection<DownloadFilterOption> LoaderFilters { get; }
+    public ObservableCollection<DownloadFilterOption> VersionScopeFilters { get; }
+    public ObservableCollection<DownloadFilterOption> CategoryFilters { get; }
 
     public AsyncRelayCommand RefreshGameVersionsCommand { get; }
     public AsyncRelayCommand InstallVersionCommand { get; }
@@ -122,6 +167,10 @@ public sealed class DownloadViewModel : ObservableObject
     public AsyncRelayCommand ImportModpackCommand { get; }
     public AsyncRelayCommand InstallProjectCommand { get; }
     public RelayCommand SetTabCommand { get; }
+    public RelayCommand SetGameTypeCommand { get; }
+    public RelayCommand SetLoaderCommand { get; }
+    public RelayCommand SetVersionScopeCommand { get; }
+    public RelayCommand SetCategoryCommand { get; }
     public RelayCommand CancelCommand { get; }
 
     public DownloadTab CurrentTab
@@ -143,6 +192,8 @@ public sealed class DownloadViewModel : ObservableObject
             OnPropertyChanged(nameof(ProjectType));
             OnPropertyChanged(nameof(TabTitle));
             OnPropertyChanged(nameof(TabDescription));
+            RebuildCategoryFilters();
+            OnPropertyChanged(nameof(FilterSummary));
             if (value != DownloadTab.Game)
             {
                 _ = SearchAsync();
@@ -188,18 +239,6 @@ public sealed class DownloadViewModel : ObservableObject
         _ => "搜索…"
     };
 
-    public bool ShowSnapshots
-    {
-        get => _showSnapshots;
-        set
-        {
-            if (SetProperty(ref _showSnapshots, value))
-            {
-                ApplyVersionFilter();
-            }
-        }
-    }
-
     public bool IsLoadingVersions
     {
         get => _isLoadingVersions;
@@ -236,6 +275,23 @@ public sealed class DownloadViewModel : ObservableObject
         get => _searchQuery;
         set => SetProperty(ref _searchQuery, value);
     }
+
+    public string VersionSearch
+    {
+        get => _versionSearch;
+        set
+        {
+            if (SetProperty(ref _versionSearch, value))
+            {
+                ApplyVersionFilter();
+            }
+        }
+    }
+
+    public DownloadFilterOption? SelectedGameType => GameTypeFilters.FirstOrDefault(option => option.IsSelected);
+    public DownloadFilterOption? SelectedLoader => LoaderFilters.FirstOrDefault(option => option.IsSelected);
+    public DownloadFilterOption? SelectedVersionScope => VersionScopeFilters.FirstOrDefault(option => option.IsSelected);
+    public DownloadFilterOption? SelectedCategory => CategoryFilters.FirstOrDefault(option => option.IsSelected);
 
     public string SearchStatus
     {
@@ -287,7 +343,13 @@ public sealed class DownloadViewModel : ObservableObject
             }
 
             var loader = _contextInstance.Loader;
-            return $"目标版本：Minecraft {_contextInstance.MinecraftVersion} · {loader}";
+            var scope = CurrentTab == DownloadTab.Game
+                ? SelectedGameType?.Title ?? "全部"
+                : SelectedVersionScope?.Title ?? "当前版本";
+            var suffix = CurrentTab == DownloadTab.Mods
+                ? $" · {SelectedLoader?.Title ?? "当前加载器"}"
+                : "";
+            return $"目标：Minecraft {_contextInstance.MinecraftVersion} · {loader} · {scope}{suffix}";
         }
     }
 
@@ -345,11 +407,139 @@ public sealed class DownloadViewModel : ObservableObject
 
     private void ApplyVersionFilter()
     {
+        var type = SelectedGameType?.Key ?? "all";
+        var search = VersionSearch.Trim();
         GameVersions.Clear();
-        foreach (var version in _allVersions.Where(v => ShowSnapshots || v.Type == "release"))
+        foreach (var version in _allVersions)
         {
+            var typeMatches = type switch
+            {
+                "release" => string.Equals(version.Type, "release", StringComparison.OrdinalIgnoreCase),
+                "snapshot" => string.Equals(version.Type, "snapshot", StringComparison.OrdinalIgnoreCase),
+                "old" => version.Type.StartsWith("old_", StringComparison.OrdinalIgnoreCase),
+                _ => true
+            };
+            if (!typeMatches ||
+                (search.Length > 0 && !version.Id.Contains(search, StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
             GameVersions.Add(version);
         }
+
+        OnPropertyChanged(nameof(FilterSummary));
+    }
+
+    private void SelectGameType(object? parameter)
+    {
+        if (parameter is DownloadFilterOption option && SelectSingle(GameTypeFilters, option))
+        {
+            ApplyVersionFilter();
+        }
+    }
+
+    private void SelectLoader(object? parameter)
+    {
+        if (parameter is DownloadFilterOption option && SelectSingle(LoaderFilters, option))
+        {
+            OnPropertyChanged(nameof(FilterSummary));
+            OnPropertyChanged(nameof(SelectedLoader));
+            if (CurrentTab == DownloadTab.Mods)
+            {
+                _ = SearchAsync();
+            }
+        }
+    }
+
+    private void SelectVersionScope(object? parameter)
+    {
+        if (parameter is DownloadFilterOption option && SelectSingle(VersionScopeFilters, option))
+        {
+            OnPropertyChanged(nameof(FilterSummary));
+            OnPropertyChanged(nameof(SelectedVersionScope));
+            if (CurrentTab != DownloadTab.Game)
+            {
+                _ = SearchAsync();
+            }
+        }
+    }
+
+    private void SelectCategory(object? parameter)
+    {
+        if (parameter is DownloadFilterOption option && SelectSingle(CategoryFilters, option))
+        {
+            OnPropertyChanged(nameof(SelectedCategory));
+            if (CurrentTab != DownloadTab.Game)
+            {
+                _ = SearchAsync();
+            }
+        }
+    }
+
+    private static bool SelectSingle(IEnumerable<DownloadFilterOption> options, DownloadFilterOption selected)
+    {
+        var changed = false;
+        foreach (var option in options)
+        {
+            var active = ReferenceEquals(option, selected);
+            if (option.IsSelected != active)
+            {
+                option.IsSelected = active;
+                changed = true;
+            }
+        }
+
+        return changed;
+    }
+
+    private void RebuildCategoryFilters()
+    {
+        var options = CurrentTab switch
+        {
+            DownloadTab.Mods => new (string Key, string Title)[]
+            {
+                ("all", "全部类型"), ("optimization", "优化"), ("technology", "科技"),
+                ("magic", "魔法"), ("adventure", "冒险"), ("decoration", "装饰"),
+                ("utility", "辅助"), ("library", "前置库")
+            },
+            DownloadTab.ResourcePacks => new (string Key, string Title)[]
+            {
+                ("all", "全部分辨率"), ("16x", "16×"), ("32x", "32×"),
+                ("64x", "64×"), ("128x", "128×"), ("256x", "256×")
+            },
+            DownloadTab.Shaders => new (string Key, string Title)[]
+            {
+                ("all", "全部风格"), ("realistic", "写实"), ("fantasy", "奇幻"),
+                ("cartoon", "卡通"), ("semi-realistic", "半写实"),
+                ("vanilla-like", "原版风")
+            },
+            _ => Array.Empty<(string Key, string Title)>()
+        };
+
+        CategoryFilters.Clear();
+        for (var index = 0; index < options.Length; index++)
+        {
+            CategoryFilters.Add(new DownloadFilterOption
+            {
+                Key = options[index].Key,
+                Title = options[index].Title,
+                IsSelected = index == 0
+            });
+        }
+
+        OnPropertyChanged(nameof(SelectedCategory));
+    }
+
+    private string? ResolveLoader()
+    {
+        var key = SelectedLoader?.Key ?? "current";
+        return key switch
+        {
+            "all" => null,
+            "current" => NormalizeLoader(_contextInstance?.Loader),
+            _ => key
+        };
     }
 
     private async Task InstallVersionAsync(RemoteVersion version)
@@ -495,9 +685,11 @@ public sealed class DownloadViewModel : ObservableObject
         SearchStatus = "正在搜索 Modrinth…";
         try
         {
-            var loader = CurrentTab == DownloadTab.Mods ? NormalizeLoader(_contextInstance?.Loader) : null;
+            var loader = CurrentTab == DownloadTab.Mods ? ResolveLoader() : null;
+            var gameVersion = SelectedVersionScope?.Key == "all" ? null : _contextInstance?.MinecraftVersion;
+            var category = SelectedCategory?.Key is null or "all" ? null : SelectedCategory.Key;
             var results = await _modrinth.SearchAsync(SearchQuery, ProjectType,
-                _contextInstance?.MinecraftVersion, loader);
+                gameVersion, loader, category);
             SearchResults.Clear();
             foreach (var project in results)
             {

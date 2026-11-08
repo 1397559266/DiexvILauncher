@@ -18,7 +18,7 @@
 | 正版登录 | 微软设备码登录（Xbox Live → XSTS → Minecraft Services），需要在登录窗口填写自己的 Azure 应用 ID；也可尝试导入官方启动器本地令牌；登录后可正版启动 |
 | 正版皮肤 | 按玩家名或 UUID 查询 Mojang 档案，下载皮肤/披风并加入本地皮肤库 |
 | 图标 | 版本自定义 PNG 图标；Fabric/Quilt/Forge/NeoForge/OptiFine 加载器徽标；模组 jar 内图标、资源包 `pack.png`、存档 `icon.png`、服务器图标 |
-| 下载 | Mojang 官方版本列表（正式版/快照）、安装原版（客户端/库/资源）、Fabric/Quilt 安装、Forge/NeoForge 官方安装器、`.mrpack` 整合包导入 |
+| 下载 | Mojang 官方版本列表（正式版/快照/旧版筛选 + 版本号搜索）、原版安装、Fabric/Quilt、Forge/NeoForge 官方安装器、`.mrpack` 导入 |
 | Modrinth | 搜索并安装模组/资源包/光影；按当前版本的 MC 版本和加载器过滤；模组更新检查与一键更新 |
 | 资源管理 | 资源包/光影导入 ZIP、删除、打开；存档浏览、备份 ZIP、删除；截图浏览/打开/删除；服务器列表读取、添加、编辑、删除和自动连接 |
 | 工具 | 导出启动脚本 `.bat`、导出实例 ZIP、崩溃日志诊断、Java 运行库下载（Adoptium 8/17/21） |
@@ -93,10 +93,10 @@ $env:MS_CLIENT_ID = "你的 Azure Application (client) ID"
 
 ![下载中心](docs/screenshots/download.png)
 
-- **游戏版本**：Mojang 版本清单（103 个正式版，可切换显示快照），点击安装会下载版本 JSON、客户端 jar、Windows 库、资源索引和资源对象。
+- **游戏版本**：Mojang 版本清单，默认 **正式版**，可按 **全部 / 正式版 / 快照 / 旧版** 筛选，也可按版本号搜索；点击安装会下载版本 JSON、客户端 jar、Windows 库、资源索引和资源对象。
 - **加载器**：Fabric / Quilt 直接走 Meta API 创建新版本；Forge / NeoForge 调用官方安装器 jar（需要 Java 与网络），全新目录缺少 `launcher_profiles.json` 时会自动补一个最小档案文件。
 - **整合包**：支持 Modrinth `.mrpack` 导入，读取依赖中的 Minecraft/加载器版本，安装加载器、下载文件并复制 `overrides`。
-- **Modrinth 内容**：模组、资源包、光影搜索与安装；模组按当前实例的 Minecraft 版本与加载器过滤。
+- **Modrinth 内容**：模组、资源包、光影搜索与安装。筛选栏支持 **当前版本 / 全部版本**；模组支持 **当前加载器 / 全部加载器 / Fabric / Forge / NeoForge / Quilt** 和 **优化/科技/魔法/冒险/装饰/辅助/前置库** 类型；资源包按 **16×/32×/64×/128×/256×** 分辨率筛选；光影按写实/奇幻/卡通/半写实/原版风筛选。
 - **进度与取消**：下载面板实时显示阶段、文件名、百分比，支持取消。
 
 ![Modrinth 搜索](docs/screenshots/download-mods.png)
@@ -243,7 +243,7 @@ docs/screenshots/            README 截图
 - Forge 1.20.1（124 模组、2 启用）：真实启动，日志面板捕获 7,000+ 行，窗口检测、停止进程树。
 - 原版 1.20.1：启动、停止、日志面板。
 - Fabric 安装：通过 Meta API 创建 `fabric-loader-0.20.1-1.20.1`（测试后清理）。
-- Modrinth：搜索、模组/资源包/光影标签页、安装资源包到版本目录（测试后清理）。
+- Modrinth：搜索、模组/资源包/光影标签页、加载器/版本范围/类型筛选、安装资源包到版本目录（测试后清理）。
 - 原版 1.20.1 安装器：临时目录下载版本 JSON、客户端 jar 和 65 个库文件（不下载资源对象）。
 - Forge 官方安装器：在全新临时目录完整安装 `1.20.1-forge-47.4.21`，自动生成 `launcher_profiles.json` 并完成打补丁。
 - 模组更新：放入旧版 Cloth Config 后检查到 11.1.136，点击更新后旧文件被禁用、新文件启用（测试后清理）。
@@ -267,6 +267,7 @@ docs/screenshots/            README 截图
 - 模组安装不会自动解析并安装前置依赖；只安装主文件。
 - Forge/NeoForge 走官方安装器，不保证所有版本都能在无界面模式下成功。
 - 启动器自身更新、主题/语言切换等非 Minecraft 功能未实现。
+
 
 
 
