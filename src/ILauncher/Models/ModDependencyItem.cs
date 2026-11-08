@@ -1,3 +1,5 @@
+using ILauncher.Localization;
+
 namespace ILauncher.Models;
 
 /// <summary>A required or optional dependency shown in the mod install dialog.</summary>
@@ -18,8 +20,8 @@ public sealed class ModDependencyItem
     public bool UnresolvedRequired => Required && !Resolved;
     public bool CanInstall => Resolved && !Installed;
 
-    public string TypeText => Required ? "必需" : Optional ? "可选" : DependencyType;
-    public string StatusText => !Resolved ? "无法解析" : Installed ? "已安装" : Required ? "缺失" : "未安装";
+    public string TypeText => LanguageService.Translate(Required ? "必需" : Optional ? "可选" : DependencyType);
+    public string StatusText => LanguageService.Translate(!Resolved ? "无法解析" : Installed ? "已安装" : Required ? "缺失" : "未安装");
     public string DisplayTitle => Depth <= 0 ? Title : $"{new string('　', Depth)}└ {Title}";
     public string CurseForgeUrl =>
         $"https://www.curseforge.com/minecraft/search?search={Uri.EscapeDataString(Title)}&class=mc-mods";

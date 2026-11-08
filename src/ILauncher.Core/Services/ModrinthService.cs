@@ -50,12 +50,19 @@ public sealed record ModrinthProject(
         }
     }
 
-    public string DownloadsText => Downloads switch
+    public string DownloadsText
     {
-        >= 1_000_000 => $"{Downloads / 1_000_000d:0.#}M 下载",
-        >= 1_000 => $"{Downloads / 1_000d:0.#}K 下载",
-        _ => $"{Downloads} 下载"
-    };
+        get
+        {
+            var suffix = PreferChineseNames ? " 下载" : " downloads";
+            return Downloads switch
+            {
+                >= 1_000_000 => $"{Downloads / 1_000_000d:0.#}M{suffix}",
+                >= 1_000 => $"{Downloads / 1_000d:0.#}K{suffix}",
+                _ => $"{Downloads}{suffix}"
+            };
+        }
+    }
 
     public string CategoryText => string.Join(" · ", Categories.Take(3));
 }

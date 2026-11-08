@@ -460,10 +460,12 @@
                                                         Padding="0,1" Margin="9,0,0,0"
                                                         Command="{Binding DataContext.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
                                                         CommandParameter="{Binding ModrinthUrl}" ToolTip="在 Modrinth 打开项目" />
-                                                <Button Style="{StaticResource LinkButton}" Content="详情" FontSize="8.5"
+                                                <Button Style="{StaticResource LinkButton}" FontSize="8.5"
                                                         Padding="0,1" Margin="9,0,0,0"
                                                         Command="{Binding DataContext.OpenProjectDetailsCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                                        CommandParameter="{Binding}" ToolTip="查看项目介绍、截图和链接" />
+                                                        CommandParameter="{Binding}" ToolTip="查看项目介绍、截图和链接">
+                                                    <TextBlock Text="详情" />
+                                                </Button>
                                                 <Button Style="{StaticResource LinkButton}" Content="MC百科" FontSize="8.5"
                                                         Padding="0,1" Margin="9,0,0,0"
                                                         Command="{Binding DataContext.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"

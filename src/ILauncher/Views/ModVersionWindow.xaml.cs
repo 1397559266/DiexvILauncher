@@ -8,6 +8,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using ILauncher.Core;
 using ILauncher.Core.Services;
+using ILauncher.Localization;
 using ILauncher.Models;
 
 namespace ILauncher.Views;
@@ -208,7 +209,7 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
     public string DependencyStatus
     {
         get => _dependencyStatus;
-        private set => Set(ref _dependencyStatus, value);
+        private set => Set(ref _dependencyStatus, LanguageService.Translate(value));
     }
 
     public int MissingRequiredCount
