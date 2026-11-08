@@ -14,6 +14,7 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
 {
     private readonly Func<string, string?, Task<IReadOnlyList<ModrinthVersion>>> _loadVersions;
     private readonly Func<ModrinthVersion, string, string?, Task<IReadOnlyList<ModDependencyItem>>> _analyzeDependencies;
+    private readonly Func<ModrinthVersion, string, string?, Task<IReadOnlyList<ModDependencyItem>>> _loadJarDependencies;
     private readonly Func<ModrinthVersion, string, string?, Action<DownloadProgress>?, Task> _installMissingDependencies;
     private readonly List<ModrinthVersion> _allVersions = new();
     private string _selectedGameVersion;
@@ -22,6 +23,7 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
     private ModrinthVersion? _selectedVersion;
     private bool _isLoading;
     private bool _isAnalyzing;
+    private bool _isJarLoading;
     private bool _isInstallingDependencies;
     private string _statusText = "";
     private string _dependencyStatus = "";
@@ -33,6 +35,7 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
         IReadOnlyList<string> gameVersions, string? initialLoader, IReadOnlyList<string> loaders,
         Func<string, string?, Task<IReadOnlyList<ModrinthVersion>>> loadVersions,
         Func<ModrinthVersion, string, string?, Task<IReadOnlyList<ModDependencyItem>>> analyzeDependencies,
+        Func<ModrinthVersion, string, string?, Task<IReadOnlyList<ModDependencyItem>>> loadJarDependencies,
         Func<ModrinthVersion, string, string?, Action<DownloadProgress>?, Task> installMissingDependencies)
     {
         Project = project;
@@ -43,6 +46,7 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
         _selectedLoader = initialLoader;
         _loadVersions = loadVersions;
         _analyzeDependencies = analyzeDependencies;
+        _loadJarDependencies = loadJarDependencies;
         _installMissingDependencies = installMissingDependencies;
         InitializeComponent();
         DataContext = this;
@@ -121,6 +125,20 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
         private set => Set(ref _isAnalyzing, value);
     }
 
+    public bool IsJarLoading
+    {
+        get => _isJarLoading;
+        private set
+        {
+            if (Set(ref _isJarLoading, value))
+            {
+                OnPropertyChanged(nameof(ShowDependencyPanel));
+            }
+        }
+    }
+
+    public bool ShowDependencyPanel => HasDependencies || IsJarLoading;
+
     public bool IsInstallingDependencies
     {
         get => _isInstallingDependencies;
@@ -153,7 +171,6 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
 
     public bool HasDependencies => Dependencies.Count > 0;
     public bool HasMissingRequired => MissingRequiredCount > 0;
-
     public int UnresolvedRequiredCount
     {
         get => _unresolvedRequiredCount;
@@ -181,6 +198,7 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
         StatusText = "正在获取兼容文件…";
         Dependencies.Clear();
         OnPropertyChanged(nameof(HasDependencies));
+            OnPropertyChanged(nameof(ShowDependencyPanel));
         MissingRequiredCount = 0;
         UnresolvedRequiredCount = 0;
         try
@@ -237,6 +255,7 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
         {
             Dependencies.Clear();
             OnPropertyChanged(nameof(HasDependencies));
+            OnPropertyChanged(nameof(ShowDependencyPanel));
             MissingRequiredCount = 0;
             UnresolvedRequiredCount = 0;
             DependencyStatus = "";
@@ -245,22 +264,18 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
 
         IsAnalyzing = true;
         DependencyStatus = "正在检测前置…";
+        var selectedVersion = SelectedVersion;
         try
         {
-            var items = await _analyzeDependencies(SelectedVersion, SelectedGameVersion, SelectedLoader);
+            var items = await _analyzeDependencies(selectedVersion, SelectedGameVersion, SelectedLoader);
             Dependencies.Clear();
             foreach (var item in items)
             {
                 Dependencies.Add(item);
             }
 
-            MissingRequiredCount = Dependencies.Count(item => item.Missing);
-            UnresolvedRequiredCount = Dependencies.Count(item => item.UnresolvedRequired);
-            OnPropertyChanged(nameof(HasDependencies));
-            DependencyStatus = Dependencies.Count == 0
-                ? "没有前置模组"
-                : $"共 {Dependencies.Count} 个前置 · 缺少 {MissingRequiredCount} 个必需" +
-                  (UnresolvedRequiredCount > 0 ? $" · {UnresolvedRequiredCount} 个无法解析" : "");
+            UpdateDependencySummary();
+            _ = LoadJarDependenciesAsync(selectedVersion);
         }
         catch (Exception ex)
         {
@@ -268,12 +283,70 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
             MissingRequiredCount = 0;
             UnresolvedRequiredCount = 0;
             OnPropertyChanged(nameof(HasDependencies));
+            OnPropertyChanged(nameof(ShowDependencyPanel));
             DependencyStatus = $"前置检测失败：{ex.Message}";
         }
         finally
         {
             IsAnalyzing = false;
         }
+    }
+
+    private async Task LoadJarDependenciesAsync(ModrinthVersion version)
+    {
+        if (!ShowLoader || version.File == null)
+        {
+            return;
+        }
+
+        IsJarLoading = true;
+        DependencyStatus = Dependencies.Count == 0 ? "正在读取 JAR 前置…" : "正在补充 JAR 前置…";
+        try
+        {
+            var items = await _loadJarDependencies(version, SelectedGameVersion, SelectedLoader);
+            if (SelectedVersion?.Id != version.Id)
+            {
+                return;
+            }
+
+            foreach (var item in items)
+            {
+                if (Dependencies.Any(existing =>
+                        existing.ProjectId == item.ProjectId ||
+                        string.Equals(existing.Title, item.Title, StringComparison.OrdinalIgnoreCase)))
+                {
+                    continue;
+                }
+
+                Dependencies.Add(item);
+            }
+
+            UpdateDependencySummary();
+        }
+        catch (Exception ex)
+        {
+            DependencyStatus = $"JAR 前置读取失败：{ex.Message}";
+        }
+        finally
+        {
+            IsJarLoading = false;
+            if (SelectedVersion?.Id == version.Id)
+            {
+                OnPropertyChanged(nameof(ShowDependencyPanel));
+            }
+        }
+    }
+
+    private void UpdateDependencySummary()
+    {
+        MissingRequiredCount = Dependencies.Count(item => item.Missing);
+        UnresolvedRequiredCount = Dependencies.Count(item => item.UnresolvedRequired);
+        OnPropertyChanged(nameof(HasDependencies));
+        OnPropertyChanged(nameof(ShowDependencyPanel));
+        DependencyStatus = Dependencies.Count == 0
+            ? "没有前置模组"
+            : $"共 {Dependencies.Count} 个前置 · 缺少 {MissingRequiredCount} 个必需" +
+              (UnresolvedRequiredCount > 0 ? $" · {UnresolvedRequiredCount} 个无法解析" : "");
     }
 
     private async void InstallDependencies_Click(object sender, RoutedEventArgs e)
@@ -340,6 +413,12 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
             return;
         }
 
+        if (IsJarLoading)
+        {
+            MessageBox.Show("前置模组还在检测中，请稍候。", "安装模组", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
         if (SelectedVersion == null)
         {
             MessageBox.Show("请选择一个文件版本。", "安装模组", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -373,3 +452,4 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
+

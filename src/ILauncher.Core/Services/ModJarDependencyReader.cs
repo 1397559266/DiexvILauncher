@@ -1,4 +1,7 @@
+using System.Buffers.Binary;
 using System.IO.Compression;
+using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -16,110 +19,241 @@ public static class ModJarDependencyReader
     private static readonly HashSet<string> BuiltInDependencies = new(StringComparer.OrdinalIgnoreCase)
     {
         "minecraft", "forge", "neoforge", "fabricloader", "fabric-loader", "fabric",
-        "quilt_loader", "quilt-loader", "java", "javafml", "lowcodefml", "neoforge"
+        "quilt_loader", "quilt-loader", "java", "javafml", "lowcodefml"
+    };
+
+    private static readonly string[] MetadataEntries =
+    {
+        "META-INF/mods.toml",
+        "META-INF/neoforge.mods.toml",
+        "fabric.mod.json",
+        "quilt.mod.json"
     };
 
     public static IReadOnlyList<JarDependency> Read(string jarPath)
     {
-        var result = new List<JarDependency>();
         try
         {
             using var archive = ZipFile.OpenRead(jarPath);
-            ReadModsToml(archive, result);
-            ReadFabricJson(archive, result);
-            ReadQuiltJson(archive, result);
+            return ReadEntries(archive.Entries);
         }
         catch
         {
             return Array.Empty<JarDependency>();
         }
-
-        return result
-            .Where(item => !BuiltInDependencies.Contains(item.ModId))
-            .GroupBy(item => item.ModId, StringComparer.OrdinalIgnoreCase)
-            .Select(group => group.OrderByDescending(item => item.Mandatory).First())
-            .ToList();
     }
 
-    private static void ReadModsToml(ZipArchive archive, List<JarDependency> result)
+    /// <summary>
+    /// Reads only the ZIP central directory and the metadata entry using HTTP
+    /// range requests. This avoids downloading a whole 10-100 MB mod jar just
+    /// to show its prerequisites.
+    /// </summary>
+    public static async Task<IReadOnlyList<JarDependency>> ReadFromUrlAsync(string url, long fileSize,
+        CancellationToken cancellationToken)
     {
-        var entry = archive.Entries.FirstOrDefault(item =>
-            item.FullName.Equals("META-INF/mods.toml", StringComparison.OrdinalIgnoreCase) ||
-            item.FullName.Equals("META-INF/neoforge.mods.toml", StringComparison.OrdinalIgnoreCase));
-        if (entry == null)
+        if (fileSize <= 0)
         {
-            return;
+            return Array.Empty<JarDependency>();
         }
 
-        using var reader = new StreamReader(entry.Open());
-        var toml = reader.ReadToEnd();
-        foreach (Match section in Regex.Matches(toml,
-                     @"\[\[dependencies\.[^\]]+\]\](?<body>.*?)(?=\[\[|\z)",
-                     RegexOptions.Singleline | RegexOptions.IgnoreCase))
+        try
         {
-            var body = section.Groups["body"].Value;
-            var modId = MatchValue(body, "modId");
-            if (string.IsNullOrWhiteSpace(modId))
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(12) };
+            var tailLength = (int)Math.Min(131072, fileSize);
+            var tail = await ReadRangeAsync(client, url, fileSize - tailLength, fileSize - 1, cancellationToken);
+            var eocd = FindEndOfCentralDirectory(tail);
+            if (eocd < 0)
+            {
+                return Array.Empty<JarDependency>();
+            }
+
+            var totalEntries = BinaryPrimitives.ReadUInt16LittleEndian(tail.AsSpan(eocd + 10, 2));
+            var centralSize = BinaryPrimitives.ReadUInt32LittleEndian(tail.AsSpan(eocd + 12, 4));
+            var centralOffset = BinaryPrimitives.ReadUInt32LittleEndian(tail.AsSpan(eocd + 16, 4));
+            if (totalEntries == 0 || centralSize == 0 || centralSize > 16 * 1024 * 1024)
+            {
+                return Array.Empty<JarDependency>();
+            }
+
+            var central = await ReadRangeAsync(client, url, centralOffset,
+                (long)centralOffset + centralSize - 1, cancellationToken);
+            var result = new List<JarDependency>();
+            var cursor = 0;
+            for (var index = 0; index < totalEntries && cursor + 46 <= central.Length; index++)
+            {
+                if (BinaryPrimitives.ReadUInt32LittleEndian(central.AsSpan(cursor, 4)) != 0x02014b50)
+                {
+                    break;
+                }
+
+                var method = BinaryPrimitives.ReadUInt16LittleEndian(central.AsSpan(cursor + 10, 2));
+                var compressedSize = BinaryPrimitives.ReadUInt32LittleEndian(central.AsSpan(cursor + 20, 4));
+                var nameLength = BinaryPrimitives.ReadUInt16LittleEndian(central.AsSpan(cursor + 28, 2));
+                var extraLength = BinaryPrimitives.ReadUInt16LittleEndian(central.AsSpan(cursor + 30, 2));
+                var commentLength = BinaryPrimitives.ReadUInt16LittleEndian(central.AsSpan(cursor + 32, 2));
+                var localOffset = BinaryPrimitives.ReadUInt32LittleEndian(central.AsSpan(cursor + 42, 4));
+                var nameStart = cursor + 46;
+                if (nameStart + nameLength > central.Length)
+                {
+                    break;
+                }
+
+                var name = Encoding.UTF8.GetString(central.AsSpan(nameStart, nameLength));
+                cursor = nameStart + nameLength + extraLength + commentLength;
+                if (!MetadataEntries.Contains(name, StringComparer.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (compressedSize > 2 * 1024 * 1024)
+                {
+                    continue;
+                }
+
+                var header = await ReadRangeAsync(client, url, localOffset,
+                    (long)localOffset + 30 + nameLength + 4096 + compressedSize, cancellationToken);
+                if (header.Length < 30 ||
+                    BinaryPrimitives.ReadUInt32LittleEndian(header.AsSpan(0, 4)) != 0x04034b50)
+                {
+                    continue;
+                }
+
+                var localNameLength = BinaryPrimitives.ReadUInt16LittleEndian(header.AsSpan(26, 2));
+                var localExtraLength = BinaryPrimitives.ReadUInt16LittleEndian(header.AsSpan(28, 2));
+                var dataStart = 30 + localNameLength + localExtraLength;
+                var dataLength = (int)Math.Min(compressedSize, (uint)Math.Max(0, header.Length - dataStart));
+                if (dataStart + dataLength > header.Length)
+                {
+                    continue;
+                }
+
+                var data = header.AsSpan(dataStart, dataLength).ToArray();
+                using var input = new MemoryStream(data);
+                using Stream decoded = method == 8
+                    ? new DeflateStream(input, CompressionMode.Decompress)
+                    : input;
+                using var reader = new StreamReader(decoded, Encoding.UTF8);
+                var text = await reader.ReadToEndAsync(cancellationToken);
+                ParseText(name, text, result);
+            }
+
+            return Filter(result);
+        }
+        catch
+        {
+            return Array.Empty<JarDependency>();
+        }
+    }
+
+    private static IReadOnlyList<JarDependency> ReadEntries(IReadOnlyList<ZipArchiveEntry> entries)
+    {
+        var result = new List<JarDependency>();
+        foreach (var name in MetadataEntries)
+        {
+            var entry = entries.FirstOrDefault(item =>
+                item.FullName.Equals(name, StringComparison.OrdinalIgnoreCase));
+            if (entry == null || entry.Length > 4 * 1024 * 1024)
             {
                 continue;
             }
 
-            var mandatory = !Regex.IsMatch(body, @"mandatory\s*=\s*false", RegexOptions.IgnoreCase);
-            var versionRange = MatchValue(body, "versionRange") ?? "";
-            result.Add(new JarDependency(modId, mandatory, versionRange));
+            using var reader = new StreamReader(entry.Open(), Encoding.UTF8);
+            ParseText(name, reader.ReadToEnd(), result);
         }
+
+        return Filter(result);
     }
 
-    private static void ReadFabricJson(ZipArchive archive, List<JarDependency> result)
+    internal static IReadOnlyList<JarDependency> ParseMetadataText(IReadOnlyDictionary<string, string> entries)
     {
-        var entry = archive.Entries.FirstOrDefault(item =>
-            item.FullName.Equals("fabric.mod.json", StringComparison.OrdinalIgnoreCase));
-        if (entry == null)
+        var result = new List<JarDependency>();
+        foreach (var pair in entries)
         {
+            ParseText(pair.Key, pair.Value, result);
+        }
+
+        return Filter(result);
+    }
+
+    private static void ParseText(string name, string text, List<JarDependency> result)
+    {
+        if (name.EndsWith("mods.toml", StringComparison.OrdinalIgnoreCase))
+        {
+            foreach (Match section in Regex.Matches(text,
+                         @"\[\[dependencies\.[^\]]+\]\](?<body>.*?)(?=\[\[|\z)",
+                         RegexOptions.Singleline | RegexOptions.IgnoreCase))
+            {
+                var body = section.Groups["body"].Value;
+                var modId = MatchValue(body, "modId");
+                if (string.IsNullOrWhiteSpace(modId))
+                {
+                    continue;
+                }
+
+                var mandatory = !Regex.IsMatch(body, @"mandatory\s*=\s*false", RegexOptions.IgnoreCase);
+                result.Add(new JarDependency(modId, mandatory, MatchValue(body, "versionRange") ?? ""));
+            }
+
             return;
         }
 
-        using var document = JsonDocument.Parse(entry.Open());
-        if (document.RootElement.TryGetProperty("depends", out var depends) &&
-            depends.ValueKind == JsonValueKind.Object)
+        using var document = JsonDocument.Parse(text);
+        if (name.EndsWith("fabric.mod.json", StringComparison.OrdinalIgnoreCase))
         {
-            foreach (var property in depends.EnumerateObject())
-            {
-                result.Add(new JarDependency(property.Name, true, property.Value.ToString()));
-            }
-        }
-
-        if (document.RootElement.TryGetProperty("recommends", out var recommends) &&
-            recommends.ValueKind == JsonValueKind.Object)
-        {
-            foreach (var property in recommends.EnumerateObject())
-            {
-                result.Add(new JarDependency(property.Name, false, property.Value.ToString()));
-            }
-        }
-    }
-
-    private static void ReadQuiltJson(ZipArchive archive, List<JarDependency> result)
-    {
-        var entry = archive.Entries.FirstOrDefault(item =>
-            item.FullName.Equals("quilt.mod.json", StringComparison.OrdinalIgnoreCase));
-        if (entry == null)
-        {
+            AddObjectDependencies(document.RootElement, "depends", true, result);
+            AddObjectDependencies(document.RootElement, "recommends", false, result);
             return;
         }
 
-        using var document = JsonDocument.Parse(entry.Open());
-        if (!document.RootElement.TryGetProperty("quilt_loader", out var loader) ||
-            !loader.TryGetProperty("depends", out var depends) ||
-            depends.ValueKind != JsonValueKind.Object)
+        if (name.EndsWith("quilt.mod.json", StringComparison.OrdinalIgnoreCase) &&
+            document.RootElement.TryGetProperty("quilt_loader", out var loader))
+        {
+            AddObjectDependencies(loader, "depends", true, result);
+        }
+    }
+
+    private static void AddObjectDependencies(JsonElement root, string propertyName, bool mandatory,
+        List<JarDependency> result)
+    {
+        if (!root.TryGetProperty(propertyName, out var depends) || depends.ValueKind != JsonValueKind.Object)
         {
             return;
         }
 
         foreach (var property in depends.EnumerateObject())
         {
-            result.Add(new JarDependency(property.Name, true, property.Value.ToString()));
+            result.Add(new JarDependency(property.Name, mandatory, property.Value.ToString()));
         }
+    }
+
+    private static IReadOnlyList<JarDependency> Filter(List<JarDependency> dependencies)
+        => dependencies
+            .Where(item => !BuiltInDependencies.Contains(item.ModId))
+            .GroupBy(item => item.ModId, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.OrderByDescending(item => item.Mandatory).First())
+            .ToList();
+
+    private static int FindEndOfCentralDirectory(byte[] data)
+    {
+        for (var index = data.Length - 22; index >= 0; index--)
+        {
+            if (BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(index, 4)) == 0x06054b50)
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    private static async Task<byte[]> ReadRangeAsync(HttpClient client, string url, long start, long end,
+        CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.Range = new RangeHeaderValue(start, end);
+        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadAsByteArrayAsync(cancellationToken);
     }
 
     private static string? MatchValue(string body, string key)
