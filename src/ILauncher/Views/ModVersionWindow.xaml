@@ -127,22 +127,39 @@
                              Margin="4,0,4,4" ScrollViewer.VerticalScrollBarVisibility="Auto">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <Grid Height="27">
+                                <Grid Height="28">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="{Binding DisplayTitle}" FontSize="10"
                                                VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                                     <Border Grid.Column="1" Background="#FFF2F7FD" CornerRadius="5" Padding="5,1"
-                                            Margin="8,0,0,0" VerticalAlignment="Center">
+                                            Margin="6,0,0,0" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding TypeText}" FontSize="8.5"
                                                    Foreground="{StaticResource BrushTextSecondary}" />
                                     </Border>
                                     <TextBlock Grid.Column="2" Text="{Binding StatusText}" FontSize="8.5"
-                                               Foreground="{StaticResource BrushTextMuted}" Margin="8,0,0,0"
+                                               Foreground="{StaticResource BrushTextMuted}" Margin="7,0,0,0"
                                                VerticalAlignment="Center" />
+                                    <Button Grid.Column="3" Style="{StaticResource SecondaryButton}"
+                                            Height="21" MinWidth="38" Padding="6,0" Margin="7,0,0,0"
+                                            Content="安装" FontSize="9"
+                                            Command="{Binding DataContext.InstallDependencyCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding}"
+                                            Visibility="{Binding CanInstall, Converter={StaticResource BoolToVisibility}}" />
+                                    <Button Grid.Column="4" Style="{StaticResource LinkButton}" Content="Modrinth"
+                                            FontSize="8" Padding="0" Margin="7,0,0,0"
+                                            Command="{Binding DataContext.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding ModrinthUrl}" />
+                                    <Button Grid.Column="5" Style="{StaticResource LinkButton}" Content="CurseForge"
+                                            FontSize="8" Padding="0" Margin="7,0,0,0"
+                                            Command="{Binding DataContext.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding CurseForgeUrl}" />
                                 </Grid>
                             </DataTemplate>
                         </ListBox.ItemTemplate>

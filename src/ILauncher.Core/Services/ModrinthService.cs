@@ -17,6 +17,20 @@ public sealed record ModrinthProject(
     public string? McmodUrl { get; init; }
     public string DisplayTitle => string.IsNullOrWhiteSpace(ChineseName) ? Title : ChineseName;
     public bool HasMcmod => !string.IsNullOrWhiteSpace(McmodUrl);
+    public string ModrinthUrl
+    {
+        get
+        {
+            var kind = ProjectType switch
+            {
+                "resourcepack" => "resourcepack",
+                "shader" => "shader",
+                "modpack" => "modpack",
+                _ => "mod"
+            };
+            return $"https://modrinth.com/{kind}/{Uri.EscapeDataString(Slug)}";
+        }
+    }
     public string CurseForgeUrl
     {
         get

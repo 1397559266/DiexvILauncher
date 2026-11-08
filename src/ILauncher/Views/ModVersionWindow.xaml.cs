@@ -1,10 +1,12 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using ILauncher.Core;
 using ILauncher.Core.Services;
 using ILauncher.Models;
 
@@ -16,6 +18,7 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
     private readonly Func<ModrinthVersion, string, string?, Task<IReadOnlyList<ModDependencyItem>>> _analyzeDependencies;
     private readonly Func<ModrinthVersion, string, string?, Task<DependencyLoadResult>> _loadJarDependencies;
     private readonly Func<ModrinthVersion, string, string?, Action<DownloadProgress>?, Task> _installMissingDependencies;
+    private readonly Func<ModDependencyItem, string, string?, Action<DownloadProgress>?, Task> _installDependency;
     private readonly List<ModrinthVersion> _allVersions = new();
     private string _selectedGameVersion;
     private string? _selectedLoader;
@@ -37,7 +40,8 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
         Func<string, string?, Task<IReadOnlyList<ModrinthVersion>>> loadVersions,
         Func<ModrinthVersion, string, string?, Task<IReadOnlyList<ModDependencyItem>>> analyzeDependencies,
         Func<ModrinthVersion, string, string?, Task<DependencyLoadResult>> loadJarDependencies,
-        Func<ModrinthVersion, string, string?, Action<DownloadProgress>?, Task> installMissingDependencies)
+        Func<ModrinthVersion, string, string?, Action<DownloadProgress>?, Task> installMissingDependencies,
+        Func<ModDependencyItem, string, string?, Action<DownloadProgress>?, Task> installDependency)
     {
         Project = project;
         GameVersions = gameVersions;
@@ -49,7 +53,29 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
         _analyzeDependencies = analyzeDependencies;
         _loadJarDependencies = loadJarDependencies;
         _installMissingDependencies = installMissingDependencies;
+        _installDependency = installDependency;
         InitializeComponent();
+        InstallDependencyCommand = new AsyncRelayCommand(async parameter =>
+        {
+            if (parameter is ModDependencyItem item && item.CanInstall && SelectedVersion != null)
+            {
+                await InstallSingleDependencyAsync(item);
+            }
+        });
+        OpenLinkCommand = new RelayCommand(parameter =>
+        {
+            if (parameter is string url && !string.IsNullOrWhiteSpace(url))
+            {
+                try
+                {
+                    Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+                }
+                catch
+                {
+                    // Ignore a browser launch failure.
+                }
+            }
+        });
         DataContext = this;
         Loaded += OnLoaded;
     }
@@ -61,6 +87,8 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
     public IReadOnlyList<string> ReleaseFilters { get; } = new[] { "全部", "正式版", "Beta", "Alpha" };
     public ObservableCollection<ModrinthVersion> Versions { get; } = new();
     public ObservableCollection<ModDependencyItem> Dependencies { get; } = new();
+    public AsyncRelayCommand InstallDependencyCommand { get; }
+    public RelayCommand OpenLinkCommand { get; }
 
     public string SelectedGameVersion
     {
@@ -374,6 +402,31 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
             ? "没有前置模组"
             : $"共 {Dependencies.Count} 个前置 · 缺少 {MissingRequiredCount} 个必需" +
               (UnresolvedRequiredCount > 0 ? $" · {UnresolvedRequiredCount} 个无法解析" : "");
+    }
+
+    private async Task InstallSingleDependencyAsync(ModDependencyItem item)
+    {
+        if (IsInstallingDependencies || IsJarLoading)
+        {
+            return;
+        }
+
+        IsInstallingDependencies = true;
+        DependencyStatus = $"正在安装前置 {item.Title}…";
+        try
+        {
+            await _installDependency(item, SelectedGameVersion, SelectedLoader,
+                progress => DependencyStatus = progress.Message);
+            await AnalyzeDependenciesAsync();
+        }
+        catch (Exception ex)
+        {
+            DependencyStatus = $"安装前置失败：{ex.Message}";
+        }
+        finally
+        {
+            IsInstallingDependencies = false;
+        }
     }
 
     private async void RetryDependencies_Click(object sender, RoutedEventArgs e)

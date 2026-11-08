@@ -1576,6 +1576,7 @@ public sealed class DownloadViewModel : ObservableObject
                 {
                     ProjectId = project?.Id ?? dependency.ProjectId ?? "",
                     VersionId = dependency.VersionId,
+                    Slug = project?.Slug,
                     Title = project?.Title ??
                             (!string.IsNullOrWhiteSpace(dependency.FileName) ? dependency.FileName! : "未知前置"),
                     DependencyType = dependency.DependencyType,
@@ -1657,6 +1658,7 @@ public sealed class DownloadViewModel : ObservableObject
             result.Add(new ModDependencyItem
             {
                 ProjectId = project?.Id ?? dependency.ModId,
+                Slug = project?.Slug,
                 Title = project?.Title ?? dependency.ModId,
                 DependencyType = dependency.Mandatory ? "required" : "optional",
                 Installed = project != null && IsDependencyInstalled(project, installed),
@@ -1664,6 +1666,33 @@ public sealed class DownloadViewModel : ObservableObject
                 Depth = 0
             });
         }
+    }
+
+    private async Task InstallSingleDependencyAsync(ModDependencyItem item, string gameVersion, string? loader,
+        Action<DownloadProgress>? progress, CancellationToken cancellationToken)
+    {
+        if (!item.Resolved)
+        {
+            throw new InvalidOperationException("该前置无法在 Modrinth 上解析。");
+        }
+
+        var instance = ResolveInstallInstance(gameVersion, loader)
+                       ?? throw new InvalidOperationException("找不到对应的已安装版本。");
+        var project = await _modrinth.GetProjectAsync(item.ProjectId, cancellationToken)
+                      ?? throw new InvalidOperationException("无法获取前置项目信息。");
+        ModrinthVersion? version = null;
+        if (!string.IsNullOrWhiteSpace(item.VersionId))
+        {
+            version = await _modrinth.GetVersionAsync(item.VersionId, cancellationToken);
+        }
+
+        version ??= (await _modrinth.GetVersionsAsync(project.Id, gameVersion, loader, cancellationToken)).FirstOrDefault();
+        if (version?.File == null)
+        {
+            throw new InvalidOperationException("该前置没有适用于当前版本的文件。");
+        }
+
+        await _modrinth.InstallVersionAsync(project, version, instance.ModsDirectory, progress, cancellationToken);
     }
 
     private async Task<JarDependencyReadResult> LoadJarDependenciesAsync(ModrinthVersion version,
@@ -2005,6 +2034,7 @@ public sealed class DownloadViewModel : ObservableObject
             async (version, _) => (IReadOnlyList<ModrinthVersion>)await _modrinth.GetVersionsAsync(project.Id, version, null),
             (_, _, _) => Task.FromResult<IReadOnlyList<ModDependencyItem>>(Array.Empty<ModDependencyItem>()),
             (_, _, _) => Task.FromResult(new DependencyLoadResult(Array.Empty<ModDependencyItem>(), true, null)),
+            (_, _, _, _) => Task.CompletedTask,
             (_, _, _, _) => Task.CompletedTask)
         {
             Owner = Application.Current.MainWindow,
@@ -2087,7 +2117,9 @@ public sealed class DownloadViewModel : ObservableObject
                 (version, gameVersion, selectedLoader) => AnalyzeJarDependenciesAsync(
                     version, gameVersion, NormalizeLoader(selectedLoader), CancellationToken.None),
                 (version, gameVersion, selectedLoader, progress) => InstallMissingDependenciesAsync(
-                    version, gameVersion, NormalizeLoader(selectedLoader), progress, CancellationToken.None))
+                    version, gameVersion, NormalizeLoader(selectedLoader), progress, CancellationToken.None),
+                (item, gameVersion, selectedLoader, progress) => InstallSingleDependencyAsync(
+                    item, gameVersion, NormalizeLoader(selectedLoader), progress, CancellationToken.None))
             {
                 Owner = Application.Current.MainWindow
             };
@@ -2251,6 +2283,7 @@ public sealed class DownloadViewModel : ObservableObject
         _ => null
     };
 }
+
 
 
 
