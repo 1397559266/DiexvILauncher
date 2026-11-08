@@ -24,6 +24,7 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
     private string _statusText = "";
     private string _dependencyStatus = "";
     private int _missingRequiredCount;
+    private int _unresolvedRequiredCount;
     private bool _loaded;
 
     public ModVersionWindow(ModrinthProject project, string initialGameVersion,
@@ -138,6 +139,20 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
     public bool HasDependencies => Dependencies.Count > 0;
     public bool HasMissingRequired => MissingRequiredCount > 0;
 
+    public int UnresolvedRequiredCount
+    {
+        get => _unresolvedRequiredCount;
+        private set
+        {
+            if (Set(ref _unresolvedRequiredCount, value))
+            {
+                OnPropertyChanged(nameof(HasUnresolvedRequired));
+            }
+        }
+    }
+
+    public bool HasUnresolvedRequired => UnresolvedRequiredCount > 0;
+
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
         Loaded -= OnLoaded;
@@ -152,6 +167,7 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
         Dependencies.Clear();
         OnPropertyChanged(nameof(HasDependencies));
         MissingRequiredCount = 0;
+        UnresolvedRequiredCount = 0;
         try
         {
             var versions = await _loadVersions(gameVersion, SelectedLoader);
@@ -185,6 +201,7 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
             Dependencies.Clear();
             OnPropertyChanged(nameof(HasDependencies));
             MissingRequiredCount = 0;
+            UnresolvedRequiredCount = 0;
             DependencyStatus = "";
             return;
         }
@@ -201,17 +218,18 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
             }
 
             MissingRequiredCount = Dependencies.Count(item => item.Missing);
+            UnresolvedRequiredCount = Dependencies.Count(item => item.UnresolvedRequired);
             OnPropertyChanged(nameof(HasDependencies));
             DependencyStatus = Dependencies.Count == 0
                 ? "没有前置模组"
-                : MissingRequiredCount > 0
-                    ? $"缺少 {MissingRequiredCount} 个必需前置"
-                    : "必需前置已安装";
+                : $"共 {Dependencies.Count} 个前置 · 缺少 {MissingRequiredCount} 个必需" +
+                  (UnresolvedRequiredCount > 0 ? $" · {UnresolvedRequiredCount} 个无法解析" : "");
         }
         catch (Exception ex)
         {
             Dependencies.Clear();
             MissingRequiredCount = 0;
+            UnresolvedRequiredCount = 0;
             OnPropertyChanged(nameof(HasDependencies));
             DependencyStatus = $"前置检测失败：{ex.Message}";
         }

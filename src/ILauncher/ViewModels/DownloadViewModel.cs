@@ -1338,51 +1338,54 @@ public sealed class DownloadViewModel : ObservableObject
         var installed = await new ModService().LoadModsAsync(instance, cancellationToken);
         var result = new List<ModDependencyItem>();
         var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var versionCache = new Dictionary<string, ModrinthVersion?>(StringComparer.OrdinalIgnoreCase);
+        var projectCache = new Dictionary<string, ModrinthProject?>(StringComparer.OrdinalIgnoreCase);
 
         async Task WalkAsync(ModrinthVersion current, int depth)
         {
-            if (depth > 3 || result.Count >= 30)
-            {
-                return;
-            }
-
             foreach (var dependency in current.Dependencies)
             {
-                if (dependency.DependencyType is not ("required" or "optional") ||
-                    string.IsNullOrWhiteSpace(dependency.ProjectId) ||
-                    !visited.Add(dependency.ProjectId))
+                if (dependency.DependencyType is not ("required" or "optional"))
                 {
                     continue;
                 }
 
+                var key = DependencyKey(dependency);
+                if (key.Length == 0 || !visited.Add(key))
+                {
+                    continue;
+                }
+
+                ModrinthProject? project = null;
+                ModrinthVersion? dependencyVersion = null;
                 try
                 {
-                    var project = await _modrinth.GetProjectAsync(dependency.ProjectId, cancellationToken);
-                    if (project == null)
-                    {
-                        continue;
-                    }
-
-                    var isInstalled = IsDependencyInstalled(project, installed);
-                    result.Add(new ModDependencyItem
-                    {
-                        ProjectId = project.Id,
-                        VersionId = dependency.VersionId,
-                        Title = project.Title,
-                        DependencyType = dependency.DependencyType,
-                        Installed = isInstalled,
-                        Depth = depth
-                    });
-
-                    var dependencyVersion = await ResolveDependencyVersionAsync(dependency, project, gameVersion, loader, cancellationToken);
-                    if (dependencyVersion != null)
-                    {
-                        await WalkAsync(dependencyVersion, depth + 1);
-                    }
+                    (project, dependencyVersion) = await ResolveDependencyAsync(
+                        dependency, gameVersion, loader, projectCache, versionCache, cancellationToken);
                 }
                 catch
                 {
-                    // One broken/removed prerequisite must not hide the others.
+                    // Keep an unresolved marker below; other prerequisites
+                    // must still be shown.
+                }
+
+                result.Add(new ModDependencyItem
+                {
+                    ProjectId = project?.Id ?? dependency.ProjectId ?? "",
+                    VersionId = dependency.VersionId,
+                    Title = project?.Title ??
+                            (!string.IsNullOrWhiteSpace(dependency.FileName) ? dependency.FileName! : "未知前置"),
+                    DependencyType = dependency.DependencyType,
+                    Installed = project != null && IsDependencyInstalled(project, installed),
+                    Resolved = project != null,
+                    Depth = depth
+                });
+
+                var installedHere = result[^1].Installed;
+                if (dependencyVersion != null &&
+                    (dependency.DependencyType == "required" || installedHere))
+                {
+                    await WalkAsync(dependencyVersion, depth + 1);
                 }
             }
         }
@@ -1410,22 +1413,31 @@ public sealed class DownloadViewModel : ObservableObject
         }
 
         var visiting = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var versionCache = new Dictionary<string, ModrinthVersion?>(StringComparer.OrdinalIgnoreCase);
+        var projectCache = new Dictionary<string, ModrinthProject?>(StringComparer.OrdinalIgnoreCase);
 
-        async Task InstallAsync(ModrinthVersion current, int depth)
+        async Task InstallAsync(ModrinthVersion current)
         {
-            if (depth > 3)
-            {
-                return;
-            }
-
             foreach (var dependency in current.Dependencies.Where(item => item.DependencyType == "required"))
             {
-                if (string.IsNullOrWhiteSpace(dependency.ProjectId) || !visiting.Add(dependency.ProjectId))
+                var key = DependencyKey(dependency);
+                if (key.Length == 0 || !visiting.Add(key))
                 {
                     continue;
                 }
 
-                var project = await _modrinth.GetProjectAsync(dependency.ProjectId, cancellationToken);
+                ModrinthProject? project;
+                ModrinthVersion? dependencyVersion;
+                try
+                {
+                    (project, dependencyVersion) = await ResolveDependencyAsync(
+                        dependency, gameVersion, loader, projectCache, versionCache, cancellationToken);
+                }
+                catch
+                {
+                    continue;
+                }
+
                 if (project == null)
                 {
                     continue;
@@ -1433,7 +1445,6 @@ public sealed class DownloadViewModel : ObservableObject
 
                 var alreadyInstalled = IsDependencyInstalled(project, installed) ||
                                        installedProjectIds.Contains(NormalizeDependencyKey(project.Slug));
-                var dependencyVersion = await ResolveDependencyVersionAsync(dependency, project, gameVersion, loader, cancellationToken);
                 if (dependencyVersion?.File != null && !alreadyInstalled)
                 {
                     progress?.Invoke(new DownloadProgress
@@ -1449,28 +1460,57 @@ public sealed class DownloadViewModel : ObservableObject
 
                 if (dependencyVersion != null)
                 {
-                    await InstallAsync(dependencyVersion, depth + 1);
+                    await InstallAsync(dependencyVersion);
                 }
             }
         }
 
-        await InstallAsync(version, 0);
+        await InstallAsync(version);
     }
 
-    private async Task<ModrinthVersion?> ResolveDependencyVersionAsync(ModrinthDependency dependency,
-        ModrinthProject project, string gameVersion, string? loader, CancellationToken cancellationToken)
+    private static string DependencyKey(ModrinthDependency dependency)
+        => !string.IsNullOrWhiteSpace(dependency.ProjectId)
+            ? "project:" + dependency.ProjectId
+            : !string.IsNullOrWhiteSpace(dependency.VersionId)
+                ? "version:" + dependency.VersionId
+                : "";
+
+    private async Task<(ModrinthProject? Project, ModrinthVersion? Version)> ResolveDependencyAsync(
+        ModrinthDependency dependency, string gameVersion, string? loader,
+        Dictionary<string, ModrinthProject?> projectCache,
+        Dictionary<string, ModrinthVersion?> versionCache,
+        CancellationToken cancellationToken)
     {
+        ModrinthVersion? exactVersion = null;
         if (!string.IsNullOrWhiteSpace(dependency.VersionId))
         {
-            var exact = await _modrinth.GetVersionAsync(dependency.VersionId, cancellationToken);
-            if (exact != null)
+            if (!versionCache.TryGetValue(dependency.VersionId, out exactVersion))
             {
-                return exact;
+                exactVersion = await _modrinth.GetVersionAsync(dependency.VersionId, cancellationToken);
+                versionCache[dependency.VersionId] = exactVersion;
             }
         }
 
-        var versions = await _modrinth.GetVersionsAsync(project.Id, gameVersion, loader, cancellationToken);
-        return versions.FirstOrDefault();
+        var projectId = dependency.ProjectId ?? exactVersion?.ProjectId;
+        if (string.IsNullOrWhiteSpace(projectId))
+        {
+            return (null, exactVersion);
+        }
+
+        if (!projectCache.TryGetValue(projectId, out var project))
+        {
+            project = await _modrinth.GetProjectAsync(projectId, cancellationToken);
+            projectCache[projectId] = project;
+        }
+
+        var version = exactVersion;
+        if (version == null && project != null)
+        {
+            var versions = await _modrinth.GetVersionsAsync(project.Id, gameVersion, loader, cancellationToken);
+            version = versions.FirstOrDefault();
+        }
+
+        return (project, version);
     }
 
     private static bool IsDependencyInstalled(ModrinthProject project, IReadOnlyList<ModInfo> installed)
@@ -1485,7 +1525,7 @@ public sealed class DownloadViewModel : ObservableObject
             return false;
         }
 
-        foreach (var mod in installed)
+        foreach (var mod in installed.Where(mod => mod.Enabled))
         {
             var modKeys = new[]
             {
