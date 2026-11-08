@@ -400,25 +400,71 @@ public sealed class SkinService
     private static BitmapSource RenderHeadNearest(BitmapSource baseHead, BitmapSource? hat, int size)
     {
         // PCL draws the face at 48/64 and the hat layer at 56/64, both centered.
-        // The larger hat layer is what makes hair/hats extend beyond the face.
+        // Use a manual nearest-neighbour copy so the 8x8 skin stays crisp;
+        // RenderTargetBitmap would resample the result and blur it.
+        var baseFormatted = new FormatConvertedBitmap(baseHead, PixelFormats.Bgra32, null, 0);
+        var basePixels = new byte[8 * 8 * 4];
+        baseFormatted.CopyPixels(basePixels, 8 * 4, 0);
+
+        byte[]? hatPixels = null;
+        if (hat != null)
+        {
+            var hatFormatted = new FormatConvertedBitmap(hat, PixelFormats.Bgra32, null, 0);
+            hatPixels = new byte[8 * 8 * 4];
+            hatFormatted.CopyPixels(hatPixels, 8 * 4, 0);
+        }
+
+        var stride = size * 4;
+        var output = new byte[stride * size];
         var baseSize = Math.Max(1, (int)Math.Round(size * 48d / 64d));
         var hatSize = Math.Max(1, (int)Math.Round(size * 56d / 64d));
-        var baseRect = new Rect((size - baseSize) / 2d, (size - baseSize) / 2d, baseSize, baseSize);
-        var hatRect = new Rect((size - hatSize) / 2d, (size - hatSize) / 2d, hatSize, hatSize);
+        var baseOffset = (size - baseSize) / 2;
+        var hatOffset = (size - hatSize) / 2;
 
-        var visual = new DrawingVisual();
-        RenderOptions.SetBitmapScalingMode(visual, BitmapScalingMode.NearestNeighbor);
-        using (var context = visual.RenderOpen())
+        for (var y = 0; y < baseSize; y++)
         {
-            context.DrawImage(baseHead, baseRect);
-            if (hat != null)
+            var sourceY = y * 8 / baseSize;
+            for (var x = 0; x < baseSize; x++)
             {
-                context.DrawImage(hat, hatRect);
+                var sourceX = x * 8 / baseSize;
+                var sourceOffset = (sourceY * 8 + sourceX) * 4;
+                var targetOffset = (baseOffset + y) * stride + (baseOffset + x) * 4;
+                output[targetOffset] = basePixels[sourceOffset];
+                output[targetOffset + 1] = basePixels[sourceOffset + 1];
+                output[targetOffset + 2] = basePixels[sourceOffset + 2];
+                output[targetOffset + 3] = basePixels[sourceOffset + 3];
             }
         }
 
-        var bitmap = new RenderTargetBitmap(size, size, 96, 96, PixelFormats.Pbgra32);
-        bitmap.Render(visual);
+        if (hatPixels != null)
+        {
+            for (var y = 0; y < hatSize; y++)
+            {
+                var sourceY = y * 8 / hatSize;
+                for (var x = 0; x < hatSize; x++)
+                {
+                    var sourceX = x * 8 / hatSize;
+                    var sourceOffset = (sourceY * 8 + sourceX) * 4;
+                    var alpha = hatPixels[sourceOffset + 3];
+                    if (alpha == 0)
+                    {
+                        continue;
+                    }
+
+                    var targetOffset = (hatOffset + y) * stride + (hatOffset + x) * 4;
+                    var inverse = 255 - alpha;
+                    output[targetOffset] = (byte)((hatPixels[sourceOffset] * alpha +
+                                                    output[targetOffset] * inverse) / 255);
+                    output[targetOffset + 1] = (byte)((hatPixels[sourceOffset + 1] * alpha +
+                                                        output[targetOffset + 1] * inverse) / 255);
+                    output[targetOffset + 2] = (byte)((hatPixels[sourceOffset + 2] * alpha +
+                                                        output[targetOffset + 2] * inverse) / 255);
+                    output[targetOffset + 3] = (byte)Math.Min(255, alpha + output[targetOffset + 3] * inverse / 255);
+                }
+            }
+        }
+
+        var bitmap = BitmapSource.Create(size, size, 96, 96, PixelFormats.Bgra32, null, output, stride);
         bitmap.Freeze();
         return bitmap;
     }
