@@ -70,6 +70,7 @@ public sealed class AccountViewModel : ObservableObject
             if (parameter is string model)
             {
                 SkinModel = model;
+                PersistSkinSelection();
             }
         });
         RefreshLibraryCommand = new RelayCommand(LoadLibrary);
@@ -158,6 +159,7 @@ public sealed class AccountViewModel : ObservableObject
             SkinPath = value.Path;
             SkinModel = value.Model;
             CapePath = _skins.FindCapeFor(value.Path) ?? "";
+            PersistSkinSelection();
         }
     }
 
@@ -309,6 +311,15 @@ public sealed class AccountViewModel : ObservableObject
         }
     }
 
+    private void PersistSkinSelection()
+    {
+        _settings.Settings.SkinPath = SkinPath;
+        _settings.Settings.SkinModel = SkinModel;
+        _settings.Settings.CapePath = CapePath;
+        _settings.Save();
+        _saved?.Invoke();
+    }
+
     private void Save()
     {
         if (string.IsNullOrWhiteSpace(PlayerName))
@@ -361,7 +372,8 @@ public sealed class AccountViewModel : ObservableObject
             }
 
             OnPropertyChanged(nameof(SelectedSkin));
-            _toast("皮肤已导入，点击「保存并应用」后生效。", false);
+            PersistSkinSelection();
+            _toast("皮肤已导入并应用。", false);
         }
         catch (Exception ex)
         {
@@ -375,6 +387,7 @@ public sealed class AccountViewModel : ObservableObject
         SkinModel = "Steve";
         CapePath = _skins.FindCapeFor(SkinPath) ?? "";
         LoadLibrary();
+        PersistSkinSelection();
         _toast("已切换到默认 Steve 皮肤。", false);
     }
 
@@ -444,6 +457,7 @@ public sealed class AccountViewModel : ObservableObject
             }
 
             OnPropertyChanged(nameof(SelectedSkin));
+            PersistSkinSelection();
             ProfileStatus = $"已获取 {profile.Name} 的皮肤外观（UUID {profile.Uuid}）。这不会登录正版账号。";
             _toast($"已获取 {profile.Name} 的皮肤。", false);
         }

@@ -441,9 +441,130 @@ public sealed class SkinPreview : UserControl
         ImageSource? overlay = null, IReadOnlyDictionary<Face, Rect>? overlayUv = null, double inflate = 0)
     {
         AddQuads(group, center, width, height, depth, skin, uv);
-        if (overlay != null && overlayUv != null)
+        // WPF's 3D layer does not sort transparent overlay geometry reliably;
+        // inflated translucent overlay faces cause holes and z-fighting around
+        // the head/arms/legs. The base skin faces are rendered solidly instead.
+        // Overlay texture parsing is kept for future cutout rendering.
+    }
+
+    private static void AddCutoutOverlayQuads(Model3DGroup group, Point3D center, double width, double height,
+        double depth, BitmapSource texture, IReadOnlyDictionary<Face, Rect> uv)
+    {
+        var formatted = new FormatConvertedBitmap(texture, PixelFormats.Bgra32, null, 0);
+        var stride = formatted.PixelWidth * 4;
+        var pixels = new byte[stride * formatted.PixelHeight];
+        formatted.CopyPixels(pixels, stride, 0);
+        var pixelScale = Math.Max(1, formatted.PixelWidth / 64);
+
+        var x0 = center.X - width / 2;
+        var x1 = center.X + width / 2;
+        var y0 = center.Y - height / 2;
+        var y1 = center.Y + height / 2;
+        var z0 = center.Z - depth / 2;
+        var z1 = center.Z + depth / 2;
+
+        static Point3D Lerp(Point3D a, Point3D b, double amount)
+            => new(a.X + (b.X - a.X) * amount, a.Y + (b.Y - a.Y) * amount, a.Z + (b.Z - a.Z) * amount);
+
+        void AddFace(Rect rect, Point3D p0, Point3D p1, Point3D p2, Point3D p3, Vector3D normal)
         {
-            AddQuads(group, center, width + inflate * 2, height + inflate * 2, depth + inflate * 2, overlay, overlayUv);
+            var positions = new Point3DCollection();
+            var uvs = new PointCollection();
+            var indices = new Int32Collection();
+            for (var y = (int)Math.Floor(rect.Y); y < (int)Math.Ceiling(rect.Bottom); y++)
+            {
+                for (var x = (int)Math.Floor(rect.X); x < (int)Math.Ceiling(rect.Right); x++)
+                {
+                    var sampleX = x * pixelScale;
+                    var sampleY = y * pixelScale;
+                    if (sampleX < 0 || sampleY < 0 || sampleX >= formatted.PixelWidth || sampleY >= formatted.PixelHeight ||
+                        pixels[sampleY * stride + sampleX * 4 + 3] == 0)
+                    {
+                        continue;
+                    }
+
+                    var a0 = (x - rect.X) / rect.Width;
+                    var a1 = (x + 1 - rect.X) / rect.Width;
+                    var b0 = (y - rect.Y) / rect.Height;
+                    var b1 = (y + 1 - rect.Y) / rect.Height;
+
+                    Point3D At(double a, double b)
+                        => Lerp(Lerp(p3, p2, a), Lerp(p0, p1, a), b);
+
+                    var index = positions.Count;
+                    positions.Add(At(a0, b1));
+                    positions.Add(At(a1, b1));
+                    positions.Add(At(a1, b0));
+                    positions.Add(At(a0, b0));
+                    uvs.Add(new Point(a0, b1));
+                    uvs.Add(new Point(a1, b1));
+                    uvs.Add(new Point(a1, b0));
+                    uvs.Add(new Point(a0, b0));
+                    indices.Add(index);
+                    indices.Add(index + 1);
+                    indices.Add(index + 2);
+                    indices.Add(index);
+                    indices.Add(index + 2);
+                    indices.Add(index + 3);
+                }
+            }
+
+            if (positions.Count == 0)
+            {
+                return;
+            }
+
+            var mesh = new MeshGeometry3D
+            {
+                Positions = positions,
+                TextureCoordinates = uvs,
+                TriangleIndices = indices,
+                Normals = new Vector3DCollection(Enumerable.Repeat(normal, positions.Count))
+            };
+            var brush = new ImageBrush(texture)
+            {
+                Stretch = Stretch.Fill,
+                ViewboxUnits = BrushMappingMode.RelativeToBoundingBox,
+                Viewbox = new Rect(rect.X / 64d, rect.Y / 64d, rect.Width / 64d, rect.Height / 64d)
+            };
+            RenderOptions.SetBitmapScalingMode(brush, BitmapScalingMode.NearestNeighbor);
+            group.Children.Add(new GeometryModel3D(mesh, new DiffuseMaterial(brush)));
+        }
+
+        if (uv.TryGetValue(Face.Front, out var front))
+        {
+            AddFace(front, new Point3D(x0, y0, z1), new Point3D(x1, y0, z1), new Point3D(x1, y1, z1),
+                new Point3D(x0, y1, z1), new Vector3D(0, 0, 1));
+        }
+
+        if (uv.TryGetValue(Face.Back, out var back))
+        {
+            AddFace(back, new Point3D(x1, y0, z0), new Point3D(x0, y0, z0), new Point3D(x0, y1, z0),
+                new Point3D(x1, y1, z0), new Vector3D(0, 0, -1));
+        }
+
+        if (uv.TryGetValue(Face.Right, out var right))
+        {
+            AddFace(right, new Point3D(x1, y0, z1), new Point3D(x1, y0, z0), new Point3D(x1, y1, z0),
+                new Point3D(x1, y1, z1), new Vector3D(1, 0, 0));
+        }
+
+        if (uv.TryGetValue(Face.Left, out var left))
+        {
+            AddFace(left, new Point3D(x0, y0, z0), new Point3D(x0, y0, z1), new Point3D(x0, y1, z1),
+                new Point3D(x0, y1, z0), new Vector3D(-1, 0, 0));
+        }
+
+        if (uv.TryGetValue(Face.Top, out var top))
+        {
+            AddFace(top, new Point3D(x0, y1, z1), new Point3D(x1, y1, z1), new Point3D(x1, y1, z0),
+                new Point3D(x0, y1, z0), new Vector3D(0, 1, 0));
+        }
+
+        if (uv.TryGetValue(Face.Bottom, out var bottom))
+        {
+            AddFace(bottom, new Point3D(x0, y0, z0), new Point3D(x1, y0, z0), new Point3D(x1, y0, z1),
+                new Point3D(x0, y0, z1), new Vector3D(0, -1, 0));
         }
     }
 
@@ -563,4 +684,5 @@ public sealed class SkinPreview : UserControl
         Bottom
     }
 }
+
 
