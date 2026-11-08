@@ -2,8 +2,9 @@
 
 Last updated: 2026-11-09
 
-DiexvMinecraftLauncher is a free, non-commercial, open-source Minecraft: Java
-Edition launcher for Windows. This policy explains what data the launcher
+DiexvMinecraftLauncher is a free, non-commercial, source-available Minecraft:
+Java Edition launcher for Windows. The repository is publicly viewable under an
+All Rights Reserved license. This policy explains what data the launcher
 handles when you use Microsoft account login.
 
 ## Data we handle
