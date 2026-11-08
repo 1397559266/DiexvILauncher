@@ -104,7 +104,7 @@
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <Border Width="44" Height="44">
+                        <Border Width="44" Height="44" CornerRadius="22" Background="#FFEFF6FF" ClipToBounds="True">
                             <controls:SkinHead SkinPath="{Binding SkinPath}" Width="44" Height="44" />
                         </Border>
                         <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
