@@ -262,9 +262,9 @@ public sealed class DownloadViewModel : ObservableObject
 
     public string TabDescription => CurrentTab switch
     {
-        DownloadTab.Mods => "从 Modrinth 搜索并安装模组到当前版本。",
-        DownloadTab.ResourcePacks => "从 Modrinth 搜索资源包并安装到当前版本。",
-        DownloadTab.Shaders => "从 Modrinth 搜索光影并安装到当前版本。",
+        DownloadTab.Mods => "搜索并安装模组到当前版本。",
+        DownloadTab.ResourcePacks => "搜索资源包并安装到当前版本。",
+        DownloadTab.Shaders => "搜索光影并安装到当前版本。",
         _ => "从 Mojang 官方源下载并安装游戏版本，也可以为当前版本安装 Fabric / Quilt。"
     };
 
@@ -304,7 +304,13 @@ public sealed class DownloadViewModel : ObservableObject
     public bool IsSearching
     {
         get => _isSearching;
-        private set => SetProperty(ref _isSearching, value);
+        private set
+        {
+            if (SetProperty(ref _isSearching, value))
+            {
+                OnPropertyChanged(nameof(ShowSearchEmpty));
+            }
+        }
     }
 
     public string SearchQuery
@@ -481,6 +487,7 @@ public sealed class DownloadViewModel : ObservableObject
     }
 
     public bool HasSearchResults => SearchResults.Count > 0;
+    public bool ShowSearchEmpty => !IsSearching && !HasSearchResults;
 
     public void RefreshContext()
     {
@@ -489,6 +496,7 @@ public sealed class DownloadViewModel : ObservableObject
         OnPropertyChanged(nameof(CurrentInstanceText));
         OnPropertyChanged(nameof(FilterSummary));
         OnPropertyChanged(nameof(HasSearchResults));
+        OnPropertyChanged(nameof(ShowSearchEmpty));
         InstallFabricCommand.RaiseCanExecuteChanged();
         InstallQuiltCommand.RaiseCanExecuteChanged();
         InstallForgeCommand.RaiseCanExecuteChanged();
@@ -783,7 +791,7 @@ public sealed class DownloadViewModel : ObservableObject
         }
 
         IsSearching = true;
-        SearchStatus = "正在搜索 Modrinth…";
+        SearchStatus = "正在搜索…";
         var searchVersion = ++_searchVersion;
         try
         {
@@ -801,6 +809,7 @@ public sealed class DownloadViewModel : ObservableObject
             }
 
             OnPropertyChanged(nameof(HasSearchResults));
+            OnPropertyChanged(nameof(ShowSearchEmpty));
             OnPropertyChanged(nameof(SearchPage));
             OnPropertyChanged(nameof(SearchTotalPages));
             OnPropertyChanged(nameof(SearchPageText));
@@ -808,7 +817,7 @@ public sealed class DownloadViewModel : ObservableObject
                 ? "没有找到匹配的项目，试试换一个关键词。"
                 : CurrentTab == DownloadTab.Mods
                     ? $"找到 {result.TotalHits} 个项目 · 正在匹配 MC百科…"
-                    : $"找到 {result.TotalHits} 个项目 · 来源 Modrinth";
+                    : $"找到 {result.TotalHits} 个项目";
             if (CurrentTab == DownloadTab.Mods && result.Hits.Count > 0)
             {
                 _ = EnrichMcmodAsync(result.Hits, searchVersion);
@@ -861,7 +870,7 @@ public sealed class DownloadViewModel : ObservableObject
 
         if (searchVersion == _searchVersion)
         {
-            SearchStatus = $"找到 {_searchTotal} 个项目 · 来源 Modrinth";
+            SearchStatus = $"找到 {_searchTotal} 个项目";
         }
     }
 
@@ -958,4 +967,6 @@ public sealed class DownloadViewModel : ObservableObject
         _ => null
     };
 }
+
+
 

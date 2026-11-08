@@ -5,9 +5,11 @@
 
     <UserControl.Resources>
         <Style x:Key="DownloadTabButton" TargetType="Button">
-            <Setter Property="Height" Value="38" />
-            <Setter Property="Padding" Value="15,0" />
-            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="Height" Value="44" />
+            <Setter Property="MinWidth" Value="128" />
+            <Setter Property="Padding" Value="18,0" />
+            <Setter Property="Margin" Value="0,0,10,0" />
+            <Setter Property="FontSize" Value="12.5" />
             <Setter Property="Background" Value="#FFFFFFFF" />
             <Setter Property="BorderBrush" Value="{StaticResource BrushBorder}" />
             <Setter Property="Foreground" Value="{StaticResource BrushTextSecondary}" />
@@ -63,6 +65,7 @@
     <Grid Margin="24,18,24,18">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -74,12 +77,6 @@
                            Margin="0,4,0,0" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                <TextBlock Text="下载类型" FontSize="9.5" Foreground="{StaticResource BrushTextMuted}"
-                           VerticalAlignment="Center" Margin="0,0,6,0" />
-                <ComboBox Style="{StaticResource FilterCombo}" Width="120" Margin="0,0,10,0"
-                          ItemsSource="{Binding DownloadTypeOptions}"
-                          SelectedItem="{Binding SelectedDownloadType, Mode=TwoWay}"
-                          AutomationProperties.Name="下载类型" />
                 <Border Background="#FFF7FBFF" BorderBrush="{StaticResource BrushBorder}" BorderThickness="1"
                         CornerRadius="8" Padding="10,5" VerticalAlignment="Center">
                     <TextBlock Text="{Binding FilterSummary}" FontSize="9.5" Foreground="{StaticResource BrushTextSecondary}" />
@@ -87,8 +84,43 @@
             </StackPanel>
         </Grid>
 
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,14">
+            <Button Style="{StaticResource DownloadTabButton}" Tag="{Binding IsGameTab}"
+                    Command="{Binding SetTabCommand}" CommandParameter="Game" AutomationProperties.Name="游戏版本">
+                <StackPanel Orientation="Horizontal">
+                    <controls:Icon Data="{StaticResource IconDownload}" Width="17" Height="17"
+                                   Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                    <TextBlock Text="游戏版本" Margin="8,0,0,0" FontSize="12.5" />
+                </StackPanel>
+            </Button>
+            <Button Style="{StaticResource DownloadTabButton}" Tag="{Binding IsModsTab}"
+                    Command="{Binding SetTabCommand}" CommandParameter="Mods" AutomationProperties.Name="模组">
+                <StackPanel Orientation="Horizontal">
+                    <controls:Icon Data="{StaticResource IconPuzzle}" Width="17" Height="17"
+                                   Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                    <TextBlock Text="模组" Margin="8,0,0,0" FontSize="12.5" />
+                </StackPanel>
+            </Button>
+            <Button Style="{StaticResource DownloadTabButton}" Tag="{Binding IsResourcePacksTab}"
+                    Command="{Binding SetTabCommand}" CommandParameter="ResourcePacks" AutomationProperties.Name="资源包">
+                <StackPanel Orientation="Horizontal">
+                    <controls:Icon Data="{StaticResource IconLayers}" Width="17" Height="17"
+                                   Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                    <TextBlock Text="资源包" Margin="8,0,0,0" FontSize="12.5" />
+                </StackPanel>
+            </Button>
+            <Button Style="{StaticResource DownloadTabButton}" Tag="{Binding IsShadersTab}"
+                    Command="{Binding SetTabCommand}" CommandParameter="Shaders" AutomationProperties.Name="光影">
+                <StackPanel Orientation="Horizontal">
+                    <controls:Icon Data="{StaticResource IconSparkles}" Width="17" Height="17"
+                                   Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                    <TextBlock Text="光影" Margin="8,0,0,0" FontSize="12.5" />
+                </StackPanel>
+            </Button>
+        </StackPanel>
+
         <!-- ═══════════ Game tab ═══════════ -->
-        <Grid Grid.Row="1" Visibility="{Binding IsGameTab, Converter={StaticResource BoolToVisibility}}">
+        <Grid Grid.Row="2" Visibility="{Binding IsGameTab, Converter={StaticResource BoolToVisibility}}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="14" />
@@ -205,39 +237,38 @@
                         </StackPanel>
                         <TextBlock Text="{Binding CurrentInstanceText}" FontSize="10" Foreground="{StaticResource BrushTextSecondary}"
                                    TextTrimming="CharacterEllipsis" />
-                        <TextBlock Text="Fabric / Quilt 会以当前版本为基础创建新实例。" FontSize="9" Foreground="{StaticResource BrushTextMuted}"
+                        <TextBlock Text="Fabric / Quilt 会创建新实例；Forge / NeoForge 调用官方安装器。" FontSize="9" Foreground="{StaticResource BrushTextMuted}"
                                    TextWrapping="Wrap" Margin="0,4,0,12" LineHeight="15" />
-                        <Button Style="{StaticResource PrimaryButton}" Height="36" Command="{Binding InstallFabricCommand}" AutomationProperties.Name="安装 Fabric">
-                            <StackPanel Orientation="Horizontal">
-                                <Image Source="/Assets/Loaders/fabric.png" Width="15" Height="15" />
-                                <TextBlock Text="安装 Fabric（最新）" Margin="6,0,0,0" FontSize="11.5" />
-                            </StackPanel>
-                        </Button>
-                        <Button Style="{StaticResource SecondaryButton}" Height="36" Margin="0,8,0,0" Command="{Binding InstallQuiltCommand}" AutomationProperties.Name="安装 Quilt">
-                            <StackPanel Orientation="Horizontal">
-                                <Image Source="/Assets/Loaders/quilt.png" Width="14" Height="14" />
-                                <TextBlock Text="安装 Quilt（最新）" Margin="6,0,0,0" FontSize="11.5" />
-                            </StackPanel>
-                        </Button>
-                        <Grid Margin="0,8,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="1*" />
-                                <ColumnDefinition Width="8" />
-                                <ColumnDefinition Width="1*" />
-                            </Grid.ColumnDefinitions>
-                            <Button Style="{StaticResource SecondaryButton}" Height="36" Command="{Binding InstallForgeCommand}" AutomationProperties.Name="安装 Forge">
+                        <UniformGrid Columns="2" Rows="2" Margin="0,0,0,2">
+                            <Button Style="{StaticResource SecondaryButton}" Height="36" Margin="0,0,4,4"
+                                    Command="{Binding InstallFabricCommand}" AutomationProperties.Name="安装 Fabric">
+                                <StackPanel Orientation="Horizontal">
+                                    <Image Source="/Assets/Loaders/fabric.png" Width="15" Height="15" />
+                                    <TextBlock Text="Fabric（最新）" Margin="6,0,0,0" FontSize="11.5" />
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource SecondaryButton}" Height="36" Margin="4,0,0,4"
+                                    Command="{Binding InstallQuiltCommand}" AutomationProperties.Name="安装 Quilt">
+                                <StackPanel Orientation="Horizontal">
+                                    <Image Source="/Assets/Loaders/quilt.png" Width="14" Height="14" />
+                                    <TextBlock Text="Quilt（最新）" Margin="6,0,0,0" FontSize="11.5" />
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource SecondaryButton}" Height="36" Margin="0,4,4,0"
+                                    Command="{Binding InstallForgeCommand}" AutomationProperties.Name="安装 Forge">
                                 <StackPanel Orientation="Horizontal">
                                     <Image Source="/Assets/Loaders/forge.png" Width="14" Height="14" />
                                     <TextBlock Text="Forge" Margin="5,0,0,0" FontSize="11.5" />
                                 </StackPanel>
                             </Button>
-                            <Button Grid.Column="2" Style="{StaticResource SecondaryButton}" Height="36" Command="{Binding InstallNeoForgeCommand}" AutomationProperties.Name="安装 NeoForge">
+                            <Button Style="{StaticResource SecondaryButton}" Height="36" Margin="4,4,0,0"
+                                    Command="{Binding InstallNeoForgeCommand}" AutomationProperties.Name="安装 NeoForge">
                                 <StackPanel Orientation="Horizontal">
                                     <Image Source="/Assets/Loaders/neoforge.png" Width="14" Height="14" />
                                     <TextBlock Text="NeoForge" Margin="5,0,0,0" FontSize="11.5" />
                                 </StackPanel>
                             </Button>
-                        </Grid>
+                        </UniformGrid>
                         <TextBlock Text="Forge / NeoForge 会调用官方安装器；OptiFine 请使用其官方安装器。"
                                    FontSize="8.8" Foreground="{StaticResource BrushTextMuted}" TextWrapping="Wrap" Margin="0,9,0,0" LineHeight="15" />
                     </StackPanel>
@@ -257,7 +288,7 @@
         </Grid>
 
         <!-- ═══════════ Content search tab ═══════════ -->
-        <Grid Grid.Row="1" Visibility="{Binding IsContentTab, Converter={StaticResource BoolToVisibility}}">
+        <Grid Grid.Row="2" Visibility="{Binding IsContentTab, Converter={StaticResource BoolToVisibility}}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
@@ -396,15 +427,15 @@
 
                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
                                     Visibility="{Binding IsSearching, Converter={StaticResource BoolToVisibility}}">
-                            <TextBlock Text="正在搜索 Modrinth…" FontSize="11" Foreground="{StaticResource BrushTextSecondary}" />
+                            <TextBlock Text="正在搜索…" FontSize="11" Foreground="{StaticResource BrushTextSecondary}" />
                         </StackPanel>
                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
-                                    Visibility="{Binding HasSearchResults, Converter={StaticResource InverseBoolToVisibility}}">
+                                    Visibility="{Binding ShowSearchEmpty, Converter={StaticResource BoolToVisibility}}">
                             <Border Width="52" Height="52" CornerRadius="15" Background="#FFF2F8FF" HorizontalAlignment="Center">
                                 <controls:Icon Data="{StaticResource IconSearch}" Fill="#FFA9C6E8" Width="24" Height="24" />
                             </Border>
-                            <TextBlock Text="搜索 Modrinth" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,10,0,0" />
-                            <TextBlock Text="输入关键词后点击搜索；结果会按当前版本的 Minecraft 与加载器过滤。"
+                            <TextBlock Text="搜索在线资源" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,10,0,0" />
+                            <TextBlock Text="输入关键词后点击搜索；结果会按筛选条件过滤。"
                                        FontSize="9.5" Foreground="{StaticResource BrushTextSecondary}" TextAlignment="Center"
                                        TextWrapping="Wrap" MaxWidth="380" Margin="0,5,0,0" />
                         </StackPanel>
