@@ -199,14 +199,25 @@
                     <Grid>
                         <StackPanel>
                             <TextBlock Text="游戏窗口大小" Style="{StaticResource Label}" />
-                            <TextBlock Text="版本设置中可单独覆盖" FontSize="9" Foreground="{StaticResource BrushTextMuted}" Margin="0,2,0,0" />
+                            <TextBlock Text="版本设置中可单独覆盖；跟随启动器尺寸可让游戏窗口随启动器变化"
+                                       FontSize="9" Foreground="{StaticResource BrushTextMuted}" Margin="0,2,0,0" />
                         </StackPanel>
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                            <TextBox Style="{StaticResource InputTextBox}" Width="82" Height="32" Padding="8,0" Text="{Binding Width, UpdateSourceTrigger=LostFocus}"
-                                     HorizontalContentAlignment="Center" />
-                            <TextBlock Text="×" Margin="6,0" Foreground="{StaticResource BrushTextMuted}" VerticalAlignment="Center" />
-                            <TextBox Style="{StaticResource InputTextBox}" Width="82" Height="32" Padding="8,0" Text="{Binding Height, UpdateSourceTrigger=LostFocus}"
-                                     HorizontalContentAlignment="Center" />
+                        <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <ComboBox Style="{StaticResource FilterCombo}" Width="180" Height="30"
+                                      ItemsSource="{Binding WindowModes}"
+                                      SelectedItem="{Binding SelectedWindowMode, Mode=TwoWay}"
+                                      AutomationProperties.Name="游戏窗口模式" />
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,7,0,0">
+                                <TextBox Style="{StaticResource InputTextBox}" Width="82" Height="32" Padding="8,0"
+                                         Text="{Binding Width, UpdateSourceTrigger=LostFocus}"
+                                         IsEnabled="{Binding IsCustomWindowSize}"
+                                         HorizontalContentAlignment="Center" />
+                                <TextBlock Text="×" Margin="6,0" Foreground="{StaticResource BrushTextMuted}" VerticalAlignment="Center" />
+                                <TextBox Style="{StaticResource InputTextBox}" Width="82" Height="32" Padding="8,0"
+                                         Text="{Binding Height, UpdateSourceTrigger=LostFocus}"
+                                         IsEnabled="{Binding IsCustomWindowSize}"
+                                         HorizontalContentAlignment="Center" />
+                            </StackPanel>
                         </StackPanel>
                     </Grid>
 

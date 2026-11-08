@@ -188,14 +188,15 @@ public sealed class OverviewViewModel : ObservableObject
         try
         {
             var overrides = _settings.GetInstanceSettings(Instance.Id);
+            var (width, height) = _settings.ResolveWindowSize(Instance.Id);
             var request = new LaunchRequest
             {
                 Instance = Instance,
                 PlayerName = _settings.ResolvePlayerName(),
                 MemoryMb = overrides.MemoryMb ?? _settings.Settings.MemoryMb,
                 JavaPath = string.IsNullOrWhiteSpace(overrides.JavaPath) ? _settings.Settings.JavaPath : overrides.JavaPath,
-                Width = overrides.Width ?? _settings.Settings.WindowWidth,
-                Height = overrides.Height ?? _settings.Settings.WindowHeight,
+                Width = width,
+                Height = height,
                 TestMode = false,
                 LogDirectory = AppPaths.LogsDirectory
             };

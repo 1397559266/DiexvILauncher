@@ -307,8 +307,8 @@ public sealed class LaunchLogViewModel : ObservableObject
         var overrides = _settings.GetInstanceSettings(instance.Id);
         var memory = overrides.MemoryMb ?? _settings.Settings.MemoryMb;
         var javaPath = string.IsNullOrWhiteSpace(overrides.JavaPath) ? _settings.Settings.JavaPath : overrides.JavaPath;
-        var width = overrides.Width ?? _settings.Settings.WindowWidth;
-        var height = overrides.Height ?? _settings.Settings.WindowHeight;
+        var owner = Application.Current?.MainWindow;
+        var (width, height) = _settings.ResolveWindowSize(instance.Id, owner?.ActualWidth, owner?.ActualHeight);
 
         var isMicrosoft = string.Equals(_settings.Settings.AccountType, "微软账户", StringComparison.Ordinal) &&
                          !string.IsNullOrWhiteSpace(_settings.Settings.MicrosoftAccessToken);

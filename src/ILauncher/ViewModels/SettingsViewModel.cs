@@ -25,6 +25,7 @@ public sealed class SettingsViewModel : ObservableObject
     private bool _isDownloadingJava;
     private string _javaDownloadText = "";
     private string _selectedDownloadSource;
+    private string _selectedWindowMode;
 
     public SettingsViewModel(
         SettingsService settings,
@@ -48,6 +49,13 @@ public sealed class SettingsViewModel : ObservableObject
             ? "镜像源优先"
             : "官方源优先";
         DownloadSources = new[] { "官方源优先", "镜像源优先" };
+        WindowModes = new[] { "自定义", "与启动器窗口一致", "默认 854×480" };
+        _selectedWindowMode = settings.Settings.LaunchWindowMode switch
+        {
+            "launcher" => "与启动器窗口一致",
+            "default" => "默认 854×480",
+            _ => "自定义"
+        };
 
         JavaOptions = new ObservableCollection<JavaOption>();
         AutoJava = new JavaOption
@@ -79,6 +87,21 @@ public sealed class SettingsViewModel : ObservableObject
     public ObservableCollection<JavaOption> JavaOptions { get; }
     public JavaOption AutoJava { get; }
     public IReadOnlyList<string> DownloadSources { get; }
+    public IReadOnlyList<string> WindowModes { get; }
+
+    public string SelectedWindowMode
+    {
+        get => _selectedWindowMode;
+        set
+        {
+            if (SetProperty(ref _selectedWindowMode, value))
+            {
+                OnPropertyChanged(nameof(IsCustomWindowSize));
+            }
+        }
+    }
+
+    public bool IsCustomWindowSize => SelectedWindowMode == "自定义";
 
     public string SelectedDownloadSource
     {
@@ -293,6 +316,12 @@ public sealed class SettingsViewModel : ObservableObject
         _settings.Settings.MemoryMb = Math.Clamp(MemoryMb, 512, 65536);
         _settings.Settings.WindowWidth = Math.Clamp(Width, 320, 7680);
         _settings.Settings.WindowHeight = Math.Clamp(Height, 240, 4320);
+        _settings.Settings.LaunchWindowMode = SelectedWindowMode switch
+        {
+            "与启动器窗口一致" => "launcher",
+            "默认 854×480" => "default",
+            _ => "custom"
+        };
         _settings.Settings.JavaPath = SelectedJava is { IsAuto: false } ? SelectedJava.Path : "";
         _settings.Settings.CloseLauncherOnGameStart = CloseLauncher;
         _settings.Settings.DownloadSource = SelectedDownloadSource == "镜像源优先" ? "mirror" : "official";

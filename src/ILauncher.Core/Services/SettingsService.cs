@@ -29,6 +29,7 @@ public sealed class LauncherSettings
     public string DownloadSource { get; set; } = "official";
     public int WindowWidth { get; set; } = 1280;
     public int WindowHeight { get; set; } = 720;
+    public string LaunchWindowMode { get; set; } = "default";
     public string LastInstance { get; set; } = "";
     public bool AutoDetectJava { get; set; } = true;
     public bool CloseLauncherOnGameStart { get; set; }
@@ -141,4 +142,32 @@ public sealed class SettingsService
 
     public string ResolvePlayerName()
         => string.IsNullOrWhiteSpace(Settings.PlayerName) ? Environment.UserName : Settings.PlayerName.Trim();
+
+    public (int Width, int Height) ResolveWindowSize(string instanceId, double? launcherWidth = null,
+        double? launcherHeight = null)
+    {
+        var overrides = GetInstanceSettings(instanceId);
+        var mode = Settings.LaunchWindowMode;
+        int width;
+        int height;
+        if (string.Equals(mode, "launcher", StringComparison.OrdinalIgnoreCase) &&
+            launcherWidth is > 0 && launcherHeight is > 0)
+        {
+            width = (int)Math.Round(launcherWidth.Value);
+            height = (int)Math.Round(launcherHeight.Value - 32);
+        }
+        else if (string.Equals(mode, "default", StringComparison.OrdinalIgnoreCase))
+        {
+            width = 854;
+            height = 480;
+        }
+        else
+        {
+            width = Settings.WindowWidth;
+            height = Settings.WindowHeight;
+        }
+
+        return (Math.Clamp(overrides.Width ?? width, 320, 7680),
+                Math.Clamp(overrides.Height ?? height, 240, 4320));
+    }
 }
