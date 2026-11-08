@@ -29,15 +29,31 @@ public sealed class ModLoaderInstallerService
         Action<DownloadProgress>? progress, CancellationToken cancellationToken = default)
     {
         var coordinate = $"{minecraftVersion}-{forgeVersion}";
-        var url = $"https://maven.minecraftforge.net/net/minecraftforge/forge/{coordinate}/forge-{coordinate}-installer.jar";
-        return InstallViaInstallerAsync("Forge", minecraftVersion, forgeVersion, url, rootDirectory, progress, cancellationToken);
+        var official = $"https://maven.minecraftforge.net/net/minecraftforge/forge/{coordinate}/forge-{coordinate}-installer.jar";
+        var mirror = $"{DownloadSourceConfig.MirrorBase}/maven/net/minecraftforge/forge/{coordinate}/forge-{coordinate}-installer.jar";
+        return InstallViaInstallerAsync("Forge", minecraftVersion, forgeVersion, mirror, official,
+            rootDirectory, progress, cancellationToken);
     }
 
     public Task<string?> InstallNeoForgeVersionAsync(string minecraftVersion, string neoForgeVersion, string rootDirectory,
         Action<DownloadProgress>? progress, CancellationToken cancellationToken = default)
     {
-        var url = $"https://maven.neoforged.net/releases/net/neoforged/neoforge/{neoForgeVersion}/neoforge-{neoForgeVersion}-installer.jar";
-        return InstallViaInstallerAsync("NeoForge", minecraftVersion, neoForgeVersion, url, rootDirectory, progress, cancellationToken);
+        string official;
+        string mirror;
+        if (IsLegacyNeoForge(minecraftVersion))
+        {
+            var coordinate = $"{minecraftVersion}-{neoForgeVersion}";
+            official = $"https://maven.neoforged.net/releases/net/neoforged/forge/{coordinate}/forge-{coordinate}-installer.jar";
+            mirror = $"{DownloadSourceConfig.MirrorBase}/maven/net/neoforged/forge/{coordinate}/forge-{coordinate}-installer.jar";
+        }
+        else
+        {
+            official = $"https://maven.neoforged.net/releases/net/neoforged/neoforge/{neoForgeVersion}/neoforge-{neoForgeVersion}-installer.jar";
+            mirror = $"{DownloadSourceConfig.MirrorBase}/maven/net/neoforged/neoforge/{neoForgeVersion}/neoforge-{neoForgeVersion}-installer.jar";
+        }
+
+        return InstallViaInstallerAsync("NeoForge", minecraftVersion, neoForgeVersion, mirror, official,
+            rootDirectory, progress, cancellationToken);
     }
 
     public async Task<string?> InstallNeoForgeAsync(string minecraftVersion, string rootDirectory,
@@ -45,12 +61,12 @@ public sealed class ModLoaderInstallerService
     {
         var version = await GetNeoForgeVersionAsync(minecraftVersion, cancellationToken)
                       ?? throw new InvalidOperationException($"没有找到适用于 {minecraftVersion} 的 NeoForge 版本。");
-        var url = $"https://maven.neoforged.net/releases/net/neoforged/neoforge/{version}/neoforge-{version}-installer.jar";
-        return await InstallViaInstallerAsync("NeoForge", minecraftVersion, version, url, rootDirectory, progress, cancellationToken);
+        return await InstallNeoForgeVersionAsync(minecraftVersion, version, rootDirectory, progress, cancellationToken);
     }
 
     private async Task<string?> InstallViaInstallerAsync(string loader, string minecraftVersion, string loaderVersion,
-        string installerUrl, string rootDirectory, Action<DownloadProgress>? progress, CancellationToken cancellationToken)
+        string installerUrl, string fallbackInstallerUrl, string rootDirectory,
+        Action<DownloadProgress>? progress, CancellationToken cancellationToken)
     {
         if (!File.Exists(Path.Combine(rootDirectory, "versions", minecraftVersion, minecraftVersion + ".json")))
         {
@@ -76,7 +92,14 @@ public sealed class ModLoaderInstallerService
         }
 
         progress?.Invoke(new DownloadProgress { Phase = loader, Message = $"下载 {loader} {loaderVersion} 安装器…", Percent = 3 });
-        await DownloadHelper.DownloadFileAsync(installerUrl, installerPath, null, cancellationToken);
+        try
+        {
+            await DownloadHelper.DownloadFileAsync(installerUrl, installerPath, null, cancellationToken);
+        }
+        catch when (!string.Equals(installerUrl, fallbackInstallerUrl, StringComparison.OrdinalIgnoreCase))
+        {
+            await DownloadHelper.DownloadFileAsync(fallbackInstallerUrl, installerPath, null, cancellationToken);
+        }
 
         progress?.Invoke(new DownloadProgress
         {
@@ -198,8 +221,7 @@ public sealed class ModLoaderInstallerService
 
         try
         {
-            var xml = await DownloadHelper.GetStringAsync(
-                "https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml", cancellationToken);
+            var xml = await GetMavenMetadataAsync("net/minecraftforge/forge", "https://maven.minecraftforge.net", cancellationToken);
             var document = XDocument.Parse(xml);
             var prefix = minecraftVersion + "-";
             versions.AddRange(document.Descendants("version")
@@ -218,25 +240,22 @@ public sealed class ModLoaderInstallerService
 
     public async Task<List<string>> GetNeoForgeVersionsAsync(string minecraftVersion, CancellationToken cancellationToken = default)
     {
-        var match = Regex.Match(minecraftVersion, @"^1\.(\d+)(?:\.(\d+))?");
-        if (!match.Success)
+        var legacy = IsLegacyNeoForge(minecraftVersion);
+        var artifact = legacy ? "net/neoforged/forge" : "net/neoforged/neoforge";
+        var prefix = legacy ? minecraftVersion + "-" : GetModernNeoForgePrefix(minecraftVersion);
+        if (string.IsNullOrEmpty(prefix))
         {
             return new List<string>();
         }
 
-        var minor = int.Parse(match.Groups[1].Value);
-        var patch = match.Groups[2].Success ? int.Parse(match.Groups[2].Value) : 0;
-        var prefix = minor == 20 && patch <= 1
-            ? "47.1."
-            : $"{minor}.{patch}.";
         try
         {
-            var xml = await DownloadHelper.GetStringAsync(
-                "https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml", cancellationToken);
+            var xml = await GetMavenMetadataAsync(artifact, "https://maven.neoforged.net/releases", cancellationToken);
             var document = XDocument.Parse(xml);
             return document.Descendants("version")
                 .Select(element => element.Value)
                 .Where(value => value.StartsWith(prefix, StringComparison.Ordinal))
+                .Select(value => legacy ? value[prefix.Length..] : value)
                 .Where(value => !value.Contains("installer", StringComparison.OrdinalIgnoreCase))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
@@ -244,6 +263,30 @@ public sealed class ModLoaderInstallerService
         catch
         {
             return new List<string>();
+        }
+    }
+
+    private static string GetModernNeoForgePrefix(string minecraftVersion)
+    {
+        var match = Regex.Match(minecraftVersion, @"^(?:1\.)?(\d+)\.(\d+)");
+        return match.Success ? $"{match.Groups[1].Value}.{match.Groups[2].Value}." : "";
+    }
+
+    private static bool IsLegacyNeoForge(string minecraftVersion)
+        => string.Equals(minecraftVersion, "1.20.1", StringComparison.OrdinalIgnoreCase);
+
+    private static async Task<string> GetMavenMetadataAsync(string artifactPath, string officialBase,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await DownloadHelper.GetStringAsync(
+                $"{DownloadSourceConfig.MirrorBase}/maven/{artifactPath}/maven-metadata.xml", cancellationToken);
+        }
+        catch
+        {
+            return await DownloadHelper.GetStringAsync(
+                $"{officialBase}/{artifactPath}/maven-metadata.xml", cancellationToken);
         }
     }
 
@@ -291,35 +334,10 @@ public sealed class ModLoaderInstallerService
         }
     }
 
-    private static async Task<string?> GetNeoForgeVersionAsync(string minecraftVersion, CancellationToken cancellationToken)
+    private async Task<string?> GetNeoForgeVersionAsync(string minecraftVersion, CancellationToken cancellationToken)
     {
-        var match = Regex.Match(minecraftVersion, @"^1\.(\d+)(?:\.(\d+))?");
-        if (!match.Success)
-        {
-            return null;
-        }
-
-        var minor = int.Parse(match.Groups[1].Value);
-        var patch = match.Groups[2].Success ? int.Parse(match.Groups[2].Value) : 0;
-        var prefix = minor == 20 && patch <= 1
-            ? "47.1."
-            : $"{minor}.{patch}.";
-        try
-        {
-            var xml = await DownloadHelper.GetStringAsync(
-                "https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml", cancellationToken);
-            var document = XDocument.Parse(xml);
-            return document.Descendants("version")
-                .Select(element => element.Value)
-                .Where(value => value.StartsWith(prefix, StringComparison.Ordinal))
-                .Where(value => !value.Contains("installer", StringComparison.OrdinalIgnoreCase))
-                .OrderByDescending(value => value, StringComparer.OrdinalIgnoreCase)
-                .FirstOrDefault();
-        }
-        catch
-        {
-            return null;
-        }
+        var versions = await GetNeoForgeVersionsAsync(minecraftVersion, cancellationToken);
+        return versions.LastOrDefault();
     }
 
     private static int GuessJavaMajor(string minecraftVersion)

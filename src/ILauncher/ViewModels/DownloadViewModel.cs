@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
@@ -130,10 +131,10 @@ public sealed class DownloadViewModel : ObservableObject
         InstallLoaderOptions = new ObservableCollection<DownloadFilterOption>
         {
             new() { Key = "vanilla", Title = "原版", IsSelected = true },
-            new() { Key = "fabric", Title = "Fabric" },
-            new() { Key = "quilt", Title = "Quilt" },
             new() { Key = "forge", Title = "Forge" },
-            new() { Key = "neoforge", Title = "NeoForge" }
+            new() { Key = "neoforge", Title = "NeoForge" },
+            new() { Key = "fabric", Title = "Fabric" },
+            new() { Key = "quilt", Title = "Quilt" }
         };
         LoaderVersions = new ObservableCollection<string>();
         _selectedInstallLoader = InstallLoaderOptions[0];
@@ -711,7 +712,7 @@ public sealed class DownloadViewModel : ObservableObject
                 return;
             }
 
-            foreach (var value in values.Distinct(StringComparer.OrdinalIgnoreCase))
+            foreach (var value in SortNewestFirst(values.Distinct(StringComparer.OrdinalIgnoreCase)))
             {
                 LoaderVersions.Add(value);
             }
@@ -811,6 +812,68 @@ public sealed class DownloadViewModel : ObservableObject
             await _reloadInstances();
             _toast($"Minecraft {version.Id} 安装完成。", false);
         });
+    }
+
+    private static IReadOnlyList<string> SortNewestFirst(IEnumerable<string> values)
+        => values.OrderByDescending(value => value, LoaderVersionComparer.Instance).ToList();
+
+    private sealed class LoaderVersionComparer : IComparer<string>
+    {
+        public static readonly LoaderVersionComparer Instance = new();
+        private static readonly Regex NumericPrefix = new(@"^\d+(?:\.\d+)*", RegexOptions.Compiled);
+
+        public int Compare(string? x, string? y)
+        {
+            if (ReferenceEquals(x, y))
+            {
+                return 0;
+            }
+
+            if (x == null)
+            {
+                return -1;
+            }
+
+            if (y == null)
+            {
+                return 1;
+            }
+
+            var left = Parse(x);
+            var right = Parse(y);
+            var length = Math.Max(left.Numbers.Length, right.Numbers.Length);
+            for (var i = 0; i < length; i++)
+            {
+                var a = i < left.Numbers.Length ? left.Numbers[i] : 0;
+                var b = i < right.Numbers.Length ? right.Numbers[i] : 0;
+                if (a != b)
+                {
+                    return a.CompareTo(b);
+                }
+            }
+
+            if (left.Suffix.Length == 0 && right.Suffix.Length > 0)
+            {
+                return 1;
+            }
+
+            if (left.Suffix.Length > 0 && right.Suffix.Length == 0)
+            {
+                return -1;
+            }
+
+            return string.Compare(left.Suffix, right.Suffix, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static (int[] Numbers, string Suffix) Parse(string value)
+        {
+            var match = NumericPrefix.Match(value);
+            var numbers = match.Success
+                ? match.Value.Split('.').Select(part => int.TryParse(part, out var number) ? number : 0).ToArray()
+                : Array.Empty<int>();
+            var suffix = match.Success ? value[match.Length..] : value;
+            return (numbers, suffix);
+        }
     }
 
     private static bool SelectSingle(IEnumerable<DownloadFilterOption> options, DownloadFilterOption selected)

@@ -296,7 +296,7 @@
                             <controls:Icon Data="{StaticResource IconInfo}" Fill="{StaticResource BrushAccent}" Width="15" Height="15" />
                             <TextBlock Text="下载说明" FontSize="12.5" FontWeight="SemiBold" Margin="7,0,0,0" />
                         </StackPanel>
-                        <TextBlock Text="游戏文件来自 Mojang 官方源；模组、资源包和光影来自 Modrinth。安装游戏时会同时下载资源文件，体积可能较大。"
+                        <TextBlock Text="游戏文件来自 Mojang 官方源；模组、资源包和光影由 Modrinth 提供搜索与安装。每项结果另附 MC百科中文名/条目链接和 CurseForge 搜索链接（CurseForge 当前为网页链接，不直接安装）。"
                                    FontSize="9.2" Foreground="{StaticResource BrushTextSecondary}" TextWrapping="Wrap" LineHeight="16" />
                     </StackPanel>
                 </Border>
