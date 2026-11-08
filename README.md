@@ -98,7 +98,7 @@ $env:MS_CLIENT_ID = "你的 Azure Application (client) ID"
 - **游戏版本**：Mojang 版本清单，默认 **正式版**，可按 **全部 / 正式版 / 快照 / 旧版** 筛选，也可按版本号搜索；点击安装会下载版本 JSON、客户端 jar、Windows 库、资源索引和资源对象。
 - **加载器**：Fabric / Quilt 直接走 Meta API 创建新版本；Forge / NeoForge 调用官方安装器 jar（需要 Java 与网络），全新目录缺少 `launcher_profiles.json` 时会自动补一个最小档案文件。
 - **整合包**：支持 Modrinth `.mrpack` 导入，读取依赖中的 Minecraft/加载器版本，安装加载器、下载文件并复制 `overrides`；同时读取包内 `icon.png`/`pack.png` 作为版本本地图标。
-- **Modrinth 内容**：模组、资源包、光影搜索与安装。筛选栏支持 **当前版本 / 全部版本**；模组支持 **当前加载器 / 全部加载器 / Fabric / Forge / NeoForge / Quilt** 和 **优化/科技/魔法/冒险/装饰/辅助/前置库** 类型；资源包按 **16×/32×/64×/128×/256×** 分辨率筛选；光影按写实/奇幻/卡通/半写实/原版风筛选。
+- **Modrinth 内容**：模组、资源包、光影搜索与安装。筛选使用带标题的下拉菜单：**版本范围**（当前/全部）、**加载器**（当前/全部/Fabric/Forge/NeoForge/Quilt）、**类型**（优化/科技/魔法/冒险/装饰/辅助/前置库；资源包按 16×/32×/64×/128×/256×；光影按写实/奇幻/卡通/半写实/原版风）。每页 20 个结果，底部提供上一页/下一页和总页数。结果附带 **MC百科** 中文名与链接，以及 **CurseForge** 搜索链接。
 - **进度与取消**：下载面板实时显示阶段、文件名、百分比，支持取消。
 
 ![Modrinth 搜索](docs/screenshots/download-mods.png)
@@ -221,6 +221,7 @@ dotnet publish src/ILauncher/ILauncher.csproj -c Release -r win-x64 `
 | 皮肤库 | `%APPDATA%\ILauncher\skins\` |
 | 版本图标 | `versions\<版本>\icon.png`（旧版 `%APPDATA%\ILauncher\icons\` 仍可读取） |
 | 原生库缓存 | `%APPDATA%\ILauncher\cache\natives\` |
+| MC百科匹配缓存 | `%APPDATA%\ILauncher\mcmod-cache.json` |
 | 下载的 Java | `%APPDATA%\ILauncher\java\` |
 | 存档备份 | `%APPDATA%\ILauncher\backups\saves\` |
 
@@ -269,6 +270,8 @@ docs/screenshots/            README 截图
 - 模组安装不会自动解析并安装前置依赖；只安装主文件。
 - Forge/NeoForge 走官方安装器，不保证所有版本都能在无界面模式下成功。
 - 启动器自身更新、主题/语言切换等非 Minecraft 功能未实现。
+
+
 
 
 

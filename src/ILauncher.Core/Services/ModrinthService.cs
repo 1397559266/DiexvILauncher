@@ -13,6 +13,25 @@ public sealed record ModrinthProject(
     string ProjectType,
     IReadOnlyList<string> Categories)
 {
+    public string? ChineseName { get; init; }
+    public string? McmodUrl { get; init; }
+    public string DisplayTitle => string.IsNullOrWhiteSpace(ChineseName) ? Title : ChineseName;
+    public bool HasMcmod => !string.IsNullOrWhiteSpace(McmodUrl);
+    public string CurseForgeUrl
+    {
+        get
+        {
+            var className = ProjectType switch
+            {
+                "resourcepack" => "texture-packs",
+                "shader" => "shaders",
+                "modpack" => "modpacks",
+                _ => "mc-mods"
+            };
+            return $"https://www.curseforge.com/minecraft/search?search={Uri.EscapeDataString(Title)}&class={className}";
+        }
+    }
+
     public string DownloadsText => Downloads switch
     {
         >= 1_000_000 => $"{Downloads / 1_000_000d:0.#}M 下载",
@@ -24,6 +43,12 @@ public sealed record ModrinthProject(
 }
 
 public sealed record ModrinthFile(string Url, string FileName, long Size, bool Primary, string? Sha1);
+
+public sealed record ModrinthSearchResult(
+    IReadOnlyList<ModrinthProject> Hits,
+    int TotalHits,
+    int Offset,
+    int Limit);
 
 public sealed record ModrinthVersion(
     string Id,
@@ -40,8 +65,8 @@ public sealed class ModrinthService
 {
     private const string BaseUrl = "https://api.modrinth.com/v2";
 
-    public async Task<List<ModrinthProject>> SearchAsync(string query, string projectType,
-        string? gameVersion, string? loader, string? category = null, int limit = 20,
+    public async Task<ModrinthSearchResult> SearchAsync(string query, string projectType,
+        string? gameVersion, string? loader, string? category = null, int offset = 0, int limit = 20,
         CancellationToken cancellationToken = default)
     {
         var facets = new List<List<string>> { new() { $"project_type:{projectType}" } };
@@ -62,15 +87,20 @@ public sealed class ModrinthService
         }
 
         var facetsJson = JsonSerializer.Serialize(facets);
-        var url = $"{BaseUrl}/search?query={Uri.EscapeDataString(query ?? "")}&limit={limit}" +
+        var url = $"{BaseUrl}/search?query={Uri.EscapeDataString(query ?? "")}&limit={limit}&offset={offset}" +
                   $"&facets={Uri.EscapeDataString(facetsJson)}&index=relevance";
         var json = await DownloadHelper.GetStringAsync(url, cancellationToken);
         using var document = JsonDocument.Parse(json);
         var result = new List<ModrinthProject>();
         if (!document.RootElement.TryGetProperty("hits", out var hits))
         {
-            return result;
+            return new ModrinthSearchResult(result, 0, offset, limit);
         }
+
+        var totalHits = document.RootElement.TryGetProperty("total_hits", out var total) &&
+                        total.TryGetInt32(out var parsedTotal)
+            ? parsedTotal
+            : 0;
 
         foreach (var hit in hits.EnumerateArray())
         {
@@ -87,7 +117,7 @@ public sealed class ModrinthService
                     : new List<string>()));
         }
 
-        return result;
+        return new ModrinthSearchResult(result, Math.Max(totalHits, result.Count), offset, limit);
     }
 
     public async Task<List<ModrinthVersion>> GetVersionsAsync(string projectId, string? gameVersion,

@@ -38,41 +38,6 @@
             </Style.Triggers>
         </Style>
 
-        <Style x:Key="FilterChipButton" TargetType="Button">
-            <Setter Property="Height" Value="27" />
-            <Setter Property="Padding" Value="9,0" />
-            <Setter Property="Margin" Value="0,0,5,0" />
-            <Setter Property="Background" Value="#FFF8FBFF" />
-            <Setter Property="BorderBrush" Value="{StaticResource BrushBorder}" />
-            <Setter Property="Foreground" Value="{StaticResource BrushTextSecondary}" />
-            <Setter Property="FontSize" Value="9.5" />
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="1" CornerRadius="8" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter VerticalAlignment="Center" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#FFF1F7FF" />
-                                <Setter TargetName="Bd" Property="BorderBrush" Value="#FFB9D5F7" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True">
-                    <Setter Property="Background" Value="{StaticResource BrushAccentSoft}" />
-                    <Setter Property="BorderBrush" Value="{StaticResource BrushAccent}" />
-                    <Setter Property="Foreground" Value="{StaticResource BrushAccent}" />
-                    <Setter Property="FontWeight" Value="SemiBold" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-
         <Style x:Key="VersionRow" TargetType="ListBoxItem">
             <Setter Property="Padding" Value="0" />
             <Setter Property="Margin" Value="5,1" />
@@ -193,23 +158,13 @@
                     <Border Grid.Row="1" Background="#FFFBFDFF" BorderBrush="{StaticResource BrushBorder}"
                             BorderThickness="0,0,0,1" Padding="14,8">
                         <WrapPanel VerticalAlignment="Center">
-                            <TextBlock Text="类型" FontSize="9.5" Foreground="{StaticResource BrushTextMuted}"
-                                       VerticalAlignment="Center" Margin="0,0,7,0" />
-                            <ItemsControl ItemsSource="{Binding GameTypeFilters}" VerticalAlignment="Center">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <StackPanel Orientation="Horizontal" />
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Button Style="{StaticResource FilterChipButton}" Content="{Binding Title}"
-                                                Tag="{Binding IsSelected}"
-                                                Command="{Binding DataContext.SetGameTypeCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                CommandParameter="{Binding}" />
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                            <TextBlock Text="版本类型" FontSize="9.5" Foreground="{StaticResource BrushTextMuted}"
+                                       VerticalAlignment="Center" Margin="0,0,6,0" />
+                            <ComboBox Style="{StaticResource FilterCombo}" Width="112"
+                                      ItemsSource="{Binding GameTypeFilters}"
+                                      SelectedItem="{Binding SelectedGameType, Mode=TwoWay}"
+                                      ToolTip="筛选正式版、快照或旧版"
+                                      AutomationProperties.Name="版本类型筛选" />
                             <Grid Width="150" Height="27" Margin="8,0,0,0">
                                 <TextBox Style="{StaticResource InputTextBox}" Height="27" Padding="8,0"
                                          VerticalContentAlignment="Center"
@@ -368,64 +323,34 @@
             <Border Grid.Row="1" Style="{StaticResource Card}" Padding="12,8" Margin="0,10,0,0">
                 <WrapPanel VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal" Margin="0,0,16,0" VerticalAlignment="Center">
-                        <TextBlock Text="版本" FontSize="9.5" Foreground="{StaticResource BrushTextMuted}"
+                        <TextBlock Text="版本范围" FontSize="9.5" Foreground="{StaticResource BrushTextMuted}"
                                    VerticalAlignment="Center" Margin="0,0,6,0" />
-                        <ItemsControl ItemsSource="{Binding VersionScopeFilters}" VerticalAlignment="Center">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Orientation="Horizontal" />
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Button Style="{StaticResource FilterChipButton}" Content="{Binding Title}"
-                                            Tag="{Binding IsSelected}"
-                                            Command="{Binding DataContext.SetVersionScopeCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                            CommandParameter="{Binding}" />
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                        <ComboBox Style="{StaticResource FilterCombo}" Width="96"
+                                  ItemsSource="{Binding VersionScopeFilters}"
+                                  SelectedItem="{Binding SelectedVersionScope, Mode=TwoWay}"
+                                  ToolTip="当前版本或全部版本"
+                                  AutomationProperties.Name="版本范围筛选" />
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" Margin="0,0,16,0" VerticalAlignment="Center"
                                 Visibility="{Binding IsModsTab, Converter={StaticResource BoolToVisibility}}">
                         <TextBlock Text="加载器" FontSize="9.5" Foreground="{StaticResource BrushTextMuted}"
                                    VerticalAlignment="Center" Margin="0,0,6,0" />
-                        <ItemsControl ItemsSource="{Binding LoaderFilters}" VerticalAlignment="Center">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Orientation="Horizontal" />
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Button Style="{StaticResource FilterChipButton}" Content="{Binding Title}"
-                                            Tag="{Binding IsSelected}"
-                                            Command="{Binding DataContext.SetLoaderCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                            CommandParameter="{Binding}" />
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                        <ComboBox Style="{StaticResource FilterCombo}" Width="116"
+                                  ItemsSource="{Binding LoaderFilters}"
+                                  SelectedItem="{Binding SelectedLoader, Mode=TwoWay}"
+                                  ToolTip="筛选模组加载器"
+                                  AutomationProperties.Name="加载器筛选" />
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <TextBlock Text="类型" FontSize="9.5" Foreground="{StaticResource BrushTextMuted}"
                                    VerticalAlignment="Center" Margin="0,0,6,0" />
-                        <ItemsControl ItemsSource="{Binding CategoryFilters}" VerticalAlignment="Center">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Orientation="Horizontal" />
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Button Style="{StaticResource FilterChipButton}" Content="{Binding Title}"
-                                            Tag="{Binding IsSelected}"
-                                            Command="{Binding DataContext.SetCategoryCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                            CommandParameter="{Binding}" />
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                        <ComboBox Style="{StaticResource FilterCombo}" Width="124"
+                                  ItemsSource="{Binding CategoryFilters}"
+                                  SelectedItem="{Binding SelectedCategory, Mode=TwoWay}"
+                                  ToolTip="按类型/分辨率/风格筛选"
+                                  AutomationProperties.Name="内容类型筛选" />
                     </StackPanel>
                 </WrapPanel>
             </Border>
@@ -435,6 +360,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <Grid Margin="16,12,16,8">
                         <TextBlock Text="{Binding TabTitle}" FontSize="13.5" FontWeight="SemiBold" />
@@ -461,8 +387,9 @@
                                         </Border>
                                         <StackPanel Grid.Column="1" Margin="10,0,10,0" VerticalAlignment="Center">
                                             <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="{Binding Title}" FontSize="12.5" FontWeight="SemiBold"
-                                                           TextTrimming="CharacterEllipsis" MaxWidth="430" />
+                                                <TextBlock Text="{Binding DisplayTitle}" FontSize="12.5" FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis" MaxWidth="430"
+                                                           ToolTip="{Binding Title}" />
                                                 <Border Background="#FFF2F7FD" CornerRadius="5" Padding="5,1" Margin="7,0,0,0"
                                                         VerticalAlignment="Center">
                                                     <TextBlock Text="{Binding DownloadsText}" FontSize="8.5"
@@ -471,8 +398,19 @@
                                             </StackPanel>
                                             <TextBlock Text="{Binding Description}" FontSize="9.5" Foreground="{StaticResource BrushTextSecondary}"
                                                        TextTrimming="CharacterEllipsis" Margin="0,3,0,0" />
-                                            <TextBlock Text="{Binding CategoryText}" FontSize="8.5" Foreground="{StaticResource BrushTextMuted}"
-                                                       Margin="0,2,0,0" />
+                                            <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                                <TextBlock Text="{Binding CategoryText}" FontSize="8.5" Foreground="{StaticResource BrushTextMuted}"
+                                                           VerticalAlignment="Center" />
+                                                <Button Style="{StaticResource LinkButton}" Content="MC百科" FontSize="8.5"
+                                                        Padding="0,1" Margin="9,0,0,0"
+                                                        Command="{Binding DataContext.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                        CommandParameter="{Binding McmodUrl}" ToolTip="在 MC百科查看此模组"
+                                                        Visibility="{Binding HasMcmod, Converter={StaticResource BoolToVisibility}}" />
+                                                <Button Style="{StaticResource LinkButton}" Content="CurseForge" FontSize="8.5"
+                                                        Padding="0,1" Margin="9,0,0,0"
+                                                        Command="{Binding DataContext.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                        CommandParameter="{Binding CurseForgeUrl}" ToolTip="在 CurseForge 搜索此项目" />
+                                            </StackPanel>
                                         </StackPanel>
                                         <Button Grid.Column="2" Style="{StaticResource PrimaryButton}" Height="30" MinWidth="70"
                                                 Command="{Binding DataContext.InstallProjectCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
@@ -502,6 +440,20 @@
                                        TextWrapping="Wrap" MaxWidth="380" Margin="0,5,0,0" />
                         </StackPanel>
                     </Grid>
+
+                    <Border Grid.Row="2" BorderBrush="{StaticResource BrushBorder}" BorderThickness="0,1,0,0"
+                            Padding="16,8">
+                        <Grid>
+                            <TextBlock Text="{Binding SearchPageText}" FontSize="9.5"
+                                       Foreground="{StaticResource BrushTextMuted}" VerticalAlignment="Center" />
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Style="{StaticResource GhostButton}" Height="28" Content="上一页"
+                                        Command="{Binding PreviousPageCommand}" Margin="0,0,8,0" />
+                                <Button Style="{StaticResource GhostButton}" Height="28" Content="下一页"
+                                        Command="{Binding NextPageCommand}" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
                 </Grid>
             </Border>
         </Grid>
@@ -531,6 +483,7 @@
         </Border>
     </Grid>
 </UserControl>
+
 
 
 

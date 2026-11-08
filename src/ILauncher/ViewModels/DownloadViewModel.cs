@@ -38,6 +38,7 @@ public sealed class DownloadViewModel : ObservableObject
     private readonly FabricService _fabric;
     private readonly QuiltService _quilt;
     private readonly ModrinthService _modrinth;
+    private readonly McmodService _mcmod = new();
     private readonly ModLoaderInstallerService _installers;
     private readonly ModpackService _modpacks;
     private readonly Action<string, bool> _toast;
@@ -59,6 +60,13 @@ public sealed class DownloadViewModel : ObservableObject
     private bool _progressIndeterminate;
     private string _targetMinecraftVersion = "";
     private string _versionSearch = "";
+    private DownloadFilterOption? _selectedGameType;
+    private DownloadFilterOption? _selectedLoader;
+    private DownloadFilterOption? _selectedVersionScope;
+    private DownloadFilterOption? _selectedCategory;
+    private int _searchOffset;
+    private int _searchTotal;
+    private const int SearchPageSize = 20;
     private GameInstance? _contextInstance;
     private bool _versionsLoaded;
 
@@ -111,6 +119,9 @@ public sealed class DownloadViewModel : ObservableObject
             new() { Key = "all", Title = "全部版本" }
         };
         CategoryFilters = new ObservableCollection<DownloadFilterOption>();
+        _selectedGameType = GameTypeFilters.FirstOrDefault(option => option.IsSelected) ?? GameTypeFilters[0];
+        _selectedLoader = LoaderFilters.FirstOrDefault(option => option.IsSelected) ?? LoaderFilters[0];
+        _selectedVersionScope = VersionScopeFilters.FirstOrDefault(option => option.IsSelected) ?? VersionScopeFilters[0];
 
         RefreshGameVersionsCommand = new AsyncRelayCommand(LoadVersionsAsync);
         InstallVersionCommand = new AsyncRelayCommand(async parameter =>
@@ -125,6 +136,16 @@ public sealed class DownloadViewModel : ObservableObject
         InstallForgeCommand = new AsyncRelayCommand(InstallForgeAsync, () => !IsDownloading && _contextInstance != null);
         InstallNeoForgeCommand = new AsyncRelayCommand(InstallNeoForgeAsync, () => !IsDownloading && _contextInstance != null);
         SearchCommand = new AsyncRelayCommand(SearchAsync, () => !IsSearching && !IsDownloading);
+        OpenLinkCommand = new RelayCommand(parameter =>
+        {
+            if (parameter is string url && Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(uri.AbsoluteUri)
+                {
+                    UseShellExecute = true
+                });
+            }
+        });
         ImportModpackCommand = new AsyncRelayCommand(ImportModpackAsync, () => !IsDownloading);
         InstallProjectCommand = new AsyncRelayCommand(async parameter =>
         {
@@ -140,10 +161,8 @@ public sealed class DownloadViewModel : ObservableObject
                 CurrentTab = tab;
             }
         });
-        SetGameTypeCommand = new RelayCommand(parameter => SelectGameType(parameter));
-        SetLoaderCommand = new RelayCommand(parameter => SelectLoader(parameter));
-        SetVersionScopeCommand = new RelayCommand(parameter => SelectVersionScope(parameter));
-        SetCategoryCommand = new RelayCommand(parameter => SelectCategory(parameter));
+        PreviousPageCommand = new AsyncRelayCommand(PreviousPageAsync, () => !IsSearching && SearchPage > 1);
+        NextPageCommand = new AsyncRelayCommand(NextPageAsync, () => !IsSearching && SearchPage < SearchTotalPages);
         CancelCommand = new RelayCommand(Cancel, () => IsDownloading);
 
         RebuildCategoryFilters();
@@ -164,13 +183,12 @@ public sealed class DownloadViewModel : ObservableObject
     public AsyncRelayCommand InstallForgeCommand { get; }
     public AsyncRelayCommand InstallNeoForgeCommand { get; }
     public AsyncRelayCommand SearchCommand { get; }
+    public RelayCommand OpenLinkCommand { get; }
     public AsyncRelayCommand ImportModpackCommand { get; }
+    public AsyncRelayCommand PreviousPageCommand { get; }
+    public AsyncRelayCommand NextPageCommand { get; }
     public AsyncRelayCommand InstallProjectCommand { get; }
     public RelayCommand SetTabCommand { get; }
-    public RelayCommand SetGameTypeCommand { get; }
-    public RelayCommand SetLoaderCommand { get; }
-    public RelayCommand SetVersionScopeCommand { get; }
-    public RelayCommand SetCategoryCommand { get; }
     public RelayCommand CancelCommand { get; }
 
     public DownloadTab CurrentTab
@@ -288,10 +306,82 @@ public sealed class DownloadViewModel : ObservableObject
         }
     }
 
-    public DownloadFilterOption? SelectedGameType => GameTypeFilters.FirstOrDefault(option => option.IsSelected);
-    public DownloadFilterOption? SelectedLoader => LoaderFilters.FirstOrDefault(option => option.IsSelected);
-    public DownloadFilterOption? SelectedVersionScope => VersionScopeFilters.FirstOrDefault(option => option.IsSelected);
-    public DownloadFilterOption? SelectedCategory => CategoryFilters.FirstOrDefault(option => option.IsSelected);
+    public DownloadFilterOption? SelectedGameType
+    {
+        get => _selectedGameType;
+        set
+        {
+            if (!SetProperty(ref _selectedGameType, value) || value == null)
+            {
+                return;
+            }
+
+            SelectSingle(GameTypeFilters, value);
+            ApplyVersionFilter();
+        }
+    }
+
+    public DownloadFilterOption? SelectedLoader
+    {
+        get => _selectedLoader;
+        set
+        {
+            if (!SetProperty(ref _selectedLoader, value) || value == null)
+            {
+                return;
+            }
+
+            SelectSingle(LoaderFilters, value);
+            OnPropertyChanged(nameof(FilterSummary));
+            if (CurrentTab == DownloadTab.Mods)
+            {
+                _ = SearchAsync();
+            }
+        }
+    }
+
+    public DownloadFilterOption? SelectedVersionScope
+    {
+        get => _selectedVersionScope;
+        set
+        {
+            if (!SetProperty(ref _selectedVersionScope, value) || value == null)
+            {
+                return;
+            }
+
+            SelectSingle(VersionScopeFilters, value);
+            OnPropertyChanged(nameof(FilterSummary));
+            if (CurrentTab != DownloadTab.Game)
+            {
+                _ = SearchAsync();
+            }
+        }
+    }
+
+    public DownloadFilterOption? SelectedCategory
+    {
+        get => _selectedCategory;
+        set
+        {
+            if (!SetProperty(ref _selectedCategory, value) || value == null)
+            {
+                return;
+            }
+
+            SelectSingle(CategoryFilters, value);
+            if (CurrentTab != DownloadTab.Game)
+            {
+                _ = SearchAsync();
+            }
+        }
+    }
+
+    public int SearchPage => _searchTotal <= 0 ? 1 : _searchOffset / SearchPageSize + 1;
+    public int SearchTotalPages => Math.Max(1, (int)Math.Ceiling(_searchTotal / (double)SearchPageSize));
+    public string SearchPageText => _searchTotal <= 0
+        ? "第 1 页"
+        : $"第 {SearchPage} / {SearchTotalPages} 页 · 共 {_searchTotal} 个";
 
     public string SearchStatus
     {
@@ -431,52 +521,6 @@ public sealed class DownloadViewModel : ObservableObject
         OnPropertyChanged(nameof(FilterSummary));
     }
 
-    private void SelectGameType(object? parameter)
-    {
-        if (parameter is DownloadFilterOption option && SelectSingle(GameTypeFilters, option))
-        {
-            ApplyVersionFilter();
-        }
-    }
-
-    private void SelectLoader(object? parameter)
-    {
-        if (parameter is DownloadFilterOption option && SelectSingle(LoaderFilters, option))
-        {
-            OnPropertyChanged(nameof(FilterSummary));
-            OnPropertyChanged(nameof(SelectedLoader));
-            if (CurrentTab == DownloadTab.Mods)
-            {
-                _ = SearchAsync();
-            }
-        }
-    }
-
-    private void SelectVersionScope(object? parameter)
-    {
-        if (parameter is DownloadFilterOption option && SelectSingle(VersionScopeFilters, option))
-        {
-            OnPropertyChanged(nameof(FilterSummary));
-            OnPropertyChanged(nameof(SelectedVersionScope));
-            if (CurrentTab != DownloadTab.Game)
-            {
-                _ = SearchAsync();
-            }
-        }
-    }
-
-    private void SelectCategory(object? parameter)
-    {
-        if (parameter is DownloadFilterOption option && SelectSingle(CategoryFilters, option))
-        {
-            OnPropertyChanged(nameof(SelectedCategory));
-            if (CurrentTab != DownloadTab.Game)
-            {
-                _ = SearchAsync();
-            }
-        }
-    }
-
     private static bool SelectSingle(IEnumerable<DownloadFilterOption> options, DownloadFilterOption selected)
     {
         var changed = false;
@@ -528,6 +572,7 @@ public sealed class DownloadViewModel : ObservableObject
             });
         }
 
+        _selectedCategory = CategoryFilters.FirstOrDefault();
         OnPropertyChanged(nameof(SelectedCategory));
     }
 
@@ -674,11 +719,30 @@ public sealed class DownloadViewModel : ObservableObject
         });
     }
 
-    private async Task SearchAsync()
+    private Task SearchAsync() => SearchAsync(resetPage: true);
+
+    private async Task PreviousPageAsync()
+    {
+        _searchOffset = Math.Max(0, _searchOffset - SearchPageSize);
+        await SearchAsync(resetPage: false);
+    }
+
+    private async Task NextPageAsync()
+    {
+        _searchOffset += SearchPageSize;
+        await SearchAsync(resetPage: false);
+    }
+
+    private async Task SearchAsync(bool resetPage)
     {
         if (IsSearching || CurrentTab == DownloadTab.Game)
         {
             return;
+        }
+
+        if (resetPage)
+        {
+            _searchOffset = 0;
         }
 
         IsSearching = true;
@@ -688,18 +752,39 @@ public sealed class DownloadViewModel : ObservableObject
             var loader = CurrentTab == DownloadTab.Mods ? ResolveLoader() : null;
             var gameVersion = SelectedVersionScope?.Key == "all" ? null : _contextInstance?.MinecraftVersion;
             var category = SelectedCategory?.Key is null or "all" ? null : SelectedCategory.Key;
-            var results = await _modrinth.SearchAsync(SearchQuery, ProjectType,
-                gameVersion, loader, category);
+            var result = await _modrinth.SearchAsync(SearchQuery, ProjectType,
+                gameVersion, loader, category, _searchOffset, SearchPageSize);
+            IReadOnlyList<ModrinthProject> hits = result.Hits;
+            if (CurrentTab == DownloadTab.Mods && hits.Count > 0)
+            {
+                SearchStatus = "正在匹配 MC百科中文名…";
+                var lookups = hits.Select(async project =>
+                {
+                    var info = await _mcmod.LookupAsync(project.Title);
+                    return info == null
+                        ? project
+                        : project with { ChineseName = info.Name, McmodUrl = info.Url };
+                });
+                hits = await Task.WhenAll(lookups);
+            }
+
+            _searchOffset = result.Offset;
+            _searchTotal = result.TotalHits;
             SearchResults.Clear();
-            foreach (var project in results)
+            foreach (var project in hits)
             {
                 SearchResults.Add(project);
             }
 
             OnPropertyChanged(nameof(HasSearchResults));
-            SearchStatus = results.Count == 0
+            OnPropertyChanged(nameof(SearchPage));
+            OnPropertyChanged(nameof(SearchTotalPages));
+            OnPropertyChanged(nameof(SearchPageText));
+            PreviousPageCommand.RaiseCanExecuteChanged();
+            NextPageCommand.RaiseCanExecuteChanged();
+            SearchStatus = hits.Count == 0
                 ? "没有找到匹配的项目，试试换一个关键词。"
-                : $"找到 {results.Count} 个项目 · 来源 Modrinth";
+                : $"找到 {result.TotalHits} 个项目 · 来源 Modrinth";
         }
         catch (Exception ex)
         {
@@ -709,6 +794,8 @@ public sealed class DownloadViewModel : ObservableObject
         {
             IsSearching = false;
             InstallProjectCommand.RaiseCanExecuteChanged();
+            PreviousPageCommand.RaiseCanExecuteChanged();
+            NextPageCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -805,3 +892,4 @@ public sealed class DownloadViewModel : ObservableObject
         _ => null
     };
 }
+
