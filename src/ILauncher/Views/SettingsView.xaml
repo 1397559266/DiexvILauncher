@@ -34,7 +34,28 @@
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                       Padding="24,16,24,22" HorizontalContentAlignment="Stretch">
             <StackPanel>
-                <!-- Game directory -->
+                <!-- Language -->
+            <Border Style="{StaticResource Card}" Padding="20,14">
+                <Grid>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <controls:Icon Data="{StaticResource IconGlobe}" Fill="{StaticResource BrushAccent}" Width="15" Height="15" />
+                        <TextBlock Text="中文 / Language" FontSize="13" FontWeight="SemiBold" Margin="7,0,0,0" />
+                    </StackPanel>
+                    <ComboBox Style="{StaticResource FilterCombo}" Width="180" Height="30"
+                              HorizontalAlignment="Right"
+                              ItemsSource="{Binding UiLanguages}"
+                              SelectedItem="{Binding SelectedUiLanguage, Mode=TwoWay}"
+                              AutomationProperties.Name="语言 / Language">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </Grid>
+            </Border>
+
+            <!-- Game directory -->
             <Border Style="{StaticResource Card}" Padding="20,16">
                 <StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
@@ -190,23 +211,6 @@
                         <controls:Icon Data="{StaticResource IconMemory}" Fill="{StaticResource BrushAccent}" Width="15" Height="15" />
                         <TextBlock Text="默认启动参数" FontSize="13" FontWeight="SemiBold" Margin="7,0,0,0" />
                     </StackPanel>
-
-                    <Grid Margin="0,0,0,12">
-                        <TextBlock Text="界面语言" Style="{StaticResource Label}" VerticalAlignment="Center" />
-                        <ComboBox Style="{StaticResource FilterCombo}" Width="180" Height="30"
-                                  HorizontalAlignment="Right"
-                                  ItemsSource="{Binding UiLanguages}"
-                                  SelectedItem="{Binding SelectedUiLanguage, Mode=TwoWay}"
-                                  AutomationProperties.Name="界面语言">
-                            <ComboBox.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding}" />
-                                </DataTemplate>
-                            </ComboBox.ItemTemplate>
-                        </ComboBox>
-                    </Grid>
-
-                    <Border Style="{StaticResource Divider}" Margin="0,0,0,12" />
 
                     <Grid Margin="0,0,0,4">
                         <TextBlock Text="最大内存" Style="{StaticResource Label}" />
