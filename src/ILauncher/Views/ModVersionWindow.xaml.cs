@@ -15,8 +15,10 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
     private readonly Func<string, string?, Task<IReadOnlyList<ModrinthVersion>>> _loadVersions;
     private readonly Func<ModrinthVersion, string, string?, Task<IReadOnlyList<ModDependencyItem>>> _analyzeDependencies;
     private readonly Func<ModrinthVersion, string, string?, Action<DownloadProgress>?, Task> _installMissingDependencies;
+    private readonly List<ModrinthVersion> _allVersions = new();
     private string _selectedGameVersion;
     private string? _selectedLoader;
+    private string _selectedReleaseFilter = "全部";
     private ModrinthVersion? _selectedVersion;
     private bool _isLoading;
     private bool _isAnalyzing;
@@ -51,6 +53,7 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
     public IReadOnlyList<string> GameVersions { get; }
     public IReadOnlyList<string> Loaders { get; }
     public bool ShowLoader { get; }
+    public IReadOnlyList<string> ReleaseFilters { get; } = new[] { "全部", "正式版", "Beta", "Alpha" };
     public ObservableCollection<ModrinthVersion> Versions { get; } = new();
     public ObservableCollection<ModDependencyItem> Dependencies { get; } = new();
 
@@ -79,6 +82,18 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
             }
 
             _ = LoadVersionsAsync(SelectedGameVersion);
+        }
+    }
+
+    public string SelectedReleaseFilter
+    {
+        get => _selectedReleaseFilter;
+        set
+        {
+            if (Set(ref _selectedReleaseFilter, value) && _loaded)
+            {
+                ApplyReleaseFilter();
+            }
         }
     }
 
@@ -171,13 +186,9 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
         try
         {
             var versions = await _loadVersions(gameVersion, SelectedLoader);
-            Versions.Clear();
-            foreach (var version in versions)
-            {
-                Versions.Add(version);
-            }
-
-            SelectedVersion = Versions.FirstOrDefault();
+            _allVersions.Clear();
+            _allVersions.AddRange(versions);
+            ApplyReleaseFilter();
             StatusText = Versions.Count == 0
                 ? "没有适用于该版本和加载器的文件"
                 : $"共 {Versions.Count} 个文件版本";
@@ -185,6 +196,7 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
         catch (Exception ex)
         {
             Versions.Clear();
+            _allVersions.Clear();
             SelectedVersion = null;
             StatusText = $"获取失败：{ex.Message}";
         }
@@ -192,6 +204,31 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
         {
             IsLoading = false;
         }
+    }
+
+    private void ApplyReleaseFilter()
+    {
+        var selectedId = SelectedVersion?.Id;
+        Versions.Clear();
+        foreach (var version in _allVersions)
+        {
+            var include = SelectedReleaseFilter switch
+            {
+                "正式版" => version.ReleaseType == "release",
+                "Beta" => version.ReleaseType == "beta",
+                "Alpha" => version.ReleaseType == "alpha",
+                _ => true
+            };
+            if (include)
+            {
+                Versions.Add(version);
+            }
+        }
+
+        SelectedVersion = Versions.FirstOrDefault(version => version.Id == selectedId) ?? Versions.FirstOrDefault();
+        StatusText = Versions.Count == 0
+            ? "该通道没有可用文件"
+            : $"共 {Versions.Count} 个文件版本";
     }
 
     private async Task AnalyzeDependenciesAsync()

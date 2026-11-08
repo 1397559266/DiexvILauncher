@@ -42,6 +42,17 @@ public sealed record ModrinthProject(
     public string CategoryText => string.Join(" · ", Categories.Take(3));
 }
 
+public sealed record ModrinthGalleryImage(string Url, string Title, bool Featured);
+
+public sealed record ModrinthProjectDetails(
+    string Id,
+    string Title,
+    string Body,
+    string? IssuesUrl,
+    string? SourceUrl,
+    string? WikiUrl,
+    IReadOnlyList<ModrinthGalleryImage> Gallery);
+
 public sealed record ModrinthFile(string Url, string FileName, long Size, bool Primary, string? Sha1);
 
 public sealed record ModrinthSearchResult(
@@ -85,8 +96,8 @@ public sealed class ModrinthService
     private const string BaseUrl = "https://api.modrinth.com/v2";
 
     public async Task<ModrinthSearchResult> SearchAsync(string query, string projectType,
-        string? gameVersion, string? loader, string? category = null, int offset = 0, int limit = 20,
-        CancellationToken cancellationToken = default)
+        string? gameVersion, string? loader, string? category = null, string index = "relevance",
+        int offset = 0, int limit = 20, CancellationToken cancellationToken = default)
     {
         var facets = new List<List<string>> { new() { $"project_type:{projectType}" } };
         if (!string.IsNullOrWhiteSpace(gameVersion))
@@ -106,8 +117,9 @@ public sealed class ModrinthService
         }
 
         var facetsJson = JsonSerializer.Serialize(facets);
+        var sortIndex = index is "downloads" or "follows" or "newest" or "updated" ? index : "relevance";
         var url = $"{BaseUrl}/search?query={Uri.EscapeDataString(query ?? "")}&limit={limit}&offset={offset}" +
-                  $"&facets={Uri.EscapeDataString(facetsJson)}&index=relevance";
+                  $"&facets={Uri.EscapeDataString(facetsJson)}&index={sortIndex}";
         var json = await DownloadHelper.GetStringAsync(url, cancellationToken);
         using var document = JsonDocument.Parse(json);
         var result = new List<ModrinthProject>();
@@ -297,6 +309,61 @@ public sealed class ModrinthService
         }
 
         return result;
+    }
+
+    public async Task<ModrinthProjectDetails?> GetProjectDetailsAsync(string idOrSlug,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var json = await DownloadHelper.GetStringAsync(
+                $"{BaseUrl}/project/{Uri.EscapeDataString(idOrSlug)}", cancellationToken);
+            using var document = JsonDocument.Parse(json);
+            var root = document.RootElement;
+            var id = root.TryGetProperty("id", out var idElement) ? idElement.GetString() : null;
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                return null;
+            }
+
+            string? OptionalUrl(string name)
+                => root.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
+                    ? value.GetString()
+                    : null;
+
+            var gallery = new List<ModrinthGalleryImage>();
+            if (root.TryGetProperty("gallery", out var galleryElement) &&
+                galleryElement.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var image in galleryElement.EnumerateArray())
+                {
+                    var url = image.TryGetProperty("url", out var urlElement) ? urlElement.GetString() : null;
+                    if (string.IsNullOrWhiteSpace(url))
+                    {
+                        continue;
+                    }
+
+                    gallery.Add(new ModrinthGalleryImage(
+                        url,
+                        image.TryGetProperty("title", out var titleElement) ? titleElement.GetString() ?? "" : "",
+                        image.TryGetProperty("featured", out var featuredElement) &&
+                        featuredElement.ValueKind == JsonValueKind.True));
+                }
+            }
+
+            return new ModrinthProjectDetails(
+                id,
+                root.TryGetProperty("title", out var title) ? title.GetString() ?? "" : "",
+                root.TryGetProperty("body", out var body) ? body.GetString() ?? "" : "",
+                OptionalUrl("issues_url"),
+                OptionalUrl("source_url"),
+                OptionalUrl("wiki_url"),
+                gallery);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     public async Task<string> InstallAsync(ModrinthProject project, string destinationDirectory, string? gameVersion,

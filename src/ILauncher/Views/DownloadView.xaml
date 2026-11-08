@@ -105,6 +105,14 @@
                     <TextBlock Text="模组" Margin="8,0,0,0" FontSize="12.5" />
                 </StackPanel>
             </Button>
+            <Button Style="{StaticResource DownloadTabButton}" Tag="{Binding IsModpacksTab}"
+                    Command="{Binding SetTabCommand}" CommandParameter="Modpacks" AutomationProperties.Name="整合包">
+                <StackPanel Orientation="Horizontal">
+                    <controls:Icon Data="{StaticResource IconBox}" Width="17" Height="17"
+                                   Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                    <TextBlock Text="整合包" Margin="8,0,0,0" FontSize="12.5" />
+                </StackPanel>
+            </Button>
             <Button Style="{StaticResource DownloadTabButton}" Tag="{Binding IsResourcePacksTab}"
                     Command="{Binding SetTabCommand}" CommandParameter="ResourcePacks" AutomationProperties.Name="资源包">
                 <StackPanel Orientation="Horizontal">
@@ -379,7 +387,7 @@
                                   AutomationProperties.Name="加载器筛选" />
                     </StackPanel>
 
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Margin="0,0,14,0" VerticalAlignment="Center">
                         <TextBlock Text="类型" FontSize="9.5" Foreground="{StaticResource BrushTextMuted}"
                                    VerticalAlignment="Center" Margin="0,0,6,0" />
                         <ComboBox Style="{StaticResource FilterCombo}" Width="124"
@@ -387,6 +395,16 @@
                                   SelectedItem="{Binding SelectedCategory, Mode=TwoWay}"
                                   ToolTip="按类型/分辨率/风格筛选"
                                   AutomationProperties.Name="内容类型筛选" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="排序" FontSize="9.5" Foreground="{StaticResource BrushTextMuted}"
+                                   VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <ComboBox Style="{StaticResource FilterCombo}" Width="110"
+                                  ItemsSource="{Binding SortFilters}"
+                                  SelectedItem="{Binding SelectedSort, Mode=TwoWay}"
+                                  ToolTip="按相关度、下载量或更新时间排序"
+                                  AutomationProperties.Name="搜索结果排序" />
                     </StackPanel>
                 </WrapPanel>
             </Border>
@@ -437,6 +455,10 @@
                                             <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
                                                 <TextBlock Text="{Binding CategoryText}" FontSize="8.5" Foreground="{StaticResource BrushTextMuted}"
                                                            VerticalAlignment="Center" />
+                                                <Button Style="{StaticResource LinkButton}" Content="详情" FontSize="8.5"
+                                                        Padding="0,1" Margin="9,0,0,0"
+                                                        Command="{Binding DataContext.OpenProjectDetailsCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                        CommandParameter="{Binding}" ToolTip="查看项目介绍、截图和链接" />
                                                 <Button Style="{StaticResource LinkButton}" Content="MC百科" FontSize="8.5"
                                                         Padding="0,1" Margin="9,0,0,0"
                                                         Command="{Binding DataContext.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"

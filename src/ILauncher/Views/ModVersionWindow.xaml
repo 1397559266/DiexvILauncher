@@ -41,6 +41,14 @@
                               SelectedItem="{Binding SelectedLoader, Mode=TwoWay}"
                               AutomationProperties.Name="下载加载器" />
                 </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="15,0,0,0">
+                    <TextBlock Text="通道" FontSize="10" Foreground="{StaticResource BrushTextMuted}"
+                               VerticalAlignment="Center" Margin="0,0,7,0" />
+                    <ComboBox Width="82" Height="30"
+                              ItemsSource="{Binding ReleaseFilters}"
+                              SelectedItem="{Binding SelectedReleaseFilter, Mode=TwoWay}"
+                              AutomationProperties.Name="文件发布通道" />
+                </StackPanel>
             </StackPanel>
             <TextBlock Text="{Binding StatusText}" FontSize="9" Foreground="{StaticResource BrushTextMuted}"
                        HorizontalAlignment="Right" VerticalAlignment="Center" />

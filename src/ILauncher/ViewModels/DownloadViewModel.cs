@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Input;
@@ -16,6 +17,7 @@ public enum DownloadTab
 {
     Game,
     Mods,
+    Modpacks,
     ResourcePacks,
     Shaders
 }
@@ -67,6 +69,7 @@ public sealed class DownloadViewModel : ObservableObject
     private string _versionSearch = "";
     private DownloadFilterOption? _selectedGameType;
     private DownloadFilterOption? _selectedLoader;
+    private DownloadFilterOption? _selectedSort;
     private DownloadFilterOption? _selectedVersionScope;
     private DownloadFilterOption? _selectedSearchGameVersion;
     private DownloadFilterOption? _selectedCategory;
@@ -132,6 +135,13 @@ public sealed class DownloadViewModel : ObservableObject
             new() { Key = "neoforge", Title = "NeoForge" },
             new() { Key = "quilt", Title = "Quilt" }
         };
+        SortFilters = new ObservableCollection<DownloadFilterOption>
+        {
+            new() { Key = "relevance", Title = "相关度", IsSelected = true },
+            new() { Key = "downloads", Title = "下载量" },
+            new() { Key = "updated", Title = "最近更新" },
+            new() { Key = "newest", Title = "最新发布" }
+        };
         VersionScopeFilters = new ObservableCollection<DownloadFilterOption>
         {
             new() { Key = "current", Title = "当前版本", IsSelected = true },
@@ -157,12 +167,14 @@ public sealed class DownloadViewModel : ObservableObject
         {
             new() { Key = "Game", Title = "游戏版本", IsSelected = true },
             new() { Key = "Mods", Title = "模组" },
+            new() { Key = "Modpacks", Title = "整合包" },
             new() { Key = "ResourcePacks", Title = "资源包" },
             new() { Key = "Shaders", Title = "光影" }
         };
         _selectedDownloadType = DownloadTypeOptions[0];
         _selectedGameType = GameTypeFilters.FirstOrDefault(option => option.IsSelected) ?? GameTypeFilters[0];
         _selectedLoader = LoaderFilters.FirstOrDefault(option => option.IsSelected) ?? LoaderFilters[0];
+        _selectedSort = SortFilters[0];
         _selectedVersionScope = VersionScopeFilters.FirstOrDefault(option => option.IsSelected) ?? VersionScopeFilters[0];
         _selectedSearchGameVersion = SearchGameVersionFilters[0];
 
@@ -204,7 +216,18 @@ public sealed class DownloadViewModel : ObservableObject
             {
                 await OpenVersionPickerAsync(project);
             }
-        }, _ => !IsDownloading && _contextInstance != null);
+        }, _ => !IsDownloading &&
+                (_contextInstance != null || CurrentTab == DownloadTab.Modpacks));
+        OpenProjectDetailsCommand = new RelayCommand(parameter =>
+        {
+            if (parameter is ModrinthProject project)
+            {
+                new ProjectDetailWindow(project, _modrinth)
+                {
+                    Owner = Application.Current.MainWindow
+                }.ShowDialog();
+            }
+        });
         SetTabCommand = new RelayCommand(parameter =>
         {
             if (parameter is string value && Enum.TryParse<DownloadTab>(value, out var tab))
@@ -217,6 +240,7 @@ public sealed class DownloadViewModel : ObservableObject
         CancelCommand = new RelayCommand(Cancel, () => IsDownloading);
 
         RebuildCategoryFilters();
+        LoadSearchCacheFromDisk();
         RefreshContext();
     }
 
@@ -224,6 +248,7 @@ public sealed class DownloadViewModel : ObservableObject
     public ObservableCollection<ModrinthProject> SearchResults { get; }
     public ObservableCollection<DownloadFilterOption> GameTypeFilters { get; }
     public ObservableCollection<DownloadFilterOption> LoaderFilters { get; }
+    public ObservableCollection<DownloadFilterOption> SortFilters { get; }
     public ObservableCollection<DownloadFilterOption> VersionScopeFilters { get; }
     public ObservableCollection<DownloadFilterOption> SearchGameVersionFilters { get; }
     public ObservableCollection<DownloadFilterOption> CategoryFilters { get; }
@@ -246,6 +271,7 @@ public sealed class DownloadViewModel : ObservableObject
     public AsyncRelayCommand NextPageCommand { get; }
     public AsyncRelayCommand InstallProjectCommand { get; }
     public AsyncRelayCommand OpenVersionPickerCommand { get; }
+    public RelayCommand OpenProjectDetailsCommand { get; }
     public RelayCommand SetTabCommand { get; }
     public RelayCommand CancelCommand { get; }
 
@@ -264,6 +290,7 @@ public sealed class DownloadViewModel : ObservableObject
             OnPropertyChanged(nameof(IsModsTab));
             OnPropertyChanged(nameof(IsResourcePacksTab));
             OnPropertyChanged(nameof(IsShadersTab));
+        OnPropertyChanged(nameof(IsModpacksTab));
             OnPropertyChanged(nameof(SearchPlaceholder));
             OnPropertyChanged(nameof(ProjectType));
             OnPropertyChanged(nameof(TabTitle));
@@ -290,10 +317,12 @@ public sealed class DownloadViewModel : ObservableObject
     public bool IsModsTab => CurrentTab == DownloadTab.Mods;
     public bool IsResourcePacksTab => CurrentTab == DownloadTab.ResourcePacks;
     public bool IsShadersTab => CurrentTab == DownloadTab.Shaders;
+    public bool IsModpacksTab => CurrentTab == DownloadTab.Modpacks;
 
     public string ProjectType => CurrentTab switch
     {
         DownloadTab.Mods => "mod",
+        DownloadTab.Modpacks => "modpack",
         DownloadTab.ResourcePacks => "resourcepack",
         DownloadTab.Shaders => "shader",
         _ => "mod"
@@ -302,6 +331,7 @@ public sealed class DownloadViewModel : ObservableObject
     public string TabTitle => CurrentTab switch
     {
         DownloadTab.Mods => "模组",
+        DownloadTab.Modpacks => "整合包",
         DownloadTab.ResourcePacks => "资源包",
         DownloadTab.Shaders => "光影",
         _ => "游戏版本"
@@ -310,6 +340,7 @@ public sealed class DownloadViewModel : ObservableObject
     public string TabDescription => CurrentTab switch
     {
         DownloadTab.Mods => "搜索并安装模组到当前版本。",
+        DownloadTab.Modpacks => "搜索并安装整合包，会自动创建对应版本。",
         DownloadTab.ResourcePacks => "搜索资源包并安装到当前版本。",
         DownloadTab.Shaders => "搜索光影并安装到当前版本。",
         _ => "从 Mojang 官方源下载并安装游戏版本，也可以为当前版本安装 Fabric / Quilt。"
@@ -318,6 +349,7 @@ public sealed class DownloadViewModel : ObservableObject
     public string SearchPlaceholder => CurrentTab switch
     {
         DownloadTab.Mods => "搜索模组名称、简介或标签…",
+        DownloadTab.Modpacks => "搜索整合包…",
         DownloadTab.ResourcePacks => "搜索资源包…",
         DownloadTab.Shaders => "搜索光影…",
         _ => "搜索…"
@@ -409,6 +441,24 @@ public sealed class DownloadViewModel : ObservableObject
             SelectSingle(LoaderFilters, value);
             OnPropertyChanged(nameof(FilterSummary));
             if (CurrentTab == DownloadTab.Mods)
+            {
+                _ = SearchAsync();
+            }
+        }
+    }
+
+    public DownloadFilterOption? SelectedSort
+    {
+        get => _selectedSort;
+        set
+        {
+            if (!SetProperty(ref _selectedSort, value) || value == null)
+            {
+                return;
+            }
+
+            SelectSingle(SortFilters, value);
+            if (CurrentTab != DownloadTab.Game)
             {
                 _ = SearchAsync();
             }
@@ -1026,6 +1076,11 @@ public sealed class DownloadViewModel : ObservableObject
                 ("all", "全部分辨率"), ("16x", "16×"), ("32x", "32×"),
                 ("64x", "64×"), ("128x", "128×"), ("256x", "256×")
             },
+            DownloadTab.Modpacks => new (string Key, string Title)[]
+            {
+                ("all", "全部类型"), ("adventure", "冒险"), ("technology", "科技"),
+                ("magic", "魔法"), ("optimization", "优化"), ("kitchen-sink", "大型整合")
+            },
             DownloadTab.Shaders => new (string Key, string Title)[]
             {
                 ("all", "全部风格"), ("realistic", "写实"), ("fantasy", "奇幻"),
@@ -1247,7 +1302,8 @@ public sealed class DownloadViewModel : ObservableObject
                 var version => version
             };
             var category = SelectedCategory?.Key is null or "all" ? null : SelectedCategory.Key;
-            var cacheKey = $"{CurrentTab}|{ProjectType}|{_effectiveSearchQuery}|{gameVersion}|{loader}|{category}|{_searchOffset}";
+            var sortIndex = SelectedSort?.Key ?? "relevance";
+            var cacheKey = $"{CurrentTab}|{ProjectType}|{_effectiveSearchQuery}|{gameVersion}|{loader}|{category}|{sortIndex}|{_searchOffset}";
             if (!resetPage && _searchCache.TryGetValue(cacheKey, out var cachedPage))
             {
                 ReplaceSearchResults(cachedPage.Projects);
@@ -1266,7 +1322,7 @@ public sealed class DownloadViewModel : ObservableObject
             }
 
             var result = await _modrinth.SearchAsync(_effectiveSearchQuery, ProjectType,
-                gameVersion, loader, category, _searchOffset, SearchPageSize);
+                gameVersion, loader, category, sortIndex, _searchOffset, SearchPageSize);
             _searchOffset = result.Offset;
             _searchTotal = result.TotalHits;
             ReplaceSearchResults(result.Hits);
@@ -1328,6 +1384,87 @@ public sealed class DownloadViewModel : ObservableObject
             var oldest = _searchCacheOrder.Dequeue();
             _searchCache.Remove(oldest);
         }
+
+        SaveSearchCacheToDisk();
+    }
+
+    private static string SearchCacheFilePath
+        => Path.Combine(AppPaths.CacheDirectory, "search-pages.json");
+
+    private void LoadSearchCacheFromDisk()
+    {
+        try
+        {
+            if (!File.Exists(SearchCacheFilePath))
+            {
+                return;
+            }
+
+            var document = JsonSerializer.Deserialize<SearchCacheDocument>(
+                File.ReadAllText(SearchCacheFilePath));
+            if (document?.Pages == null)
+            {
+                return;
+            }
+
+            var cutoff = DateTime.UtcNow.AddHours(-24);
+            foreach (var pair in document.Pages)
+            {
+                if (pair.Value?.Projects == null || pair.Value.SavedAt < cutoff)
+                {
+                    continue;
+                }
+
+                _searchCache[pair.Key] = new CachedSearchPage(
+                    pair.Value.Projects, pair.Value.Offset, pair.Value.Total, pair.Value.Enriched);
+                _searchCacheOrder.Enqueue(pair.Key);
+            }
+        }
+        catch
+        {
+            // A damaged or outdated disk cache is ignored.
+        }
+    }
+
+    private void SaveSearchCacheToDisk()
+    {
+        try
+        {
+            Directory.CreateDirectory(AppPaths.CacheDirectory);
+            var document = new SearchCacheDocument();
+            foreach (var pair in _searchCache)
+            {
+                document.Pages[pair.Key] = new SearchCacheEntryDocument
+                {
+                    Projects = pair.Value.Projects,
+                    Offset = pair.Value.Offset,
+                    Total = pair.Value.Total,
+                    Enriched = pair.Value.Enriched,
+                    SavedAt = DateTime.UtcNow
+                };
+            }
+
+            File.WriteAllText(SearchCacheFilePath,
+                JsonSerializer.Serialize(document, new JsonSerializerOptions { WriteIndented = false }));
+        }
+        catch
+        {
+            // Cache persistence is best-effort.
+        }
+    }
+
+    public sealed class SearchCacheDocument
+    {
+        public Dictionary<string, SearchCacheEntryDocument> Pages { get; set; } = new();
+    }
+
+    public sealed class SearchCacheEntryDocument
+    {
+        public List<ModrinthProject> Projects { get; set; } = new();
+        public int Offset { get; set; }
+        public int Total { get; set; }
+        public bool Enriched { get; set; }
+        public DateTime SavedAt { get; set; }
     }
 
     private sealed record CachedSearchPage(List<ModrinthProject> Projects, int Offset, int Total, bool Enriched);
@@ -1383,6 +1520,7 @@ public sealed class DownloadViewModel : ObservableObject
             if (_searchCache.TryGetValue(cacheKey, out var page))
             {
                 _searchCache[cacheKey] = page with { Enriched = true };
+                SaveSearchCacheToDisk();
             }
         }
     }
@@ -1618,8 +1756,75 @@ public sealed class DownloadViewModel : ObservableObject
             ? ""
             : new string(value.Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant).ToArray());
 
+    private async Task OpenModpackPickerAsync(ModrinthProject project)
+    {
+        var root = _root();
+        if (string.IsNullOrWhiteSpace(root))
+        {
+            _toast("没有找到 .minecraft 目录。", true);
+            return;
+        }
+
+        var defaultVersion = SelectedSearchGameVersion?.Key switch
+        {
+            null or "current" or "all" => _contextInstance?.MinecraftVersion ??
+                                         _allVersions.FirstOrDefault(version => version.Type == "release")?.Id,
+            var version => version
+        };
+        if (string.IsNullOrWhiteSpace(defaultVersion))
+        {
+            _toast("没有可用的游戏版本。", true);
+            return;
+        }
+
+        var gameVersions = SearchGameVersionFilters
+            .Where(option => option.Key is not (null or "current" or "all"))
+            .Select(option => option.Key)
+            .Where(version => !string.IsNullOrWhiteSpace(version))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (!gameVersions.Contains(defaultVersion, StringComparer.OrdinalIgnoreCase))
+        {
+            gameVersions.Insert(0, defaultVersion);
+        }
+
+        var window = new ModVersionWindow(project, defaultVersion, gameVersions, null,
+            Array.Empty<string>(),
+            async (version, _) => (IReadOnlyList<ModrinthVersion>)await _modrinth.GetVersionsAsync(project.Id, version, null),
+            (_, _, _) => Task.FromResult<IReadOnlyList<ModDependencyItem>>(Array.Empty<ModDependencyItem>()),
+            (_, _, _, _) => Task.CompletedTask)
+        {
+            Owner = Application.Current.MainWindow,
+            Title = "安装整合包"
+        };
+        if (window.ShowDialog() != true || window.SelectedVersion?.File == null)
+        {
+            return;
+        }
+
+        var selected = window.SelectedVersion;
+        var directory = Path.Combine(AppPaths.CacheDirectory, "modpacks");
+        Directory.CreateDirectory(directory);
+        var safeName = string.Join("_", project.Title.Split(Path.GetInvalidFileNameChars(),
+            StringSplitOptions.RemoveEmptyEntries));
+        var archivePath = Path.Combine(directory, $"{safeName}-{selected.VersionNumber}.mrpack");
+        await RunDownloadAsync($"安装整合包 {project.DisplayTitle} {selected.VersionNumber}", async (report, token) =>
+        {
+            await DownloadHelper.DownloadFileAsync(selected.File.Url, archivePath, null, token);
+            var id = await _modpacks.InstallAsync(archivePath, root, report, token);
+            await _reloadInstances();
+            _toast($"整合包已安装为 {id}。", false);
+        });
+    }
+
     private async Task OpenVersionPickerAsync(ModrinthProject project)
     {
+        if (CurrentTab == DownloadTab.Modpacks)
+        {
+            await OpenModpackPickerAsync(project);
+            return;
+        }
+
         var target = _contextInstance;
         if (target == null)
         {
@@ -1831,6 +2036,8 @@ public sealed class DownloadViewModel : ObservableObject
         _ => null
     };
 }
+
+
 
 
 

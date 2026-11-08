@@ -1,0 +1,61 @@
+<Window x:Class="ILauncher.Views.ProjectDetailWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="项目详情"
+        Width="760" Height="720"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource BrushBackground}"
+        FontFamily="{StaticResource FontUi}"
+        Foreground="{StaticResource BrushText}">
+    <Grid Margin="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Grid>
+            <StackPanel>
+                <TextBlock Text="{Binding Project.DisplayTitle}" FontSize="19" FontWeight="Bold"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding Project.Description}" FontSize="10.5"
+                           Foreground="{StaticResource BrushTextSecondary}" TextWrapping="Wrap" Margin="0,4,0,0" />
+            </StackPanel>
+            <TextBlock Text="{Binding StatusText}" FontSize="9" Foreground="{StaticResource BrushTextMuted}"
+                       HorizontalAlignment="Right" VerticalAlignment="Bottom" />
+        </Grid>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,14,0,0">
+            <StackPanel>
+                <ItemsControl ItemsSource="{Binding Gallery}" Visibility="{Binding HasGallery, Converter={StaticResource BoolToVisibility}}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Width="220" Height="130" CornerRadius="9" Margin="0,0,8,8" ClipToBounds="True"
+                                    Background="#FFF2F8FF" ToolTip="{Binding Title}">
+                                <Image Source="{Binding Url, Converter={StaticResource RemoteIcon}}" Stretch="UniformToFill" />
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBlock Text="介绍" FontSize="12.5" FontWeight="SemiBold" Margin="0,6,0,7" />
+                <TextBlock Text="{Binding BodyText}" FontSize="10.5" TextWrapping="Wrap" LineHeight="19"
+                           Foreground="{StaticResource BrushTextSecondary}" />
+
+                <StackPanel Margin="0,16,0,0" Visibility="{Binding HasLinks, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="链接" FontSize="12.5" FontWeight="SemiBold" Margin="0,0,0,6" />
+                    <TextBlock Text="{Binding LinksText}" FontSize="9.5" TextWrapping="Wrap"
+                               Foreground="{StaticResource BrushTextMuted}" />
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+
+        <Button Grid.Row="2" Style="{StaticResource SecondaryButton}" Height="34" MinWidth="82"
+                Content="关闭" HorizontalAlignment="Right" Margin="0,12,0,0" IsCancel="True" />
+    </Grid>
+</Window>

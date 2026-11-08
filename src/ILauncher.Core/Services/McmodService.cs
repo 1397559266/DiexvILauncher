@@ -24,7 +24,12 @@ public sealed class McmodService
         ["实体渲染机制优化"] = "Entity Culling",
         ["苹果皮"] = "AppleSkin",
         ["小地图"] = "Xaero's Minimap",
-        ["玉"] = "Jade"
+        ["玉"] = "Jade",
+        ["机械动力"] = "Create",
+        ["农夫乐事"] = "Farmer's Delight",
+        ["匠魂"] = "Tinkers' Construct",
+        ["暮色森林"] = "Twilight Forest",
+        ["旅行地图"] = "JourneyMap"
     };
     private static readonly Regex ResultLink = new(
         @"<a\s+[^>]*href=""(?<url>(?:(?:https?:)?//www\.mcmod\.cn)?/class/(?<id>\d+)\.html)""[^>]*>(?<title>.*?)</a>",

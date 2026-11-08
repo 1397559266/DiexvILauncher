@@ -1,8 +1,12 @@
 using System.Globalization;
 using System.IO;
+using System.Net.Http;
+using System.Security.Cryptography;
+using System.Text;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media.Imaging;
+using ILauncher.Core.Services;
 using ILauncher.Models;
 using ILauncher.Services;
 
@@ -116,7 +120,9 @@ public sealed class ModIconConverter : IValueConverter
 public sealed class RemoteIconConverter : IValueConverter
 {
     private static readonly Dictionary<string, BitmapSource?> Cache = new(StringComparer.Ordinal);
+    private static readonly HashSet<string> Downloading = new(StringComparer.Ordinal);
     private static readonly object Gate = new();
+    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(15) };
 
     public object? Convert(object? value, Type targetType, object parameter, CultureInfo culture)
     {
@@ -133,6 +139,33 @@ public sealed class RemoteIconConverter : IValueConverter
             }
         }
 
+        var diskPath = GetDiskPath(url);
+        try
+        {
+            if (File.Exists(diskPath))
+            {
+                using var stream = File.OpenRead(diskPath);
+                var diskImage = new BitmapImage();
+                diskImage.BeginInit();
+                diskImage.CacheOption = BitmapCacheOption.OnLoad;
+                diskImage.DecodePixelWidth = 96;
+                diskImage.StreamSource = stream;
+                diskImage.EndInit();
+                diskImage.Freeze();
+                lock (Gate)
+                {
+                    Cache[url] = diskImage;
+                }
+
+                return diskImage;
+            }
+        }
+        catch
+        {
+            // Fall back to the URI image below.
+        }
+
+        StartDownload(url, diskPath);
         try
         {
             var image = new BitmapImage();
@@ -157,6 +190,46 @@ public sealed class RemoteIconConverter : IValueConverter
 
             return null;
         }
+    }
+
+    private static string GetDiskPath(string url)
+    {
+        var hash = System.Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(url))).ToLowerInvariant();
+        return Path.Combine(AppPaths.CacheDirectory, "icons", hash + ".img");
+    }
+
+    private static void StartDownload(string url, string path)
+    {
+        lock (Gate)
+        {
+            if (!Downloading.Add(url))
+            {
+                return;
+            }
+        }
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var bytes = await Http.GetByteArrayAsync(url);
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+                await File.WriteAllBytesAsync(temporary, bytes);
+                File.Move(temporary, path, true);
+            }
+            catch
+            {
+                // Icon cache is best-effort.
+            }
+            finally
+            {
+                lock (Gate)
+                {
+                    Downloading.Remove(url);
+                }
+            }
+        });
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
