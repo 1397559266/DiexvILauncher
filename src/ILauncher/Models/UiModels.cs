@@ -1,6 +1,7 @@
 using System.Windows.Media;
 using ILauncher.Core;
 using ILauncher.Core.Models;
+using ILauncher.Localization;
 using ILauncher.ViewModels;
 
 namespace ILauncher.Models;
@@ -45,7 +46,13 @@ public sealed class LaunchStep : ObservableObject
 {
     private LaunchStepState _state;
 
-    public required string Title { get; init; }
+    public required string Title
+    {
+        get => LanguageService.Translate(_title);
+        init => _title = value;
+    }
+
+    private string _title = "";
     public int Index { get; init; }
     public bool IsLast { get; init; }
 
@@ -83,10 +90,10 @@ public sealed class LaunchStep : ObservableObject
 
     public string StateText => State switch
     {
-        LaunchStepState.Done => "完成",
-        LaunchStepState.Active => "进行中",
-        LaunchStepState.Failed => "失败",
-        _ => "等待"
+        LaunchStepState.Done => LanguageService.Translate("完成"),
+        LaunchStepState.Active => LanguageService.Translate("进行中"),
+        LaunchStepState.Failed => LanguageService.Translate("失败"),
+        _ => LanguageService.Translate("等待")
     };
 
     public Brush Brush => State switch

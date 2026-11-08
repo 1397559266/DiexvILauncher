@@ -11,6 +11,7 @@ using System.Windows.Threading;
 using ILauncher.Core;
 using ILauncher.Core.Models;
 using ILauncher.Core.Services;
+using ILauncher.Localization;
 using ILauncher.Models;
 using ILauncher.Services;
 
@@ -203,7 +204,7 @@ public sealed class LaunchLogViewModel : ObservableObject
     public string StatusText
     {
         get => _statusText;
-        private set => SetProperty(ref _statusText, value);
+        private set => SetProperty(ref _statusText, LanguageService.Translate(value));
     }
 
     public Brush StatusBrush
@@ -215,7 +216,7 @@ public sealed class LaunchLogViewModel : ObservableObject
     public string StatusDetail
     {
         get => _statusDetail;
-        private set => SetProperty(ref _statusDetail, value);
+        private set => SetProperty(ref _statusDetail, LanguageService.Translate(value));
     }
 
     public string ElapsedText

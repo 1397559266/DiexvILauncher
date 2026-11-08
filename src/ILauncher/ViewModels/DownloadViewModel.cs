@@ -629,19 +629,19 @@ public sealed class DownloadViewModel : ObservableObject
     public string SearchStatus
     {
         get => _searchStatus;
-        private set => SetProperty(ref _searchStatus, value);
+        private set => SetProperty(ref _searchStatus, LanguageService.Translate(value));
     }
 
     public string ProgressTitle
     {
         get => _progressTitle;
-        private set => SetProperty(ref _progressTitle, value);
+        private set => SetProperty(ref _progressTitle, LanguageService.Translate(value));
     }
 
     public string ProgressMessage
     {
         get => _progressMessage;
-        private set => SetProperty(ref _progressMessage, value);
+        private set => SetProperty(ref _progressMessage, LanguageService.Translate(value));
     }
 
     public double ProgressValue

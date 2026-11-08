@@ -3,6 +3,8 @@ namespace ILauncher.Core.Models;
 /// <summary>A Minecraft version/instance discovered in a .minecraft installation.</summary>
 public sealed class GameInstance
 {
+    public static bool UseEnglish { get; set; }
+
     public required string Id { get; init; }
 
     /// <summary>Absolute path of <c>versions\&lt;id&gt;</c>.</summary>
@@ -36,12 +38,20 @@ public sealed class GameInstance
 
     public string JavaLabel => $"Java {RequiredJavaMajor}+";
 
+    public string LoaderLabel => UseEnglish && string.Equals(Loader, "原版", StringComparison.Ordinal)
+        ? "Vanilla"
+        : Loader;
+
+    public string ModCountText => UseEnglish
+        ? $"{ModCount} {(ModCount == 1 ? "mod" : "mods")}"
+        : $"{ModCount} 个模组";
+
     public string TypeLabel => Type switch
     {
-        "release" => "正式版",
-        "snapshot" => "快照",
-        "old_beta" => "远古测试版",
-        "old_alpha" => "远古版",
+        "release" => UseEnglish ? "Release" : "正式版",
+        "snapshot" => UseEnglish ? "Snapshot" : "快照",
+        "old_beta" => UseEnglish ? "Old Beta" : "远古测试版",
+        "old_alpha" => UseEnglish ? "Old Alpha" : "远古版",
         _ => Type
     };
 
@@ -50,9 +60,12 @@ public sealed class GameInstance
         get
         {
             var parts = new List<string> { MinecraftVersion };
+            var loader = UseEnglish && string.Equals(Loader, "原版", StringComparison.Ordinal)
+                ? "Vanilla"
+                : Loader;
             if (!string.Equals(Loader, "原版", StringComparison.Ordinal))
             {
-                parts.Add(string.IsNullOrWhiteSpace(LoaderVersion) ? Loader : $"{Loader} {LoaderVersion}");
+                parts.Add(string.IsNullOrWhiteSpace(LoaderVersion) ? loader : $"{loader} {LoaderVersion}");
             }
 
             return string.Join(" · ", parts);

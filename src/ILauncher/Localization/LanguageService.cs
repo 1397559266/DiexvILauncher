@@ -5,6 +5,7 @@ using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Threading;
+using ILauncher.Core.Models;
 using ILauncher.Core.Services;
 
 namespace ILauncher.Localization;
@@ -44,6 +45,7 @@ public static class LanguageService
             ? English
             : Chinese;
         ModrinthProject.PreferChineseNames = CurrentLanguage != English;
+        GameInstance.UseEnglish = CurrentLanguage == English;
         Apply();
     }
 

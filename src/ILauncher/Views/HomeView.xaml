@@ -299,11 +299,9 @@
                                         <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
                                             <Ellipse Width="5" Height="5" VerticalAlignment="Center"
                                                      Fill="{Binding Loader, Converter={StaticResource LoaderBrush}}" />
-                                            <TextBlock Text="{Binding Loader}" FontSize="9" Foreground="{StaticResource BrushTextSecondary}" Margin="4,0,0,0" />
+                                            <TextBlock Text="{Binding LoaderLabel}" FontSize="9" Foreground="{StaticResource BrushTextSecondary}" Margin="4,0,0,0" />
                                             <TextBlock Text="·" FontSize="9" Foreground="{StaticResource BrushTextMuted}" Margin="5,0" />
-                                            <TextBlock FontSize="9" Foreground="{StaticResource BrushTextMuted}">
-                                                <Run Text="{Binding ModCount}" /><Run Text=" 模组" />
-                                            </TextBlock>
+                                            <TextBlock Text="{Binding ModCountText}" FontSize="9" Foreground="{StaticResource BrushTextMuted}" />
                                         </StackPanel>
                                     </StackPanel>
                                     <controls:Icon Grid.Column="2" Data="{StaticResource IconChevronRight}" Fill="#FFC5D4E6" Width="13" Height="13"

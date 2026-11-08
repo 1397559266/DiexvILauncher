@@ -232,7 +232,11 @@ public sealed class MainViewModel : ObservableObject
     public string SelectedSubtitle => SelectedInstance?.Subtitle ?? "";
     public string SelectedLoader => SelectedInstance?.Loader ?? "";
     public string SelectedMinecraftVersion => SelectedInstance?.MinecraftVersion ?? "";
-    public string SelectedModsText => SelectedInstance == null ? "" : $"{SelectedInstance.ModCount} 个模组";
+    public string SelectedModsText => SelectedInstance == null
+        ? ""
+        : LanguageService.CurrentLanguage == LanguageService.English
+            ? $"{SelectedInstance.ModCount} {(SelectedInstance.ModCount == 1 ? "mod" : "mods")}"
+            : $"{SelectedInstance.ModCount} 个模组";
     public string SelectedTypeText => SelectedInstance?.TypeLabel ?? "";
 
     public int InstanceCount => Instances.Count;
@@ -631,7 +635,7 @@ public sealed class MainViewModel : ObservableObject
         IsAccountPage = false;
         IsDownloadPage = false;
         IsHome = false;
-        HeaderTitle = "版本设置";
+        HeaderTitle = LanguageService.Translate("版本设置");
         HeaderSubtitle = $"{instance.Id} · {instance.Loader}";
         OnPropertyChanged(nameof(ShowBack));
     }
@@ -665,8 +669,8 @@ public sealed class MainViewModel : ObservableObject
         IsAccountPage = false;
         IsDownloadPage = false;
         IsHome = false;
-        HeaderTitle = "启动器设置";
-        HeaderSubtitle = "Java、内存、账户与游戏目录";
+        HeaderTitle = LanguageService.Translate("启动器设置");
+        HeaderSubtitle = LanguageService.Translate("Java、内存、账户与游戏目录");
         OnPropertyChanged(nameof(ShowBack));
     }
 
@@ -685,8 +689,8 @@ public sealed class MainViewModel : ObservableObject
         IsAccountPage = true;
         IsDownloadPage = false;
         IsHome = false;
-        HeaderTitle = "账户与皮肤";
-        HeaderSubtitle = "离线账户、3D 皮肤预览与正版皮肤查询";
+        HeaderTitle = LanguageService.Translate("账户与皮肤");
+        HeaderSubtitle = LanguageService.Translate("离线账户、3D 皮肤预览与正版皮肤查询");
         OnPropertyChanged(nameof(ShowBack));
     }
 
@@ -712,8 +716,8 @@ public sealed class MainViewModel : ObservableObject
         IsAccountPage = false;
         IsDownloadPage = true;
         IsHome = false;
-        HeaderTitle = "下载";
-        HeaderSubtitle = "游戏版本、模组、资源包与光影";
+        HeaderTitle = LanguageService.Translate("下载");
+        HeaderSubtitle = LanguageService.Translate("游戏版本、模组、资源包与光影");
         OnPropertyChanged(nameof(ShowBack));
     }
 
@@ -761,7 +765,7 @@ public sealed class MainViewModel : ObservableObject
         IsAccountPage = false;
         IsDownloadPage = false;
         IsHome = false;
-        HeaderTitle = "版本设置";
+        HeaderTitle = LanguageService.Translate("版本设置");
         HeaderSubtitle = $"{instance.Id} · {instance.Loader}";
         OnPropertyChanged(nameof(ShowBack));
     }
@@ -799,7 +803,7 @@ public sealed class MainViewModel : ObservableObject
             return;
         }
 
-        ToastMessage = message;
+        ToastMessage = LanguageService.Translate(message);
         ToastIsError = isError;
         ToastVisible = true;
         _toastTimer.Stop();
@@ -847,6 +851,7 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 }
+
 
 
 
