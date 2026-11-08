@@ -133,5 +133,8 @@
   "旧版": "Legacy",
   "模组数量": "Mods",
   "已安装": "Installed",
-  "测试游戏": "Test Game"
+  "测试游戏": "Test Game",
+  "手动选择": "Select Manually",
+  "自动选择最合适的 Java": "Automatically select the best Java",
+  "选择 java.exe": "Select java.exe"
 }

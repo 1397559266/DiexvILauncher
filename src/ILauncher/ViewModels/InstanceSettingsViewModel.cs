@@ -3,6 +3,7 @@ using System.Windows.Input;
 using ILauncher.Core;
 using ILauncher.Core.Models;
 using ILauncher.Core.Services;
+using Microsoft.Win32;
 
 namespace ILauncher.ViewModels;
 
@@ -43,6 +44,7 @@ public sealed class InstanceSettingsViewModel : ObservableObject
         SaveCommand = new RelayCommand(Save);
         ResetCommand = new RelayCommand(Reset);
         RefreshJavaCommand = new AsyncRelayCommand(LoadJavaAsync);
+        BrowseJavaCommand = new AsyncRelayCommand(BrowseJavaAsync);
         AutoOption = new JavaOption
         {
             Path = "",
@@ -152,6 +154,7 @@ public sealed class InstanceSettingsViewModel : ObservableObject
     public ICommand SaveCommand { get; }
     public ICommand ResetCommand { get; }
     public AsyncRelayCommand RefreshJavaCommand { get; }
+    public AsyncRelayCommand BrowseJavaCommand { get; }
 
     private async Task LoadJavaAsync()
     {
@@ -171,10 +174,69 @@ public sealed class InstanceSettingsViewModel : ObservableObject
             });
         }
 
+        if (!string.IsNullOrWhiteSpace(preferredPath) &&
+            JavaOptions.All(o => !string.Equals(o.Path, preferredPath, StringComparison.OrdinalIgnoreCase)))
+        {
+            var info = await _javaService.ProbeAsync(preferredPath);
+            if (info != null)
+            {
+                JavaOptions.Add(new JavaOption
+                {
+                    Path = info.Path,
+                    Label = $"Java {info.Major}",
+                    Detail = info.Path,
+                    Major = info.Major,
+                    IsSelected = true
+                });
+            }
+        }
+
         var selected = JavaOptions.FirstOrDefault(o => o.IsSelected) ?? AutoOption;
         SelectedJava = selected;
         JavaSummary = selected.IsAuto ? "自动选择最合适的 Java" : selected.Path;
         OnPropertyChanged(nameof(JavaSummary));
+    }
+
+    private async Task BrowseJavaAsync()
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "选择 java.exe",
+            Filter = "Java executable (java.exe)|java.exe|可执行文件 (*.exe)|*.exe|所有文件 (*.*)|*.*",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        var info = await _javaService.ProbeAsync(dialog.FileName);
+        if (info == null)
+        {
+            _toast("所选文件不是可用的 Java（java -version 执行失败）。", true);
+            return;
+        }
+
+        var option = JavaOptions.FirstOrDefault(o =>
+            string.Equals(o.Path, info.Path, StringComparison.OrdinalIgnoreCase));
+        if (option == null)
+        {
+            option = new JavaOption
+            {
+                Path = info.Path,
+                Label = $"Java {info.Major}",
+                Detail = info.Path,
+                Major = info.Major
+            };
+            JavaOptions.Insert(1, option);
+        }
+
+        SelectedJava = option;
+        JavaSummary = option.Path;
+        OnPropertyChanged(nameof(JavaSummary));
+        _toast($"已选择 Java {info.Major}，保存版本设置后生效。", false);
     }
 
     public void SelectJava(JavaOption? option)

@@ -124,8 +124,13 @@
                             <controls:Icon Data="{StaticResource IconJava}" Fill="{StaticResource BrushAccent}" Width="15" Height="15" />
                             <TextBlock Text="Java 运行时" FontSize="13" FontWeight="SemiBold" Margin="7,0,0,0" />
                         </StackPanel>
-                        <Button Style="{StaticResource LinkButton}" Content="重新检测" HorizontalAlignment="Right"
-                                Command="{Binding RefreshJavaCommand}" />
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Style="{StaticResource LinkButton}" Content="手动选择"
+                                    Command="{Binding BrowseJavaCommand}"
+                                    AutomationProperties.Name="手动选择 Java" />
+                            <Button Style="{StaticResource LinkButton}" Content="重新检测" Margin="10,0,0,0"
+                                    Command="{Binding RefreshJavaCommand}" />
+                        </StackPanel>
                     </Grid>
                     <ListBox x:Name="JavaList" ItemsSource="{Binding JavaOptions}" SelectedItem="{Binding SelectedJava, Mode=TwoWay}" PreviewMouseLeftButtonDown="JavaList_PreviewMouseLeftButtonDown"
                              Style="{StaticResource CleanListBox}" MaxHeight="180">

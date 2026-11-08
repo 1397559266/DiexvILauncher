@@ -46,6 +46,9 @@
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                             <TextBlock Text="{Binding JavaRequirement}" FontSize="9.5" Foreground="{StaticResource BrushTextMuted}"
                                        VerticalAlignment="Center" />
+                            <Button Style="{StaticResource LinkButton}" Content="手动选择" Margin="10,0,0,0"
+                                    Command="{Binding BrowseJavaCommand}"
+                                    AutomationProperties.Name="手动选择 Java" />
                             <Button Style="{StaticResource LinkButton}" Content="重新检测" Margin="10,0,0,0"
                                     Command="{Binding RefreshJavaCommand}" />
                         </StackPanel>
