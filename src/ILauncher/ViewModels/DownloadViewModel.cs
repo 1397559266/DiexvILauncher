@@ -66,6 +66,7 @@ public sealed class DownloadViewModel : ObservableObject
     private DownloadFilterOption? _selectedGameType;
     private DownloadFilterOption? _selectedLoader;
     private DownloadFilterOption? _selectedVersionScope;
+    private DownloadFilterOption? _selectedSearchGameVersion;
     private DownloadFilterOption? _selectedCategory;
     private DownloadFilterOption? _selectedDownloadType;
     private RemoteVersion? _selectedRemoteVersion;
@@ -132,6 +133,11 @@ public sealed class DownloadViewModel : ObservableObject
             new() { Key = "current", Title = "当前版本", IsSelected = true },
             new() { Key = "all", Title = "全部版本" }
         };
+        SearchGameVersionFilters = new ObservableCollection<DownloadFilterOption>
+        {
+            new() { Key = "current", Title = "当前目标版本", IsSelected = true },
+            new() { Key = "all", Title = "全部版本" }
+        };
         CategoryFilters = new ObservableCollection<DownloadFilterOption>();
         InstallLoaderOptions = new ObservableCollection<DownloadFilterOption>
         {
@@ -154,6 +160,7 @@ public sealed class DownloadViewModel : ObservableObject
         _selectedGameType = GameTypeFilters.FirstOrDefault(option => option.IsSelected) ?? GameTypeFilters[0];
         _selectedLoader = LoaderFilters.FirstOrDefault(option => option.IsSelected) ?? LoaderFilters[0];
         _selectedVersionScope = VersionScopeFilters.FirstOrDefault(option => option.IsSelected) ?? VersionScopeFilters[0];
+        _selectedSearchGameVersion = SearchGameVersionFilters[0];
 
         RefreshGameVersionsCommand = new AsyncRelayCommand(LoadVersionsAsync);
         InstallVersionCommand = new AsyncRelayCommand(async parameter =>
@@ -214,6 +221,7 @@ public sealed class DownloadViewModel : ObservableObject
     public ObservableCollection<DownloadFilterOption> GameTypeFilters { get; }
     public ObservableCollection<DownloadFilterOption> LoaderFilters { get; }
     public ObservableCollection<DownloadFilterOption> VersionScopeFilters { get; }
+    public ObservableCollection<DownloadFilterOption> SearchGameVersionFilters { get; }
     public ObservableCollection<DownloadFilterOption> CategoryFilters { get; }
     public ObservableCollection<GameInstance> TargetInstances { get; } = new();
     public ObservableCollection<DownloadFilterOption> InstallLoaderOptions { get; }
@@ -422,10 +430,28 @@ public sealed class DownloadViewModel : ObservableObject
         }
     }
 
+    public DownloadFilterOption? SelectedSearchGameVersion
+    {
+        get => _selectedSearchGameVersion;
+        set
+        {
+            if (!SetProperty(ref _selectedSearchGameVersion, value) || value == null)
+            {
+                return;
+            }
+
+            SelectSingle(SearchGameVersionFilters, value);
+            OnPropertyChanged(nameof(FilterSummary));
+            if (CurrentTab != DownloadTab.Game)
+            {
+                _ = SearchAsync();
+            }
+        }
+    }
+
     public DownloadFilterOption? SelectedCategory
     {
-        get => _selectedCategory;
-        set
+        get => _selectedCategory;        set
         {
             if (!SetProperty(ref _selectedCategory, value) || value == null)
             {
@@ -614,11 +640,13 @@ public sealed class DownloadViewModel : ObservableObject
             var loader = _contextInstance.Loader;
             var scope = CurrentTab == DownloadTab.Game
                 ? SelectedGameType?.Title ?? "全部"
-                : SelectedVersionScope?.Title ?? "当前版本";
+                : SelectedSearchGameVersion?.Title ?? "当前目标版本";
             var suffix = CurrentTab == DownloadTab.Mods
                 ? $" · {SelectedLoader?.Title ?? "当前加载器"}"
                 : "";
-            return $"目标：Minecraft {_contextInstance.MinecraftVersion} · {loader} · {scope}{suffix}";
+            return CurrentTab == DownloadTab.Game
+                ? $"目标：Minecraft {_contextInstance.MinecraftVersion} · {loader} · {scope}{suffix}"
+                : $"安装目标：Minecraft {_contextInstance.MinecraftVersion} · {loader} · 搜索版本：{scope}{suffix}";
         }
     }
 
@@ -674,6 +702,7 @@ public sealed class DownloadViewModel : ObservableObject
             var versions = await _mojang.GetVersionsAsync();
             _allVersions.Clear();
             _allVersions.AddRange(versions);
+            RebuildSearchGameVersions();
             ApplyVersionFilter();
             _toast($"已获取 {versions.Count} 个官方版本。", false);
         }
@@ -685,6 +714,36 @@ public sealed class DownloadViewModel : ObservableObject
         {
             IsLoadingVersions = false;
         }
+    }
+
+    private void RebuildSearchGameVersions()
+    {
+        var selectedKey = SelectedSearchGameVersion?.Key ?? "current";
+        var versions = _allVersions
+            .Where(version => version.Type == "release")
+            .Select(version => version.Id)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        SearchGameVersionFilters.Clear();
+        SearchGameVersionFilters.Add(new DownloadFilterOption
+        {
+            Key = "current", Title = "当前目标版本", IsSelected = selectedKey == "current"
+        });
+        SearchGameVersionFilters.Add(new DownloadFilterOption
+        {
+            Key = "all", Title = "全部版本", IsSelected = selectedKey == "all"
+        });
+        foreach (var id in versions)
+        {
+            SearchGameVersionFilters.Add(new DownloadFilterOption
+            {
+                Key = id, Title = id, IsSelected = string.Equals(selectedKey, id, StringComparison.OrdinalIgnoreCase)
+            });
+        }
+
+        _selectedSearchGameVersion = SearchGameVersionFilters.FirstOrDefault(option => option.IsSelected)
+                                     ?? SearchGameVersionFilters[0];
+        OnPropertyChanged(nameof(SelectedSearchGameVersion));
     }
 
     private void ApplyVersionFilter()
@@ -869,6 +928,9 @@ public sealed class DownloadViewModel : ObservableObject
 
     private static IReadOnlyList<string> SortNewestFirst(IEnumerable<string> values)
         => values.OrderByDescending(value => value, LoaderVersionComparer.Instance).ToList();
+
+    private static bool HasCjk(string value)
+        => value.Any(ch => ch is >= '\u3400' and <= '\u9fff');
 
     private sealed class LoaderVersionComparer : IComparer<string>
     {
@@ -1159,7 +1221,12 @@ public sealed class DownloadViewModel : ObservableObject
         try
         {
             var loader = CurrentTab == DownloadTab.Mods ? ResolveLoader() : null;
-            var gameVersion = SelectedVersionScope?.Key == "all" ? null : _contextInstance?.MinecraftVersion;
+            var gameVersion = SelectedSearchGameVersion?.Key switch
+            {
+                null or "current" => _contextInstance?.MinecraftVersion,
+                "all" => null,
+                var version => version
+            };
             var category = SelectedCategory?.Key is null or "all" ? null : SelectedCategory.Key;
             var result = await _modrinth.SearchAsync(SearchQuery, ProjectType,
                 gameVersion, loader, category, _searchOffset, SearchPageSize);
@@ -1229,7 +1296,11 @@ public sealed class DownloadViewModel : ObservableObject
                 continue;
             }
 
-            SearchResults[index] = project with { ChineseName = info.Name, McmodUrl = info.Url };
+            SearchResults[index] = project with
+            {
+                ChineseName = HasCjk(info.Name) ? info.Name : null,
+                McmodUrl = info.Url
+            };
         }
 
         if (searchVersion == _searchVersion)
@@ -1384,6 +1455,7 @@ public sealed class DownloadViewModel : ObservableObject
         _ => null
     };
 }
+
 
 
 

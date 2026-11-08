@@ -24,7 +24,7 @@ public sealed class McmodService
     private readonly SemaphoreSlim _requests = new(1, 1);
     private bool _loaded;
 
-    private static string CachePath => Path.Combine(AppPaths.DataDirectory, "mcmod-cache-v2.json");
+    private static string CachePath => Path.Combine(AppPaths.DataDirectory, "mcmod-cache-v3.json");
 
     public async Task<McmodInfo?> LookupAsync(string title, CancellationToken cancellationToken = default)
     {
@@ -112,10 +112,6 @@ public sealed class McmodService
         foreach (Match match in ResultLink.Matches(html))
         {
             var title = CleanTitle(match.Groups["title"].Value);
-            if (!HasCjk(title))
-            {
-                continue;
-            }
 
             var candidateKey = Normalize(title);
             var parenthetical = Regex.Match(title, @"[\(（]([^\)）]+)[\)）]\s*$");

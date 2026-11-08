@@ -355,13 +355,13 @@
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" Margin="0,0,16,0" VerticalAlignment="Center">
-                        <TextBlock Text="范围" FontSize="9.5" Foreground="{StaticResource BrushTextMuted}"
+                        <TextBlock Text="搜索版本" FontSize="9.5" Foreground="{StaticResource BrushTextMuted}"
                                    VerticalAlignment="Center" Margin="0,0,6,0" />
-                        <ComboBox Style="{StaticResource FilterCombo}" Width="96"
-                                  ItemsSource="{Binding VersionScopeFilters}"
-                                  SelectedItem="{Binding SelectedVersionScope, Mode=TwoWay}"
-                                  ToolTip="当前版本或全部版本"
-                                  AutomationProperties.Name="版本范围筛选" />
+                        <ComboBox Style="{StaticResource FilterCombo}" Width="140"
+                                  ItemsSource="{Binding SearchGameVersionFilters}"
+                                  SelectedItem="{Binding SelectedSearchGameVersion, Mode=TwoWay}"
+                                  ToolTip="按指定 Minecraft 版本筛选，而不是局限于安装目标"
+                                  AutomationProperties.Name="搜索游戏版本" />
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" Margin="0,0,16,0" VerticalAlignment="Center"

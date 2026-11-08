@@ -107,7 +107,7 @@ $env:MS_CLIENT_ID = "你的 Azure Application (client) ID"
 - **加载器**：右侧可切换原版 / Fabric / Quilt / Forge / NeoForge，并列出该 Minecraft 版本可用的加载器版本；原版或加载器所需的原版客户端缺失时会先自动安装。Fabric / Quilt 走 Meta API；Forge / NeoForge 调用官方安装器 jar（需要 Java 与网络），缺少 `launcher_profiles.json` 时自动补最小档案文件。
 - **整合包**：支持 Modrinth `.mrpack` 导入，读取依赖中的 Minecraft/加载器版本，安装加载器、下载文件并复制 `overrides`；同时读取包内 `icon.png`/`pack.png` 作为版本本地图标。
 - **Modrinth 内容**：模组、资源包、光影搜索与安装。筛选使用带标题的下拉菜单：**版本范围**（当前/全部）、**加载器**（当前/全部/Fabric/Forge/NeoForge/Quilt）、**类型**（优化/科技/魔法/冒险/装饰/辅助/前置库；资源包按 16×/32×/64×/128×/256×；光影按写实/奇幻/卡通/半写实/原版风）。每页 20 个结果，底部提供上一页/下一页和总页数。结果附带 **MC百科** 中文名与链接，以及 **CurseForge** 搜索链接。
-- **MC百科**：通过公开搜索页匹配模组中文名与条目链接；首次查询需要逐条请求，结果缓存到设置目录，匹配不到时保留 Modrinth 原名。每项结果也附带 **CurseForge** 搜索链接。
+- **MC百科**：通过公开搜索页匹配模组中文名与条目链接；即使没有中文名，只要匹配到条目也会显示 MC百科链接。结果缓存到设置目录。每项结果也附带 **CurseForge** 搜索链接。
 - **CurseForge**：当前提供的是按项目标题搜索的网页链接，不是 CurseForge API 安装源；正式接入需要 CurseForge API Key。
 - **进度与取消**：下载面板实时显示阶段、文件名、百分比，支持取消。
 
@@ -138,7 +138,7 @@ $env:MS_CLIENT_ID = "你的 Azure Application (client) ID"
 - 从 `fabric.mod.json`、`quilt.mod.json`、`META-INF/mods.toml`、`MANIFEST.MF` 读取显示名、版本、模组 ID 和图标。
 - 启用/禁用通过重命名 `.jar` ↔ `.jar.disabled` 完成，下次启动生效。
 - 搜索、全部/启用/禁用筛选、从文件安装、从链接安装、打开目录、刷新。
-- 模组下载页支持选择目标已安装版本（游戏版本/加载器）和具体模组文件版本；安装前会列出与目标版本兼容的文件，不再直接选第一个。
+- 模组下载页有两个游戏版本选择：**游戏版本**用于选择安装目标（本机已安装版本），**搜索版本**用于按任意正式版筛选 Modrinth；点击「选择版本」会列出与安装目标兼容的具体模组文件。
 - **从链接安装**：粘贴 Modrinth 项目链接会自动解析并下载当前版本兼容文件；也支持 `.jar` 直链。CurseForge 项目页仍需要 API Key，建议浏览器下载后使用「从文件安装」。
 - 「检查更新」通过 Modrinth 的 SHA-1 文件查询找到项目，再按当前 MC 版本/加载器找最新版本；行内「更新」下载新文件并禁用旧文件。
 
@@ -284,6 +284,7 @@ docs/screenshots/            README 截图
 - 模组安装不会自动解析并安装前置依赖；只安装主文件。
 - Forge/NeoForge 走官方安装器，不保证所有版本都能在无界面模式下成功。
 - 启动器自身更新、主题/语言切换等非 Minecraft 功能未实现。
+
 
 
 
