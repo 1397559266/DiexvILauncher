@@ -54,6 +54,7 @@ public static class LanguageService
             : Chinese;
         ModrinthProject.PreferChineseNames = CurrentLanguage != English;
         GameInstance.UseEnglish = CurrentLanguage == English;
+        RemoteVersion.UseEnglish = CurrentLanguage == English;
         Apply();
     }
 
@@ -190,6 +191,11 @@ public static class LanguageService
         if ((match = Regex.Match(text, @"^已刷新，共 (\d+) 个版本。$", RegexOptions.CultureInvariant)).Success)
         {
             return $"Refreshed. {match.Groups[1].Value} versions found.";
+        }
+
+        if ((match = Regex.Match(text, @"^已获取 (\d+) 个官方版本。$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"Fetched {match.Groups[1].Value} official versions.";
         }
 
         if ((match = Regex.Match(text, @"^共 (\d+) 个模组 · (\d+) 启用 · (\d+) 禁用$", RegexOptions.CultureInvariant)).Success)

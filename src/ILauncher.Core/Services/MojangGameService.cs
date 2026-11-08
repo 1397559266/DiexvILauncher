@@ -10,12 +10,14 @@ public sealed record RemoteVersion(
     DateTime ReleaseTime,
     string? Sha1)
 {
+    public static bool UseEnglish { get; set; }
+
     public string TypeText => Type switch
     {
-        "release" => "正式版",
-        "snapshot" => "快照",
-        "old_beta" => "远古测试版",
-        "old_alpha" => "远古版",
+        "release" => UseEnglish ? "Release" : "正式版",
+        "snapshot" => UseEnglish ? "Snapshot" : "快照",
+        "old_beta" => UseEnglish ? "Old Beta" : "远古测试版",
+        "old_alpha" => UseEnglish ? "Old Alpha" : "远古版",
         _ => Type
     };
 }

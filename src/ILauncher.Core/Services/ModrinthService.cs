@@ -101,7 +101,7 @@ public sealed record ModrinthVersion(
     public string LoadersText => string.Join(", ", Loaders);
     public string ReleaseTypeText => ReleaseType switch
     {
-        "release" => "正式版",
+        "release" => ModrinthProject.PreferChineseNames ? "正式版" : "Release",
         "beta" => "Beta",
         "alpha" => "Alpha",
         _ => ReleaseType
