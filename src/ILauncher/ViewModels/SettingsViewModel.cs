@@ -24,6 +24,7 @@ public sealed class SettingsViewModel : ObservableObject
     private string _javaSummary = "跟随系统自动选择";
     private bool _isDownloadingJava;
     private string _javaDownloadText = "";
+    private string _selectedDownloadSource;
 
     public SettingsViewModel(
         SettingsService settings,
@@ -42,6 +43,11 @@ public sealed class SettingsViewModel : ObservableObject
         _width = settings.Settings.WindowWidth;
         _height = settings.Settings.WindowHeight;
         _closeLauncher = settings.Settings.CloseLauncherOnGameStart;
+        _selectedDownloadSource = string.Equals(settings.Settings.DownloadSource, "mirror",
+            StringComparison.OrdinalIgnoreCase)
+            ? "镜像源优先"
+            : "官方源优先";
+        DownloadSources = new[] { "官方源优先", "镜像源优先" };
 
         JavaOptions = new ObservableCollection<JavaOption>();
         AutoJava = new JavaOption
@@ -72,6 +78,21 @@ public sealed class SettingsViewModel : ObservableObject
 
     public ObservableCollection<JavaOption> JavaOptions { get; }
     public JavaOption AutoJava { get; }
+    public IReadOnlyList<string> DownloadSources { get; }
+
+    public string SelectedDownloadSource
+    {
+        get => _selectedDownloadSource;
+        set
+        {
+            if (!SetProperty(ref _selectedDownloadSource, value) || string.IsNullOrWhiteSpace(value))
+            {
+                return;
+            }
+
+            DownloadSourceConfig.PreferMirror = string.Equals(value, "镜像源优先", StringComparison.Ordinal);
+        }
+    }
 
     public JavaOption? SelectedJava
     {
@@ -268,6 +289,7 @@ public sealed class SettingsViewModel : ObservableObject
         _settings.Settings.WindowHeight = Math.Clamp(Height, 240, 4320);
         _settings.Settings.JavaPath = SelectedJava is { IsAuto: false } ? SelectedJava.Path : "";
         _settings.Settings.CloseLauncherOnGameStart = CloseLauncher;
+        _settings.Settings.DownloadSource = SelectedDownloadSource == "镜像源优先" ? "mirror" : "official";
         _settings.Save();
 
         _toast("启动器设置已保存。", false);

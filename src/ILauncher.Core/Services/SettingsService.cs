@@ -26,6 +26,7 @@ public sealed class LauncherSettings
     public string JavaPath { get; set; } = "";
     public int MemoryMb { get; set; } = 4096;
     public int HomeVersionsPerRow { get; set; } = 3;
+    public string DownloadSource { get; set; } = "official";
     public int WindowWidth { get; set; } = 1280;
     public int WindowHeight { get; set; } = 720;
     public string LastInstance { get; set; } = "";
@@ -58,6 +59,8 @@ public sealed class SettingsService
         AppPaths.EnsureCreated();
         Load();
         ApplyClientIdFromEnvironment();
+        DownloadSourceConfig.PreferMirror = string.Equals(Settings.DownloadSource, "mirror",
+            StringComparison.OrdinalIgnoreCase);
     }
 
     private void ApplyClientIdFromEnvironment()
@@ -103,6 +106,8 @@ public sealed class SettingsService
         {
             try
             {
+                DownloadSourceConfig.PreferMirror = string.Equals(Settings.DownloadSource, "mirror",
+                    StringComparison.OrdinalIgnoreCase);
                 AppPaths.EnsureCreated();
                 var json = JsonSerializer.Serialize(Settings, JsonOptions);
                 var temp = AppPaths.SettingsFile + ".tmp";

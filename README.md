@@ -166,8 +166,9 @@ $env:MS_CLIENT_ID = "你的 Azure Application (client) ID"
 
 ![启动器设置](docs/screenshots/settings-global.png)
 
-- Minecraft 目录、离线用户名、Java 选择、默认内存、游戏窗口大小、启动后最小化。
-- Java 运行时列表、重新检测、Adoptium Java 8/17/21 下载。
+- Minecraft 目录、离线用户名、Java 选择、下载源、默认内存、游戏窗口大小、启动后最小化。
+- Java 运行时列表、重新检测、Adoptium Java 8/17/21 下载；Java 列表支持直接点击切换。
+- 游戏文件下载源支持 **官方源优先 / 镜像源优先（BMCLAPI）** 切换，镜像失败时回退官方源。
 - 设置保存到 `%APPDATA%\ILauncher\settings.json`。
 
 ## 源码研究
@@ -278,6 +279,8 @@ docs/screenshots/            README 截图
 - 模组安装不会自动解析并安装前置依赖；只安装主文件。
 - Forge/NeoForge 走官方安装器，不保证所有版本都能在无界面模式下成功。
 - 启动器自身更新、主题/语言切换等非 Minecraft 功能未实现。
+
+
 
 
 

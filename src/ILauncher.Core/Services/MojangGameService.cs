@@ -22,12 +22,19 @@ public sealed record RemoteVersion(
 
 public sealed class MojangGameService
 {
-    private const string ManifestUrl = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
-    private const string AssetBaseUrl = "https://resources.download.minecraft.net";
+    private const string OfficialManifestUrl = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
 
     public async Task<List<RemoteVersion>> GetVersionsAsync(CancellationToken cancellationToken = default)
     {
-        var json = await DownloadHelper.GetStringAsync(ManifestUrl, cancellationToken);
+        string json;
+        try
+        {
+            json = await DownloadHelper.GetStringAsync(DownloadSourceConfig.ManifestUrl, cancellationToken);
+        }
+        catch when (DownloadSourceConfig.PreferMirror)
+        {
+            json = await DownloadHelper.GetStringAsync(OfficialManifestUrl, cancellationToken);
+        }
         using var document = JsonDocument.Parse(json);
         var result = new List<RemoteVersion>();
         if (!document.RootElement.TryGetProperty("versions", out var versions))
@@ -63,13 +70,15 @@ public sealed class MojangGameService
         Directory.CreateDirectory(versionDirectory);
         var versionJsonPath = Path.Combine(versionDirectory, version.Id + ".json");
 
-        await DownloadHelper.DownloadFileAsync(version.Url, versionJsonPath, null, cancellationToken);
+        await DownloadFileWithFallbackAsync(DownloadSourceConfig.VersionJson(version.Id, version.Url), version.Url,
+            versionJsonPath, cancellationToken);
         var metadata = VersionMetadata.Parse(versionJsonPath);
         var clientJarPath = Path.Combine(versionDirectory, version.Id + ".jar");
         if (metadata.Client?.Url is { Length: > 0 } clientUrl)
         {
             progress?.Invoke(new DownloadProgress { Phase = "客户端", Message = "下载客户端 jar…", Percent = 2 });
-            await DownloadHelper.DownloadFileAsync(clientUrl, clientJarPath, null, cancellationToken);
+            await DownloadFileWithFallbackAsync(DownloadSourceConfig.ClientJar(version.Id, clientUrl), clientUrl,
+                clientJarPath, cancellationToken);
         }
 
         var files = new List<(string Url, string Path, string Name)>();
@@ -86,7 +95,7 @@ public sealed class MojangGameService
                 continue;
             }
 
-            files.Add((url, Path.Combine(rootDirectory, "libraries", path.Replace('/', Path.DirectorySeparatorChar)),
+            files.Add((DownloadSourceConfig.Library(url), Path.Combine(rootDirectory, "libraries", path.Replace('/', Path.DirectorySeparatorChar)),
                 library.Name));
         }
 
@@ -117,7 +126,7 @@ public sealed class MojangGameService
                             }
 
                             var target = Path.Combine(assetsRoot, "objects", hash[..2], hash);
-                            files.Add(($"{AssetBaseUrl}/{hash[..2]}/{hash}", target, property.Name));
+                            files.Add((DownloadSourceConfig.AssetObject(hash), target, property.Name));
                         }
                     }
                 }
@@ -135,6 +144,19 @@ public sealed class MojangGameService
 
         await DownloadFilesAsync(files, progress, cancellationToken);
         progress?.Invoke(new DownloadProgress { Phase = "完成", Message = $"已安装 {version.Id}", Percent = 100 });
+    }
+
+    private static async Task DownloadFileWithFallbackAsync(string primaryUrl, string fallbackUrl,
+        string destination, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await DownloadHelper.DownloadFileAsync(primaryUrl, destination, null, cancellationToken);
+        }
+        catch when (!string.Equals(primaryUrl, fallbackUrl, StringComparison.OrdinalIgnoreCase))
+        {
+            await DownloadHelper.DownloadFileAsync(fallbackUrl, destination, null, cancellationToken);
+        }
     }
 
     private static async Task DownloadFilesAsync(List<(string Url, string Path, string Name)> files,

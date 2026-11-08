@@ -51,7 +51,7 @@
                         </StackPanel>
                     </Grid>
 
-                    <ListBox ItemsSource="{Binding JavaOptions}" SelectedItem="{Binding SelectedJava, Mode=TwoWay}"
+                    <ListBox x:Name="JavaList" ItemsSource="{Binding JavaOptions}" SelectedItem="{Binding SelectedJava, Mode=TwoWay}" PreviewMouseLeftButtonDown="JavaList_PreviewMouseLeftButtonDown"
                              Style="{StaticResource CleanListBox}" MaxHeight="190">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
@@ -185,3 +185,4 @@
         </StackPanel>
     </ScrollViewer>
 </UserControl>
+

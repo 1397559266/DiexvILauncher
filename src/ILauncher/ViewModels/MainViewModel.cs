@@ -632,6 +632,7 @@ public sealed class MainViewModel : ObservableObject
         IsInstancePage = false;
         IsSettingsPage = false;
         IsAccountPage = false;
+        IsDownloadPage = false;
         HeaderTitle = "";
         HeaderSubtitle = "";
         OnPropertyChanged(nameof(ShowBack));

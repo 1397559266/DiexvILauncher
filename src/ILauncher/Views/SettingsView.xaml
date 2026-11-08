@@ -20,7 +20,7 @@
                                Foreground="{StaticResource BrushTextSecondary}" Margin="0,4,0,0" />
                 </StackPanel>
                 <Button Style="{StaticResource PrimaryButton}" Height="38" MinWidth="110" HorizontalAlignment="Right"
-                        VerticalAlignment="Center" Command="{Binding SaveCommand}">
+                        VerticalAlignment="Center" Command="{Binding SaveCommand}" AutomationProperties.Name="保存设置">
                     <StackPanel Orientation="Horizontal">
                         <controls:Icon Data="{StaticResource IconSave}" Fill="#FFFFFFFF" Width="13" Height="13" />
                         <TextBlock Text="保存设置" Margin="6,0,0,0" FontSize="11.5" />
@@ -52,6 +52,37 @@
                     </Grid>
                     <TextBlock Text="选择包含 versions、libraries、assets 的 .minecraft 目录。保存后会重新扫描全部版本。"
                                FontSize="9" Foreground="{StaticResource BrushTextMuted}" Margin="2,7,0,0" />
+                </StackPanel>
+            </Border>
+
+            <!-- Download source -->
+            <Border Style="{StaticResource Card}" Padding="20,16" Margin="0,14,0,0">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <controls:Icon Data="{StaticResource IconDownload}" Fill="{StaticResource BrushAccent}" Width="15" Height="15" />
+                        <TextBlock Text="下载源" FontSize="13" FontWeight="SemiBold" Margin="7,0,0,0" />
+                    </StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="游戏文件下载源" FontSize="10.5" Foreground="{StaticResource BrushTextSecondary}" />
+                            <TextBlock Text="镜像源使用 BMCLAPI，适合国内网络；失败时自动回退官方源。"
+                                       FontSize="9" Foreground="{StaticResource BrushTextMuted}" Margin="0,3,0,0" />
+                        </StackPanel>
+                        <ComboBox Grid.Column="1" Style="{StaticResource FilterCombo}" Width="180" Height="34"
+                                  ItemsSource="{Binding DownloadSources}"
+                                  SelectedItem="{Binding SelectedDownloadSource, Mode=TwoWay}"
+                                  AutomationProperties.Name="游戏文件下载源">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </Grid>
                 </StackPanel>
             </Border>
 
@@ -93,7 +124,7 @@
                         <Button Style="{StaticResource LinkButton}" Content="重新检测" HorizontalAlignment="Right"
                                 Command="{Binding RefreshJavaCommand}" />
                     </Grid>
-                    <ListBox ItemsSource="{Binding JavaOptions}" SelectedItem="{Binding SelectedJava, Mode=TwoWay}"
+                    <ListBox x:Name="JavaList" ItemsSource="{Binding JavaOptions}" SelectedItem="{Binding SelectedJava, Mode=TwoWay}" PreviewMouseLeftButtonDown="JavaList_PreviewMouseLeftButtonDown"
                              Style="{StaticResource CleanListBox}" MaxHeight="180">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
@@ -198,3 +229,4 @@
         </StackPanel>
     </ScrollViewer>
 </UserControl>
+
