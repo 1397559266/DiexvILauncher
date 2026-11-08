@@ -192,7 +192,13 @@
                                   HorizontalAlignment="Right"
                                   ItemsSource="{Binding UiLanguages}"
                                   SelectedItem="{Binding SelectedUiLanguage, Mode=TwoWay}"
-                                  AutomationProperties.Name="界面语言" />
+                                  AutomationProperties.Name="界面语言">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
                     </Grid>
 
                     <Border Style="{StaticResource Divider}" Margin="0,0,0,12" />
@@ -217,7 +223,13 @@
                             <ComboBox Style="{StaticResource FilterCombo}" Width="180" Height="30"
                                       ItemsSource="{Binding WindowModes}"
                                       SelectedItem="{Binding SelectedWindowMode, Mode=TwoWay}"
-                                      AutomationProperties.Name="游戏窗口模式" />
+                                      AutomationProperties.Name="游戏窗口模式">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,7,0,0">
                                 <TextBox Style="{StaticResource InputTextBox}" Width="82" Height="32" Padding="8,0"
                                          Text="{Binding Width, UpdateSourceTrigger=LostFocus}"
