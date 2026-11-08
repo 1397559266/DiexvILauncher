@@ -1,0 +1,21 @@
+Copyright (c) 2026 Diexv. All rights reserved.
+
+This repository and its original source code, documentation, and assets are
+made available for viewing only. No permission is granted to copy, modify,
+merge, publish, distribute, sublicense, sell, or otherwise use any part of
+this project in source or binary form without the prior written permission of
+the copyright holder, except as expressly permitted by applicable law or by
+GitHub's Terms of Service for viewing and forking repositories hosted on
+GitHub.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING
+FROM THE USE OF THIS SOFTWARE.
+
+Third-party assets remain the property of their respective owners and are not
+licensed under this notice. This includes, without limitation, Mojang's
+default player skins and the Fabric, Quilt, Forge, NeoForge, and OptiFine
+project marks. See `src/ILauncher/Assets/Skins/README.md` and
+`src/ILauncher/Assets/Loaders/README.md` for sources and attribution.
