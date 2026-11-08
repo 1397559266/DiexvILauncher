@@ -25,6 +25,7 @@ public sealed class LauncherSettings
     public string MicrosoftUuid { get; set; } = "";
     public string JavaPath { get; set; } = "";
     public int MemoryMb { get; set; } = 4096;
+    public int HomeVersionsPerRow { get; set; } = 3;
     public int WindowWidth { get; set; } = 1280;
     public int WindowHeight { get; set; } = 720;
     public string LastInstance { get; set; } = "";

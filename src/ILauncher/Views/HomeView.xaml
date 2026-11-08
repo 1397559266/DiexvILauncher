@@ -21,7 +21,6 @@
         </Style>
 
         <Style x:Key="VersionCardItem" TargetType="ListBoxItem">
-            <Setter Property="Width" Value="220" />
             <Setter Property="Height" Value="98" />
             <Setter Property="Margin" Value="0,0,10,10" />
             <Setter Property="Padding" Value="0" />
@@ -306,6 +305,11 @@
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                             <ComboBox Style="{StaticResource HomeFilterCombo}" Width="104" Margin="0,0,6,0"
+                                      ItemsSource="{Binding HomeLayoutOptions}"
+                                      SelectedItem="{Binding SelectedHomeLayout, Mode=TwoWay}"
+                                      ToolTip="版本排列方式；修改后会保存"
+                                      AutomationProperties.Name="版本布局" />
+                            <ComboBox Style="{StaticResource HomeFilterCombo}" Width="104" Margin="0,0,6,0"
                                       ItemsSource="{Binding HomeLoaderFilters}"
                                       SelectedItem="{Binding SelectedHomeLoader, Mode=TwoWay}"
                                       ToolTip="按加载器筛选"
@@ -340,10 +344,10 @@
                     <ListBox x:Name="VersionList" ItemsSource="{Binding FilteredInstances}" SelectedItem="{Binding SelectedInstance, Mode=TwoWay}"
                              Style="{StaticResource CleanListBox}" ScrollViewer.VerticalScrollBarVisibility="Disabled"
                              ItemContainerStyle="{StaticResource VersionCardItem}" MouseDoubleClick="VersionList_MouseDoubleClick"
-                             HorizontalContentAlignment="Left">
+                             HorizontalContentAlignment="Stretch">
                         <ListBox.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <WrapPanel />
+                                <UniformGrid Columns="{Binding HomeVersionsPerRow}" />
                             </ItemsPanelTemplate>
                         </ListBox.ItemsPanel>
                         <ListBox.ItemTemplate>

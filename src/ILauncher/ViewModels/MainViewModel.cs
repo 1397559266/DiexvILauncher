@@ -21,6 +21,8 @@ public sealed class MainViewModel : ObservableObject
     private string _instanceSearch = "";
     private DownloadFilterOption? _selectedHomeLoader;
     private DownloadFilterOption? _selectedHomeType;
+    private DownloadFilterOption? _selectedHomeLayout;
+    private int _homeVersionsPerRow = 3;
     private string _rootPath = "";
     private string _selectedJavaText = "检测中…";
     private bool _isBusy;
@@ -97,6 +99,16 @@ public sealed class MainViewModel : ObservableObject
         };
         _selectedHomeLoader = HomeLoaderFilters[0];
         _selectedHomeType = HomeTypeFilters[0];
+        HomeLayoutOptions = new ObservableCollection<DownloadFilterOption>
+        {
+            new() { Key = "1", Title = "列表 · 1 个/行" },
+            new() { Key = "2", Title = "2 个/行" },
+            new() { Key = "3", Title = "3 个/行", IsSelected = true },
+            new() { Key = "4", Title = "4 个/行" }
+        };
+        _homeVersionsPerRow = Math.Clamp(SettingsService.Settings.HomeVersionsPerRow, 1, 4);
+        _selectedHomeLayout = HomeLayoutOptions.First(option => option.Key == _homeVersionsPerRow.ToString());
+        SelectSingleFilter(HomeLayoutOptions, _selectedHomeLayout);
 
         _currentPage = this;
         GoHomeCommand = new RelayCommand(GoHome);
@@ -162,6 +174,7 @@ public sealed class MainViewModel : ObservableObject
     public ObservableCollection<GameInstance> FilteredInstances { get; }
     public ObservableCollection<DownloadFilterOption> HomeLoaderFilters { get; }
     public ObservableCollection<DownloadFilterOption> HomeTypeFilters { get; }
+    public ObservableCollection<DownloadFilterOption> HomeLayoutOptions { get; }
     public ObservableCollection<JavaInfo> JavaRuntimes { get; }
 
     public object? CurrentPage
@@ -258,6 +271,40 @@ public sealed class MainViewModel : ObservableObject
 
             SelectSingleFilter(HomeTypeFilters, value);
             ApplyInstanceFilter();
+        }
+    }
+
+    public DownloadFilterOption? SelectedHomeLayout
+    {
+        get => _selectedHomeLayout;
+        set
+        {
+            if (!SetProperty(ref _selectedHomeLayout, value) || value == null)
+            {
+                return;
+            }
+
+            SelectSingleFilter(HomeLayoutOptions, value);
+            if (int.TryParse(value.Key, out var columns))
+            {
+                HomeVersionsPerRow = columns;
+            }
+        }
+    }
+
+    public int HomeVersionsPerRow
+    {
+        get => _homeVersionsPerRow;
+        set
+        {
+            var columns = Math.Clamp(value, 1, 4);
+            if (!SetProperty(ref _homeVersionsPerRow, columns))
+            {
+                return;
+            }
+
+            SettingsService.Settings.HomeVersionsPerRow = columns;
+            SettingsService.Save();
         }
     }
 
