@@ -186,6 +186,17 @@
                         <TextBlock Text="默认启动参数" FontSize="13" FontWeight="SemiBold" Margin="7,0,0,0" />
                     </StackPanel>
 
+                    <Grid Margin="0,0,0,12">
+                        <TextBlock Text="界面语言" Style="{StaticResource Label}" VerticalAlignment="Center" />
+                        <ComboBox Style="{StaticResource FilterCombo}" Width="180" Height="30"
+                                  HorizontalAlignment="Right"
+                                  ItemsSource="{Binding UiLanguages}"
+                                  SelectedItem="{Binding SelectedUiLanguage, Mode=TwoWay}"
+                                  AutomationProperties.Name="界面语言" />
+                    </Grid>
+
+                    <Border Style="{StaticResource Divider}" Margin="0,0,0,12" />
+
                     <Grid Margin="0,0,0,4">
                         <TextBlock Text="最大内存" Style="{StaticResource Label}" />
                         <TextBlock Text="{Binding MemoryText}" FontSize="11.5" FontWeight="SemiBold"

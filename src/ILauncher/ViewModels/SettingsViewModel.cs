@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Input;
 using ILauncher.Core;
 using ILauncher.Core.Services;
+using ILauncher.Localization;
 using Microsoft.Win32;
 
 namespace ILauncher.ViewModels;
@@ -26,6 +27,7 @@ public sealed class SettingsViewModel : ObservableObject
     private string _javaDownloadText = "";
     private string _selectedDownloadSource;
     private string _selectedWindowMode;
+    private string _selectedUiLanguage;
 
     public SettingsViewModel(
         SettingsService settings,
@@ -50,6 +52,11 @@ public sealed class SettingsViewModel : ObservableObject
             : "官方源优先";
         DownloadSources = new[] { "官方源优先", "镜像源优先" };
         WindowModes = new[] { "自定义", "与启动器窗口一致", "默认 854×480" };
+        UiLanguages = new[] { "中文", "English" };
+        _selectedUiLanguage = string.Equals(settings.Settings.UiLanguage, "en-US",
+            StringComparison.OrdinalIgnoreCase)
+            ? "English"
+            : "中文";
         _selectedWindowMode = settings.Settings.LaunchWindowMode switch
         {
             "launcher" => "与启动器窗口一致",
@@ -88,6 +95,13 @@ public sealed class SettingsViewModel : ObservableObject
     public JavaOption AutoJava { get; }
     public IReadOnlyList<string> DownloadSources { get; }
     public IReadOnlyList<string> WindowModes { get; }
+    public IReadOnlyList<string> UiLanguages { get; }
+
+    public string SelectedUiLanguage
+    {
+        get => _selectedUiLanguage;
+        set => SetProperty(ref _selectedUiLanguage, value);
+    }
 
     public string SelectedWindowMode
     {
@@ -325,7 +339,9 @@ public sealed class SettingsViewModel : ObservableObject
         _settings.Settings.JavaPath = SelectedJava is { IsAuto: false } ? SelectedJava.Path : "";
         _settings.Settings.CloseLauncherOnGameStart = CloseLauncher;
         _settings.Settings.DownloadSource = SelectedDownloadSource == "镜像源优先" ? "mirror" : "official";
+        _settings.Settings.UiLanguage = SelectedUiLanguage == "English" ? "en-US" : "zh-CN";
         _settings.Save();
+        LanguageService.SetLanguage(_settings.Settings.UiLanguage);
 
         _toast("启动器设置已保存。", false);
         _saved?.Invoke();

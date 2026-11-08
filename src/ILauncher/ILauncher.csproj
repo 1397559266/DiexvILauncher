@@ -26,6 +26,7 @@
   <ItemGroup>
     <Resource Include="Assets\**\*.png" />
     <Resource Include="Assets\app.ico" />
+    <Content Include="Localization\*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

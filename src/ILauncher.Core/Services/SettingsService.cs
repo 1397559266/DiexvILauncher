@@ -32,6 +32,7 @@ public sealed class LauncherSettings
     public int WindowWidth { get; set; } = 1280;
     public int WindowHeight { get; set; } = 720;
     public string LaunchWindowMode { get; set; } = "default";
+    public string UiLanguage { get; set; } = "zh-CN";
     public string LastInstance { get; set; } = "";
     public bool AutoDetectJava { get; set; } = true;
     public bool CloseLauncherOnGameStart { get; set; }

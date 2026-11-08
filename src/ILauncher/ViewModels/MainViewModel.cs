@@ -9,6 +9,7 @@ using System.Windows.Threading;
 using ILauncher.Core;
 using ILauncher.Core.Models;
 using ILauncher.Core.Services;
+using ILauncher.Localization;
 using ILauncher.Models;
 using ILauncher.Services;
 
@@ -44,6 +45,7 @@ public sealed class MainViewModel : ObservableObject
     public MainViewModel()
     {
         SettingsService = new SettingsService();
+        LanguageService.SetLanguage(SettingsService.Settings.UiLanguage);
         if (string.Equals(SettingsService.Settings.AccountType, "微软账户", StringComparison.Ordinal) &&
             !string.IsNullOrWhiteSpace(SettingsService.Settings.MicrosoftAccessTokenProtected))
         {
@@ -189,6 +191,10 @@ public sealed class MainViewModel : ObservableObject
             if (SetProperty(ref _currentPage, value))
             {
                 OnPropertyChanged(nameof(IsHome));
+                Application.Current?.Dispatcher.BeginInvoke(new Action(LanguageService.Apply),
+                    DispatcherPriority.Loaded);
+                Application.Current?.Dispatcher.BeginInvoke(new Action(LanguageService.Apply),
+                    DispatcherPriority.ApplicationIdle);
             }
         }
     }

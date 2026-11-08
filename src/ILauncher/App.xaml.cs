@@ -3,6 +3,7 @@ using System.Windows.Threading;
 using ILauncher.Core;
 using ILauncher.Core.Minecraft;
 using ILauncher.Core.Services;
+using ILauncher.Localization;
 using ILauncher.Services;
 using ILauncher.ViewModels;
 
@@ -18,6 +19,7 @@ public partial class App : Application
     {
         base.OnStartup(e);
         DispatcherUnhandledException += OnDispatcherUnhandledException;
+        LanguageService.Initialize();
         Skins = new SkinService();
 
         var window = new MainWindow();
@@ -25,6 +27,7 @@ public partial class App : Application
         window.DataContext = viewModel;
         MainWindow = window;
         window.Show();
+        LanguageService.SetLanguage(viewModel.SettingsService.Settings.UiLanguage);
         _ = viewModel.InitializeAsync();
     }
 
