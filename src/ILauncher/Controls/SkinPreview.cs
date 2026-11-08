@@ -405,7 +405,9 @@ public sealed class SkinPreview : UserControl
         var pixels = new byte[stride * formatted.PixelHeight];
         formatted.CopyPixels(pixels, stride, 0);
         var result = new byte[pixels.Length];
-        Buffer.BlockCopy(pixels, 0, result, 0, pixels.Length);
+        // Only pixels that belong to an overlay face are rendered as the
+        // outer shell. Transparent overlay pixels stay transparent and are
+        // skipped by the cutout mesh instead of writing depth over the base.
         foreach (var (overlay, baseRect) in OverlayMappings)
         {
             for (var y = 0; y < (int)overlay.Height; y++)
@@ -422,11 +424,10 @@ public sealed class SkinPreview : UserControl
                     var alpha = pixels[overlayOffset + 3];
                     if (alpha == 0)
                     {
-                        result[overlayOffset] = pixels[baseOffset];
-                        result[overlayOffset + 1] = pixels[baseOffset + 1];
-                        result[overlayOffset + 2] = pixels[baseOffset + 2];
+                        continue;
                     }
-                    else if (alpha < 255)
+
+                    if (alpha < 255)
                     {
                         result[overlayOffset] = (byte)((pixels[overlayOffset] * alpha +
                                                         pixels[baseOffset] * (255 - alpha)) / 255);
@@ -434,6 +435,12 @@ public sealed class SkinPreview : UserControl
                                                             pixels[baseOffset + 1] * (255 - alpha)) / 255);
                         result[overlayOffset + 2] = (byte)((pixels[overlayOffset + 2] * alpha +
                                                             pixels[baseOffset + 2] * (255 - alpha)) / 255);
+                    }
+                    else
+                    {
+                        result[overlayOffset] = pixels[overlayOffset];
+                        result[overlayOffset + 1] = pixels[overlayOffset + 1];
+                        result[overlayOffset + 2] = pixels[overlayOffset + 2];
                     }
 
                     result[overlayOffset + 3] = 255;
@@ -530,12 +537,10 @@ public sealed class SkinPreview : UserControl
         ImageSource? overlay = null, IReadOnlyDictionary<Face, Rect>? overlayUv = null, double inflate = 0)
     {
         AddQuads(group, center, width, height, depth, skin, uv);
-        // WPF's 3D layer has no alpha test. Render the outer skin layer as a
-        // slightly larger shell and let the transparent pixels blend over the
-        // base; the generous inflation avoids z-fighting with the base faces.
-        if (overlay != null && overlayUv != null)
+        if (overlay != null && overlayUv != null && overlay is BitmapSource bitmap)
         {
-            AddQuads(group, center, width + inflate * 2, height + inflate * 2, depth + inflate * 2, overlay, overlayUv);
+            AddCutoutOverlayQuads(group, center, width + inflate * 2, height + inflate * 2, depth + inflate * 2,
+                bitmap, overlayUv);
         }
     }
 
