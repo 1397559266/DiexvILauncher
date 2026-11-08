@@ -418,7 +418,7 @@
                                         <Border Width="42" Height="42" CornerRadius="9" Background="#FFF3F8FF" VerticalAlignment="Center">
                                             <Grid>
                                                 <controls:Icon Data="{StaticResource IconBox}" Fill="#FFB3CBE8" Width="18" Height="18" />
-                                                <Image Source="{Binding IconUrl}" Stretch="UniformToFill" />
+                                                <Image Source="{Binding IconUrl, Converter={StaticResource RemoteIcon}}" Stretch="UniformToFill" />
                                             </Grid>
                                         </Border>
                                         <StackPanel Grid.Column="1" Margin="10,0,10,0" VerticalAlignment="Center">

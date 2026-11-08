@@ -23,6 +23,7 @@
             <core:StringEmptyToVisibilityConverter x:Key="NotEmptyToVisibility" Invert="True" />
             <core:BoolToOpacityConverter x:Key="BoolToOpacity" />
             <core:ModIconConverter x:Key="ModIcon" />
+            <core:RemoteIconConverter x:Key="RemoteIcon" />
             <core:LoaderBrushConverter x:Key="LoaderBrush" />
             <core:LogLevelBrushConverter x:Key="LogLevelBrush" />
             <core:BlockIconConverter x:Key="BlockIcon" />

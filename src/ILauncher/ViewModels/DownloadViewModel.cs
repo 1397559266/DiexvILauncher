@@ -80,6 +80,8 @@ public sealed class DownloadViewModel : ObservableObject
     private int _searchOffset;
     private int _searchTotal;
     private int _searchVersion;
+    private readonly Dictionary<string, CachedSearchPage> _searchCache = new(StringComparer.Ordinal);
+    private readonly Queue<string> _searchCacheOrder = new();
     private const int SearchPageSize = 20;
     private GameInstance? _contextInstance;
     private GameInstance? _selectedTargetInstance;
@@ -1245,21 +1247,31 @@ public sealed class DownloadViewModel : ObservableObject
                 var version => version
             };
             var category = SelectedCategory?.Key is null or "all" ? null : SelectedCategory.Key;
+            var cacheKey = $"{CurrentTab}|{ProjectType}|{_effectiveSearchQuery}|{gameVersion}|{loader}|{category}|{_searchOffset}";
+            if (!resetPage && _searchCache.TryGetValue(cacheKey, out var cachedPage))
+            {
+                ReplaceSearchResults(cachedPage.Projects);
+                _searchOffset = cachedPage.Offset;
+                _searchTotal = cachedPage.Total;
+                NotifySearchPageChanged();
+                SearchStatus = cachedPage.Projects.Count == 0
+                    ? "没有找到匹配的项目，试试换一个关键词。"
+                    : $"找到 {cachedPage.Total} 个项目";
+                if (CurrentTab == DownloadTab.Mods && !cachedPage.Enriched)
+                {
+                    _ = EnrichMcmodAsync(cachedPage.Projects, searchVersion, cacheKey);
+                }
+
+                return;
+            }
+
             var result = await _modrinth.SearchAsync(_effectiveSearchQuery, ProjectType,
                 gameVersion, loader, category, _searchOffset, SearchPageSize);
             _searchOffset = result.Offset;
             _searchTotal = result.TotalHits;
-            SearchResults.Clear();
-            foreach (var project in result.Hits)
-            {
-                SearchResults.Add(project);
-            }
-
-            OnPropertyChanged(nameof(HasSearchResults));
-            OnPropertyChanged(nameof(ShowSearchEmpty));
-            OnPropertyChanged(nameof(SearchPage));
-            OnPropertyChanged(nameof(SearchTotalPages));
-            OnPropertyChanged(nameof(SearchPageText));
+            ReplaceSearchResults(result.Hits);
+            RememberSearchPage(cacheKey, result.Hits, result.Offset, result.TotalHits);
+            NotifySearchPageChanged();
             SearchStatus = result.Hits.Count == 0
                 ? "没有找到匹配的项目，试试换一个关键词。"
                 : CurrentTab == DownloadTab.Mods
@@ -1267,7 +1279,7 @@ public sealed class DownloadViewModel : ObservableObject
                     : $"找到 {result.TotalHits} 个项目";
             if (CurrentTab == DownloadTab.Mods && result.Hits.Count > 0)
             {
-                _ = EnrichMcmodAsync(result.Hits, searchVersion);
+                _ = EnrichMcmodAsync(result.Hits, searchVersion, cacheKey);
             }
         }
         catch (Exception ex)
@@ -1284,7 +1296,43 @@ public sealed class DownloadViewModel : ObservableObject
         }
     }
 
-    private async Task EnrichMcmodAsync(IReadOnlyList<ModrinthProject> hits, int searchVersion)
+    private void ReplaceSearchResults(IEnumerable<ModrinthProject> projects)
+    {
+        SearchResults.Clear();
+        foreach (var project in projects)
+        {
+            SearchResults.Add(project);
+        }
+    }
+
+    private void NotifySearchPageChanged()
+    {
+        OnPropertyChanged(nameof(HasSearchResults));
+        OnPropertyChanged(nameof(ShowSearchEmpty));
+        OnPropertyChanged(nameof(SearchPage));
+        OnPropertyChanged(nameof(SearchTotalPages));
+        OnPropertyChanged(nameof(SearchPageText));
+    }
+
+    private void RememberSearchPage(string key, IReadOnlyList<ModrinthProject> projects, int offset, int total)
+    {
+        if (_searchCache.ContainsKey(key))
+        {
+            return;
+        }
+
+        _searchCache[key] = new CachedSearchPage(projects.ToList(), offset, total, false);
+        _searchCacheOrder.Enqueue(key);
+        while (_searchCacheOrder.Count > 20)
+        {
+            var oldest = _searchCacheOrder.Dequeue();
+            _searchCache.Remove(oldest);
+        }
+    }
+
+    private sealed record CachedSearchPage(List<ModrinthProject> Projects, int Offset, int Total, bool Enriched);
+
+    private async Task EnrichMcmodAsync(IReadOnlyList<ModrinthProject> hits, int searchVersion, string cacheKey)
     {
         foreach (var project in hits)
         {
@@ -1318,11 +1366,24 @@ public sealed class DownloadViewModel : ObservableObject
                 ChineseName = HasCjk(info.Name) ? info.Name : null,
                 McmodUrl = info.Url
             };
+
+            if (_searchCache.TryGetValue(cacheKey, out var cachedPage))
+            {
+                var cachedIndex = cachedPage.Projects.FindIndex(item => item.Id == project.Id);
+                if (cachedIndex >= 0)
+                {
+                    cachedPage.Projects[cachedIndex] = SearchResults[index];
+                }
+            }
         }
 
         if (searchVersion == _searchVersion)
         {
             SearchStatus = $"找到 {_searchTotal} 个项目";
+            if (_searchCache.TryGetValue(cacheKey, out var page))
+            {
+                _searchCache[cacheKey] = page with { Enriched = true };
+            }
         }
     }
 
@@ -1770,6 +1831,7 @@ public sealed class DownloadViewModel : ObservableObject
         _ => null
     };
 }
+
 
 
 

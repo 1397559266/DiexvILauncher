@@ -113,6 +113,56 @@ public sealed class ModIconConverter : IValueConverter
         => throw new NotSupportedException();
 }
 
+public sealed class RemoteIconConverter : IValueConverter
+{
+    private static readonly Dictionary<string, BitmapSource?> Cache = new(StringComparer.Ordinal);
+    private static readonly object Gate = new();
+
+    public object? Convert(object? value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is not string url || string.IsNullOrWhiteSpace(url))
+        {
+            return null;
+        }
+
+        lock (Gate)
+        {
+            if (Cache.TryGetValue(url, out var cached))
+            {
+                return cached;
+            }
+        }
+
+        try
+        {
+            var image = new BitmapImage();
+            image.BeginInit();
+            image.UriSource = new Uri(url, UriKind.Absolute);
+            image.CacheOption = BitmapCacheOption.OnDemand;
+            image.DecodePixelWidth = 96;
+            image.EndInit();
+            lock (Gate)
+            {
+                Cache[url] = image;
+            }
+
+            return image;
+        }
+        catch
+        {
+            lock (Gate)
+            {
+                Cache[url] = null;
+            }
+
+            return null;
+        }
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}
+
 public sealed class LoaderBrushConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object parameter, CultureInfo culture)
