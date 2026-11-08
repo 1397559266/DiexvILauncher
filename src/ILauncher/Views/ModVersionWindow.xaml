@@ -168,6 +168,10 @@
                         <TextBlock Margin="0,5,0,0" FontSize="9" Foreground="#FFB45309" TextWrapping="Wrap"
                                    Text="{Binding UnresolvedRequiredCount, StringFormat=有 {0} 个必需前置无法解析，请检查网络后重试或手动安装。}"
                                    Visibility="{Binding HasUnresolvedRequired, Converter={StaticResource BoolToVisibility}}" />
+                        <Button Style="{StaticResource SecondaryButton}" Height="28" MinWidth="118" Margin="0,7,0,0"
+                                HorizontalAlignment="Left" Content="重新检测前置"
+                                Click="RetryDependencies_Click"
+                                Visibility="{Binding HasJarError, Converter={StaticResource BoolToVisibility}}" />
                     </StackPanel>
                 </Grid>
             </Border>

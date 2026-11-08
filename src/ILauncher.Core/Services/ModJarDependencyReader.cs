@@ -9,6 +9,11 @@ namespace ILauncher.Core.Services;
 
 public sealed record JarDependency(string ModId, bool Mandatory, string VersionRange);
 
+public sealed record JarDependencyReadResult(
+    bool Success,
+    IReadOnlyList<JarDependency> Dependencies,
+    string? Error);
+
 /// <summary>
 /// Reads declared mod dependencies from a mod jar. Modrinth versions sometimes
 /// have an empty dependencies array even when the mod metadata declares several
@@ -48,12 +53,12 @@ public static class ModJarDependencyReader
     /// range requests. This avoids downloading a whole 10-100 MB mod jar just
     /// to show its prerequisites.
     /// </summary>
-    public static async Task<IReadOnlyList<JarDependency>> ReadFromUrlAsync(string url, long fileSize,
+    public static async Task<JarDependencyReadResult> ReadFromUrlAsync(string url, long fileSize,
         CancellationToken cancellationToken)
     {
         if (fileSize <= 0)
         {
-            return Array.Empty<JarDependency>();
+            return new JarDependencyReadResult(false, Array.Empty<JarDependency>(), "文件大小未知");
         }
 
         try
@@ -64,7 +69,7 @@ public static class ModJarDependencyReader
             var eocd = FindEndOfCentralDirectory(tail);
             if (eocd < 0)
             {
-                return Array.Empty<JarDependency>();
+                return new JarDependencyReadResult(false, Array.Empty<JarDependency>(), "不是有效的 JAR 文件");
             }
 
             var totalEntries = BinaryPrimitives.ReadUInt16LittleEndian(tail.AsSpan(eocd + 10, 2));
@@ -72,7 +77,7 @@ public static class ModJarDependencyReader
             var centralOffset = BinaryPrimitives.ReadUInt32LittleEndian(tail.AsSpan(eocd + 16, 4));
             if (totalEntries == 0 || centralSize == 0 || centralSize > 16 * 1024 * 1024)
             {
-                return Array.Empty<JarDependency>();
+                return new JarDependencyReadResult(false, Array.Empty<JarDependency>(), "JAR 中央目录无效");
             }
 
             var central = await ReadRangeAsync(client, url, centralOffset,
@@ -137,11 +142,15 @@ public static class ModJarDependencyReader
                 ParseText(name, text, result);
             }
 
-            return Filter(result);
+            return new JarDependencyReadResult(true, Filter(result), null);
         }
-        catch
+        catch (OperationCanceledException)
         {
-            return Array.Empty<JarDependency>();
+            return new JarDependencyReadResult(false, Array.Empty<JarDependency>(), "读取超时");
+        }
+        catch (Exception ex)
+        {
+            return new JarDependencyReadResult(false, Array.Empty<JarDependency>(), ex.Message);
         }
     }
 

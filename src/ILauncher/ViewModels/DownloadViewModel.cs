@@ -1597,19 +1597,24 @@ public sealed class DownloadViewModel : ObservableObject
         return result;
     }
 
-    private async Task<IReadOnlyList<ModDependencyItem>> AnalyzeJarDependenciesAsync(ModrinthVersion version,
+    private async Task<DependencyLoadResult> AnalyzeJarDependenciesAsync(ModrinthVersion version,
         string gameVersion, string? loader, CancellationToken cancellationToken)
     {
         var instance = ResolveInstallInstance(gameVersion, loader);
         if (instance == null || version.File == null)
         {
-            return Array.Empty<ModDependencyItem>();
+            return new DependencyLoadResult(Array.Empty<ModDependencyItem>(), false, "没有对应的已安装版本");
         }
 
         var installed = await new ModService().LoadModsAsync(instance, cancellationToken);
         var result = new List<ModDependencyItem>();
         await AddJarDependenciesAsync(version, gameVersion, loader, installed, result, cancellationToken);
-        return result;
+        if (result.Count == 0 && !_jarDependencyCache.ContainsKey(version.Id))
+        {
+            return new DependencyLoadResult(Array.Empty<ModDependencyItem>(), false, "读取 JAR 前置失败");
+        }
+
+        return new DependencyLoadResult(result, true, null);
     }
 
     private async Task AddJarDependenciesAsync(ModrinthVersion version, string gameVersion, string? loader,
@@ -1627,8 +1632,15 @@ public sealed class DownloadViewModel : ObservableObject
         }
         else
         {
-            jarDependencies = await LoadJarDependenciesAsync(version, cancellationToken);
+            var read = await LoadJarDependenciesAsync(version, cancellationToken);
+            if (!read.Success)
+            {
+                return;
+            }
+
+            jarDependencies = read.Dependencies;
             _jarDependencyCache[version.Id] = jarDependencies;
+            SaveJarDependencyCacheToDisk();
         }
 
         foreach (var dependency in jarDependencies)
@@ -1654,17 +1666,17 @@ public sealed class DownloadViewModel : ObservableObject
         }
     }
 
-    private async Task<IReadOnlyList<JarDependency>> LoadJarDependenciesAsync(ModrinthVersion version,
+    private async Task<JarDependencyReadResult> LoadJarDependenciesAsync(ModrinthVersion version,
         CancellationToken cancellationToken)
     {
         if (version.File == null)
         {
-            return Array.Empty<JarDependency>();
+            return new JarDependencyReadResult(false, Array.Empty<JarDependency>(), "没有可读取的 JAR");
         }
 
         if (_jarDependencyCache.TryGetValue(version.Id, out var cached))
         {
-            return cached;
+            return new JarDependencyReadResult(true, cached, null);
         }
 
         try
@@ -1673,13 +1685,21 @@ public sealed class DownloadViewModel : ObservableObject
             timeout.CancelAfter(TimeSpan.FromSeconds(30));
             var result = await ModJarDependencyReader.ReadFromUrlAsync(
                 version.File.Url, version.File.Size, timeout.Token);
-            _jarDependencyCache[version.Id] = result;
-            SaveJarDependencyCacheToDisk();
+            if (result.Success)
+            {
+                _jarDependencyCache[version.Id] = result.Dependencies;
+                SaveJarDependencyCacheToDisk();
+            }
+
             return result;
         }
-        catch
+        catch (OperationCanceledException)
         {
-            return Array.Empty<JarDependency>();
+            return new JarDependencyReadResult(false, Array.Empty<JarDependency>(), "读取超时");
+        }
+        catch (Exception ex)
+        {
+            return new JarDependencyReadResult(false, Array.Empty<JarDependency>(), ex.Message);
         }
     }
 
@@ -1824,8 +1844,13 @@ public sealed class DownloadViewModel : ObservableObject
 
         if (CurrentTab == DownloadTab.Mods && version.File != null)
         {
-            var jarDependencies = await LoadJarDependenciesAsync(version, cancellationToken);
-            foreach (var dependency in jarDependencies.Where(item => item.Mandatory))
+            var jarResult = await LoadJarDependenciesAsync(version, cancellationToken);
+            if (!jarResult.Success)
+            {
+                return;
+            }
+
+            foreach (var dependency in jarResult.Dependencies.Where(item => item.Mandatory))
             {
                 var project = await ResolveModIdProjectAsync(dependency.ModId, gameVersion, loader, cancellationToken);
                 if (project == null || IsDependencyInstalled(project, installed) ||
@@ -1979,7 +2004,7 @@ public sealed class DownloadViewModel : ObservableObject
             Array.Empty<string>(),
             async (version, _) => (IReadOnlyList<ModrinthVersion>)await _modrinth.GetVersionsAsync(project.Id, version, null),
             (_, _, _) => Task.FromResult<IReadOnlyList<ModDependencyItem>>(Array.Empty<ModDependencyItem>()),
-            (_, _, _) => Task.FromResult<IReadOnlyList<ModDependencyItem>>(Array.Empty<ModDependencyItem>()),
+            (_, _, _) => Task.FromResult(new DependencyLoadResult(Array.Empty<ModDependencyItem>(), true, null)),
             (_, _, _, _) => Task.CompletedTask)
         {
             Owner = Application.Current.MainWindow,
@@ -2226,6 +2251,7 @@ public sealed class DownloadViewModel : ObservableObject
         _ => null
     };
 }
+
 
 
 
