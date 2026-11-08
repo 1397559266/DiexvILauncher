@@ -399,54 +399,26 @@ public sealed class SkinService
 
     private static BitmapSource RenderHeadNearest(BitmapSource baseHead, BitmapSource? hat, int size)
     {
-        const int sourceSize = 8;
-        var baseFormatted = new FormatConvertedBitmap(baseHead, PixelFormats.Bgra32, null, 0);
-        var basePixels = new byte[sourceSize * sourceSize * 4];
-        baseFormatted.CopyPixels(basePixels, sourceSize * 4, 0);
+        // PCL draws the face at 48/64 and the hat layer at 56/64, both centered.
+        // The larger hat layer is what makes hair/hats extend beyond the face.
+        var baseSize = Math.Max(1, (int)Math.Round(size * 48d / 64d));
+        var hatSize = Math.Max(1, (int)Math.Round(size * 56d / 64d));
+        var baseRect = new Rect((size - baseSize) / 2d, (size - baseSize) / 2d, baseSize, baseSize);
+        var hatRect = new Rect((size - hatSize) / 2d, (size - hatSize) / 2d, hatSize, hatSize);
 
-        byte[]? hatPixels = null;
-        if (hat != null)
+        var visual = new DrawingVisual();
+        RenderOptions.SetBitmapScalingMode(visual, BitmapScalingMode.NearestNeighbor);
+        using (var context = visual.RenderOpen())
         {
-            var hatFormatted = new FormatConvertedBitmap(hat, PixelFormats.Bgra32, null, 0);
-            hatPixels = new byte[sourceSize * sourceSize * 4];
-            hatFormatted.CopyPixels(hatPixels, sourceSize * 4, 0);
-        }
-
-        var stride = size * 4;
-        var output = new byte[stride * size];
-        for (var y = 0; y < size; y++)
-        {
-            var sourceY = y * sourceSize / size;
-            for (var x = 0; x < size; x++)
+            context.DrawImage(baseHead, baseRect);
+            if (hat != null)
             {
-                var sourceX = x * sourceSize / size;
-                var sourceOffset = (sourceY * sourceSize + sourceX) * 4;
-                var targetOffset = y * stride + x * 4;
-                var b = basePixels[sourceOffset];
-                var g = basePixels[sourceOffset + 1];
-                var r = basePixels[sourceOffset + 2];
-                var a = basePixels[sourceOffset + 3];
-                if (hatPixels != null)
-                {
-                    var hatAlpha = hatPixels[sourceOffset + 3];
-                    if (hatAlpha > 0)
-                    {
-                        var alpha = hatAlpha / 255d;
-                        b = (byte)(hatPixels[sourceOffset] * alpha + b * (1 - alpha));
-                        g = (byte)(hatPixels[sourceOffset + 1] * alpha + g * (1 - alpha));
-                        r = (byte)(hatPixels[sourceOffset + 2] * alpha + r * (1 - alpha));
-                        a = (byte)Math.Min(255, a + hatAlpha * (255 - a) / 255);
-                    }
-                }
-
-                output[targetOffset] = b;
-                output[targetOffset + 1] = g;
-                output[targetOffset + 2] = r;
-                output[targetOffset + 3] = a;
+                context.DrawImage(hat, hatRect);
             }
         }
 
-        var bitmap = BitmapSource.Create(size, size, 96, 96, PixelFormats.Bgra32, null, output, stride);
+        var bitmap = new RenderTargetBitmap(size, size, 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(visual);
         bitmap.Freeze();
         return bitmap;
     }
