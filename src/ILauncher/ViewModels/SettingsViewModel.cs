@@ -125,6 +125,8 @@ public sealed class SettingsViewModel : ObservableObject
         set => SetProperty(ref _playerName, value);
     }
 
+    public string SkinPath => _settings.Settings.SkinPath;
+
     public int MemoryMb
     {
         get => _memoryMb;

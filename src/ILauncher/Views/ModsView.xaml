@@ -206,7 +206,19 @@
                                     <StackPanel Grid.Column="1" Margin="10,0,10,0" VerticalAlignment="Center">
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="{Binding Name}" FontSize="12.5" FontWeight="SemiBold"
-                                                       TextTrimming="CharacterEllipsis" MaxWidth="420" ToolTip="{Binding Name}" />
+                                                       TextTrimming="CharacterEllipsis" MaxWidth="420" ToolTip="{Binding Name}">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{StaticResource BrushText}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Enabled}" Value="False">
+                                                                <Setter Property="Foreground" Value="#FF9AA8BA" />
+                                                                <Setter Property="Opacity" Value="0.72" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
                                             <Border Background="#FFF1F6FD" CornerRadius="5" Padding="5,1" Margin="8,0,0,0"
                                                     VerticalAlignment="Center">
                                                 <StackPanel Orientation="Horizontal">

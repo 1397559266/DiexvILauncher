@@ -198,7 +198,7 @@ public sealed class SkinPreview : UserControl
         var slim = string.Equals(SkinModel, "Alex", StringComparison.OrdinalIgnoreCase);
         var armWidth = slim ? 3d : 4d;
         var armX = 4 + armWidth / 2d;
-        var overlaySkin = skin.PixelHeight >= 64 ? skinSource : null;
+        var overlaySkin = skin.PixelHeight >= 64 ? UpscaleNearest(CompositeOverlay(skin), 16) : null;
 
         var headOverlay = new Dictionary<Face, Rect>
         {
@@ -358,6 +358,95 @@ public sealed class SkinPreview : UserControl
         group.Children.Add(new GeometryModel3D(mesh, material) { BackMaterial = material });
     }
 
+    private static readonly (Rect Overlay, Rect Base)[] OverlayMappings =
+    {
+        (new Rect(40, 8, 8, 8), new Rect(8, 8, 8, 8)),
+        (new Rect(56, 8, 8, 8), new Rect(24, 8, 8, 8)),
+        (new Rect(32, 8, 8, 8), new Rect(0, 8, 8, 8)),
+        (new Rect(48, 8, 8, 8), new Rect(16, 8, 8, 8)),
+        (new Rect(40, 0, 8, 8), new Rect(8, 0, 8, 8)),
+        (new Rect(48, 0, 8, 8), new Rect(16, 0, 8, 8)),
+        (new Rect(20, 36, 8, 12), new Rect(20, 20, 8, 12)),
+        (new Rect(32, 36, 8, 12), new Rect(32, 20, 8, 12)),
+        (new Rect(16, 36, 4, 12), new Rect(16, 20, 4, 12)),
+        (new Rect(28, 36, 4, 12), new Rect(28, 20, 4, 12)),
+        (new Rect(20, 32, 8, 4), new Rect(20, 16, 8, 4)),
+        (new Rect(28, 32, 8, 4), new Rect(28, 16, 8, 4)),
+        (new Rect(44, 36, 4, 12), new Rect(44, 20, 4, 12)),
+        (new Rect(52, 36, 4, 12), new Rect(52, 20, 4, 12)),
+        (new Rect(40, 36, 4, 12), new Rect(40, 20, 4, 12)),
+        (new Rect(48, 36, 4, 12), new Rect(48, 20, 4, 12)),
+        (new Rect(44, 32, 4, 4), new Rect(44, 16, 4, 4)),
+        (new Rect(48, 32, 4, 4), new Rect(48, 16, 4, 4)),
+        (new Rect(52, 52, 4, 12), new Rect(36, 52, 4, 12)),
+        (new Rect(60, 52, 4, 12), new Rect(44, 52, 4, 12)),
+        (new Rect(48, 52, 4, 12), new Rect(32, 52, 4, 12)),
+        (new Rect(56, 52, 4, 12), new Rect(40, 52, 4, 12)),
+        (new Rect(52, 48, 4, 4), new Rect(36, 48, 4, 4)),
+        (new Rect(56, 48, 4, 4), new Rect(40, 48, 4, 4)),
+        (new Rect(4, 36, 4, 12), new Rect(4, 20, 4, 12)),
+        (new Rect(12, 36, 4, 12), new Rect(12, 20, 4, 12)),
+        (new Rect(0, 36, 4, 12), new Rect(0, 20, 4, 12)),
+        (new Rect(8, 36, 4, 12), new Rect(8, 20, 4, 12)),
+        (new Rect(4, 32, 4, 4), new Rect(4, 16, 4, 4)),
+        (new Rect(8, 32, 4, 4), new Rect(8, 16, 4, 4)),
+        (new Rect(4, 52, 4, 12), new Rect(20, 52, 4, 12)),
+        (new Rect(12, 52, 4, 12), new Rect(28, 52, 4, 12)),
+        (new Rect(0, 52, 4, 12), new Rect(16, 52, 4, 12)),
+        (new Rect(8, 52, 4, 12), new Rect(24, 52, 4, 12)),
+        (new Rect(4, 48, 4, 4), new Rect(20, 48, 4, 4)),
+        (new Rect(8, 48, 4, 4), new Rect(24, 48, 4, 4))
+    };
+
+    private static BitmapSource CompositeOverlay(BitmapSource skin)
+    {
+        var formatted = new FormatConvertedBitmap(skin, PixelFormats.Bgra32, null, 0);
+        var stride = formatted.PixelWidth * 4;
+        var pixels = new byte[stride * formatted.PixelHeight];
+        formatted.CopyPixels(pixels, stride, 0);
+        var result = new byte[pixels.Length];
+        Buffer.BlockCopy(pixels, 0, result, 0, pixels.Length);
+        foreach (var (overlay, baseRect) in OverlayMappings)
+        {
+            for (var y = 0; y < (int)overlay.Height; y++)
+            {
+                for (var x = 0; x < (int)overlay.Width; x++)
+                {
+                    var overlayOffset = ((int)overlay.Y + y) * stride + ((int)overlay.X + x) * 4;
+                    var baseOffset = ((int)baseRect.Y + y) * stride + ((int)baseRect.X + x) * 4;
+                    if (overlayOffset + 3 >= pixels.Length || baseOffset + 3 >= pixels.Length)
+                    {
+                        continue;
+                    }
+
+                    var alpha = pixels[overlayOffset + 3];
+                    if (alpha == 0)
+                    {
+                        result[overlayOffset] = pixels[baseOffset];
+                        result[overlayOffset + 1] = pixels[baseOffset + 1];
+                        result[overlayOffset + 2] = pixels[baseOffset + 2];
+                    }
+                    else if (alpha < 255)
+                    {
+                        result[overlayOffset] = (byte)((pixels[overlayOffset] * alpha +
+                                                        pixels[baseOffset] * (255 - alpha)) / 255);
+                        result[overlayOffset + 1] = (byte)((pixels[overlayOffset + 1] * alpha +
+                                                            pixels[baseOffset + 1] * (255 - alpha)) / 255);
+                        result[overlayOffset + 2] = (byte)((pixels[overlayOffset + 2] * alpha +
+                                                            pixels[baseOffset + 2] * (255 - alpha)) / 255);
+                    }
+
+                    result[overlayOffset + 3] = 255;
+                }
+            }
+        }
+
+        var image = BitmapSource.Create(formatted.PixelWidth, formatted.PixelHeight, 96, 96,
+            PixelFormats.Bgra32, null, result, stride);
+        image.Freeze();
+        return image;
+    }
+
     private static BitmapSource UpscaleNearest(BitmapSource source, int scale)
     {
         if (scale <= 1)
@@ -441,10 +530,13 @@ public sealed class SkinPreview : UserControl
         ImageSource? overlay = null, IReadOnlyDictionary<Face, Rect>? overlayUv = null, double inflate = 0)
     {
         AddQuads(group, center, width, height, depth, skin, uv);
-        // WPF's 3D layer does not sort transparent overlay geometry reliably;
-        // inflated translucent overlay faces cause holes and z-fighting around
-        // the head/arms/legs. The base skin faces are rendered solidly instead.
-        // Overlay texture parsing is kept for future cutout rendering.
+        // WPF's 3D layer has no alpha test. Render the outer skin layer as a
+        // slightly larger shell and let the transparent pixels blend over the
+        // base; the generous inflation avoids z-fighting with the base faces.
+        if (overlay != null && overlayUv != null)
+        {
+            AddQuads(group, center, width + inflate * 2, height + inflate * 2, depth + inflate * 2, overlay, overlayUv);
+        }
     }
 
     private static void AddCutoutOverlayQuads(Model3DGroup group, Point3D center, double width, double height,

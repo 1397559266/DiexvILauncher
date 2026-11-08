@@ -98,10 +98,8 @@
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <Border Width="44" Height="44" CornerRadius="12">
-                            <Border.Background>
-                                <ImageBrush ImageSource="pack://application:,,,/Assets/avatar.png" Stretch="UniformToFill" />
-                            </Border.Background>
+                        <Border Width="44" Height="44" CornerRadius="12" ClipToBounds="True">
+                            <controls:SkinHead SkinPath="{Binding SkinPath}" Width="44" Height="44" />
                         </Border>
                         <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
                             <TextBox Style="{StaticResource InputTextBox}" Height="36" Width="240" HorizontalAlignment="Left"
