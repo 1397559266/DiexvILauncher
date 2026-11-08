@@ -88,7 +88,8 @@
     </UserControl.Resources>
 
     <Grid>
-        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="26,22,26,26">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="26,22,26,26"
+                  PreviewMouseWheel="HomeScroll_PreviewMouseWheel">
             <Grid MaxWidth="1200" HorizontalAlignment="Center">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="1.72*" />

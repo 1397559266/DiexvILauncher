@@ -1,3 +1,4 @@
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using ILauncher.ViewModels;
@@ -17,5 +18,18 @@ public partial class HomeView : UserControl
         {
             viewModel.OpenInstance(instance);
         }
+    }
+
+    private void HomeScroll_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (e.Handled || sender is not ScrollViewer scrollViewer)
+        {
+            return;
+        }
+
+        var lines = SystemParameters.WheelScrollLines;
+        var amount = lines > 0 ? lines * 32d : 48d;
+        scrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset - Math.Sign(e.Delta) * amount);
+        e.Handled = true;
     }
 }
