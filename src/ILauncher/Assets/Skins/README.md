@@ -1,14 +1,26 @@
 # Default skins
 
-`Steve.png`, `Alex.png`, `Ari.png`, `Efe.png`, `Kai.png`, `Makena.png`,
-`Noor.png`, `Sunny.png` and `Zuri.png` are Mojang's **official default player
-skins**, extracted from the 1.20.1 client jar:
+This directory intentionally contains **no bundled Mojang skin textures**.
 
-`assets/minecraft/textures/entity/player/{wide,slim}/<name>.png`
+At startup `SkinService` scans the configured Minecraft root (and the standard
+`%APPDATA%\.minecraft` / `%USERPROFILE%\.minecraft` locations) for a client jar,
+then extracts the official default player textures from:
 
-They are included only so the launcher can show the same default appearance as
-Minecraft. Minecraft, Steve, Alex and the other default skins are trademarks of
-Mojang Studios. This project is not affiliated with Mojang or Microsoft.
+```text
+assets/minecraft/textures/entity/player/wide/<name>.png
+assets/minecraft/textures/entity/player/slim/<name>.png
+```
 
-The `*-cape.png` files are optional sample capes for the local cape preview and
-are not part of the official default skins.
+Older client jars using `assets/minecraft/textures/entity/<name>.png` are also
+supported. Extracted files are written to:
+
+```text
+%APPDATA%\ILauncher\skins\
+```
+
+If no client jar is found, the launcher creates a neutral `Default.png`
+placeholder so the UI still works. It does not ship or redistribute Mojang's
+default skin textures.
+
+Minecraft, Steve, Alex and the other default skins remain trademarks of Mojang
+Studios. This project is not affiliated with Mojang or Microsoft.

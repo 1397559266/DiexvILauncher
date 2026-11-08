@@ -1,4 +1,6 @@
 using System.IO;
+using System.IO.Compression;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -15,7 +17,7 @@ public sealed class SkinService
     };
 
     private readonly Dictionary<string, BitmapSource> _headCache = new();
-    private const string BuiltinVersion = "official-1";
+    private const string BuiltinVersion = "client-extract-1";
 
     private static bool IsSlim(string name)
         => name is "Alex" or "Efe" or "Makena" or "Sunny";
@@ -29,7 +31,10 @@ public sealed class SkinService
 
     public string SkinsDirectory { get; }
 
-    public string DefaultSkinPath => Path.Combine(SkinsDirectory, "Steve.png");
+    public string DefaultSkinPath
+        => File.Exists(Path.Combine(SkinsDirectory, "Steve.png"))
+            ? Path.Combine(SkinsDirectory, "Steve.png")
+            : Path.Combine(SkinsDirectory, "Default.png");
 
     public IReadOnlyList<SkinEntry> LoadLibrary(string? selectedPath = null)
     {
@@ -221,7 +226,81 @@ public sealed class SkinService
         var marker = Path.Combine(SkinsDirectory, ".builtin-skins-version");
         var refresh = !File.Exists(marker) ||
                       !string.Equals(File.ReadAllText(marker).Trim(), BuiltinVersion, StringComparison.Ordinal);
+        var steve = Path.Combine(SkinsDirectory, "Steve.png");
+        var allPresent = BuiltInNames.All(name => File.Exists(Path.Combine(SkinsDirectory, name + ".png")));
+        if (!refresh && allPresent && File.Exists(steve))
+        {
+            return;
+        }
 
+        var extracted = TryExtractFromClientJar(refresh);
+        if (extracted == 0 && !File.Exists(DefaultSkinPath))
+        {
+            CreateDefaultPlaceholder(DefaultSkinPath);
+        }
+
+        if (extracted > 0)
+        {
+            try
+            {
+                File.WriteAllText(marker, BuiltinVersion);
+            }
+            catch
+            {
+                // A read-only data directory only skips future extractions.
+            }
+        }
+    }
+
+    private int TryExtractFromClientJar(bool refresh)
+    {
+        var total = 0;
+        foreach (var root in CandidateMinecraftRoots())
+        {
+            var versions = Path.Combine(root, "versions");
+            if (!Directory.Exists(versions))
+            {
+                continue;
+            }
+
+            foreach (var versionDirectory in Directory.EnumerateDirectories(versions))
+            {
+                var versionName = Path.GetFileName(versionDirectory);
+                var preferred = Path.Combine(versionDirectory, versionName + ".jar");
+                var jars = new List<string>();
+                if (File.Exists(preferred))
+                {
+                    jars.Add(preferred);
+                }
+
+                jars.AddRange(Directory.EnumerateFiles(versionDirectory, "*.jar")
+                    .Where(path => !string.Equals(path, preferred, StringComparison.OrdinalIgnoreCase)));
+
+                foreach (var jar in jars)
+                {
+                    try
+                    {
+                        using var archive = ZipFile.OpenRead(jar);
+                        total += ExtractSkinEntries(archive, refresh);
+                        if (BuiltInNames.All(name => File.Exists(Path.Combine(SkinsDirectory, name + ".png"))))
+                        {
+                            return total;
+                        }
+                    }
+                    catch
+                    {
+                        // A damaged/patched jar is skipped.
+                    }
+                }
+            }
+        }
+
+        return total;
+    }
+
+    private int ExtractSkinEntries(ZipArchive archive, bool refresh)
+    {
+        var extracted = 0;
         foreach (var name in BuiltInNames)
         {
             var target = Path.Combine(SkinsDirectory, name + ".png");
@@ -230,57 +309,92 @@ public sealed class SkinService
                 continue;
             }
 
-            try
+            var lower = name.ToLowerInvariant();
+            var model = IsSlim(name) ? "slim" : "wide";
+            var candidates = new[]
             {
-                var uri = new Uri($"pack://application:,,,/Assets/Skins/{name}.png", UriKind.Absolute);
-                var resource = Application.GetResourceStream(uri);
-                if (resource == null)
-                {
-                    continue;
-                }
+                $"assets/minecraft/textures/entity/player/{model}/{lower}.png",
+                $"assets/minecraft/textures/entity/player/{lower}.png",
+                $"assets/minecraft/textures/entity/{lower}.png"
+            };
 
-                using var stream = resource.Stream;
-                using var file = File.Create(target);
-                stream.CopyTo(file);
-            }
-            catch
-            {
-                // A missing built-in skin falls back to Steve.
-            }
-
-            var capeTarget = Path.Combine(SkinsDirectory, name + "-cape.png");
-            if (File.Exists(capeTarget))
+            var entry = candidates
+                .Select(path => archive.Entries.FirstOrDefault(item =>
+                    string.Equals(item.FullName, path, StringComparison.OrdinalIgnoreCase)))
+                .FirstOrDefault(found => found != null);
+            if (entry == null || entry.Length == 0)
             {
                 continue;
             }
 
             try
             {
-                var uri = new Uri($"pack://application:,,,/Assets/Skins/{name}-cape.png", UriKind.Absolute);
-                var resource = Application.GetResourceStream(uri);
-                if (resource == null)
-                {
-                    continue;
-                }
-
-                using var stream = resource.Stream;
-                using var file = File.Create(capeTarget);
-                stream.CopyTo(file);
+                using var source = entry.Open();
+                using var file = File.Create(target);
+                source.CopyTo(file);
+                extracted++;
             }
             catch
             {
-                // Capes are optional.
+                // Leave the previous file intact if extraction fails.
             }
         }
 
+        return extracted;
+    }
+
+    private IReadOnlyList<string> CandidateMinecraftRoots()
+    {
+        var roots = new List<string>();
         try
         {
-            File.WriteAllText(marker, BuiltinVersion);
+            if (File.Exists(AppPaths.SettingsFile))
+            {
+                using var document = JsonDocument.Parse(File.ReadAllText(AppPaths.SettingsFile));
+                if (document.RootElement.TryGetProperty("MinecraftRoot", out var root) &&
+                    root.ValueKind == JsonValueKind.String)
+                {
+                    var path = root.GetString();
+                    if (!string.IsNullOrWhiteSpace(path))
+                    {
+                        roots.Add(path);
+                    }
+                }
+            }
         }
         catch
         {
-            // A read-only data directory only skips future built-in refreshes.
+            // Fall through to the standard locations.
         }
+
+        roots.Add(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".minecraft"));
+        roots.Add(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".minecraft"));
+        return roots.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    private static void CreateDefaultPlaceholder(string path)
+    {
+        var visual = new DrawingVisual();
+        using (var context = visual.RenderOpen())
+        {
+            context.DrawRectangle(new SolidColorBrush(Color.FromRgb(0x2F, 0x35, 0x40)), null,
+                new Rect(0, 0, 64, 64));
+            context.DrawRectangle(new SolidColorBrush(Color.FromRgb(0x8C, 0x99, 0xAA)), null,
+                new Rect(8, 8, 48, 40));
+            context.DrawRectangle(new SolidColorBrush(Color.FromRgb(0x2F, 0x35, 0x40)), null,
+                new Rect(18, 22, 8, 6));
+            context.DrawRectangle(new SolidColorBrush(Color.FromRgb(0x2F, 0x35, 0x40)), null,
+                new Rect(38, 22, 8, 6));
+            context.DrawRectangle(new SolidColorBrush(Color.FromRgb(0x2F, 0x35, 0x40)), null,
+                new Rect(24, 38, 16, 4));
+        }
+
+        var bitmap = new RenderTargetBitmap(64, 64, 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(visual);
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(bitmap));
+        using var stream = File.Create(path);
+        encoder.Save(stream);
     }
 
     private static BitmapSource RenderHeadNearest(BitmapSource baseHead, BitmapSource? hat, int size)

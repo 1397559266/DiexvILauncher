@@ -14,7 +14,7 @@
 
 | 模块 | 功能 |
 | --- | --- |
-| 皮肤 | 9 个 Mojang 官方默认皮肤、导入 64×64 皮肤、多图层（帽子/外套/袖子/裤子）渲染、Steve/Alex 模型切换、像素化 3D 旋转/缩放预览、披风显示、皮肤库、头像同步到标题栏和主页 |
+| 皮肤 | 从本机客户端 jar 提取的 9 个 Mojang 默认皮肤、导入 64×64 皮肤、多图层（帽子/外套/袖子/裤子）渲染、Steve/Alex 模型切换、像素化 3D 旋转/缩放预览、披风显示、皮肤库、头像同步到标题栏和主页 |
 | 正版登录 | 微软设备码登录（Xbox Live → XSTS → Minecraft Services），需要在登录窗口填写自己的 Azure 应用 ID；也可尝试导入官方启动器本地令牌；登录后可正版启动 |
 | 正版皮肤 | 按玩家名或 UUID 查询 Mojang 档案，下载皮肤/披风并加入本地皮肤库 |
 | 图标 | 版本自定义 PNG 图标；Fabric/Quilt/Forge/NeoForge/OptiFine 加载器徽标；模组 jar 内图标、资源包 `pack.png`、存档 `icon.png`、服务器图标 |
@@ -31,7 +31,7 @@
 - **3D 皮肤预览**：直接用 WPF `Viewport3D` 拼出 Minecraft 的方块人体，拖动旋转、滚轮缩放、自动旋转。
 - **多图层皮肤**：支持 64×64 皮肤的帽子层、外套层、左右袖子层、左右裤腿层；透明像素按 alpha 混合，外层几何略微外扩，避免与基础层 z-fighting。64×32 旧皮肤只显示基础层。
 - **头像同步**：标题栏账户、主页账户卡、皮肤库头像都使用当前皮肤的头部（含帽子层）。
-- **皮肤库**：内置 Mojang 官方默认 Steve / Alex / Ari / Efe / Kai / Makena / Noor / Sunny / Zuri，共 9 个，直接从 1.20.1 客户端 jar 提取（来源见 `Assets/Skins/README.md`）。
+- **皮肤库**：启动时扫描本机 `.minecraft/versions/*/*.jar`，从客户端资源中提取 Mojang 默认 Steve / Alex / Ari / Efe / Kai / Makena / Noor / Sunny / Zuri；仓库不打包 Mojang 皮肤纹理。没有可用客户端时生成一个中性占位皮肤。
 - **正版登录**：账户页右上角「正版登录」使用微软设备码流程。启动器不内置第三方 OAuth 应用 ID，首次使用需要在窗口中注册/填写自己的 Azure Application (client) ID；完成后会走 Xbox Live、XSTS 和 Minecraft Services，启动时使用正版访问令牌。
 - **正版皮肤查询**：输入正版 ID 或 UUID，调用 Mojang 公开档案接口下载皮肤，不保存任何账号密码。
 - 皮肤文件保存于 `%APPDATA%\ILauncher\skins\`，支持 64×64 与旧版 64×32。
@@ -247,7 +247,7 @@ docs/screenshots/            README 截图
 - 原版 1.20.1 安装器：临时目录下载版本 JSON、客户端 jar 和 65 个库文件（不下载资源对象）。
 - Forge 官方安装器：在全新临时目录完整安装 `1.20.1-forge-47.4.21`，自动生成 `launcher_profiles.json` 并完成打补丁。
 - 模组更新：放入旧版 Cloth Config 后检查到 11.1.136，点击更新后旧文件被禁用、新文件启用（测试后清理）。
-- 皮肤：9 个 Mojang 官方默认皮肤、Steve/Alex 与 slim/wide 模型映射、64×64 多图层（帽子/外套/袖子/裤子）渲染、像素化 3D 预览、像素头像、Mojang 皮肤查询、保存后头像同步。
+- 皮肤：运行时从本机客户端 jar 提取 9 个 Mojang 默认皮肤、Steve/Alex 与 slim/wide 模型映射、64×64 多图层（帽子/外套/袖子/裤子）渲染、像素化 3D 预览、像素头像、Mojang 皮肤查询、保存后头像同步。
 - 模组启停通过真实重命名完成并恢复。
 - 服务器：`servers.dat` NBT 读写往返、界面添加/编辑/删除、刷新后重新读取。
 - 资源包：ZIP 导入、`pack.png` 图标提取、删除。
@@ -267,6 +267,7 @@ docs/screenshots/            README 截图
 - 模组安装不会自动解析并安装前置依赖；只安装主文件。
 - Forge/NeoForge 走官方安装器，不保证所有版本都能在无界面模式下成功。
 - 启动器自身更新、主题/语言切换等非 Minecraft 功能未实现。
+
 
 
 
