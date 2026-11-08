@@ -1355,27 +1355,34 @@ public sealed class DownloadViewModel : ObservableObject
                     continue;
                 }
 
-                var project = await _modrinth.GetProjectAsync(dependency.ProjectId, cancellationToken);
-                if (project == null)
+                try
                 {
-                    continue;
+                    var project = await _modrinth.GetProjectAsync(dependency.ProjectId, cancellationToken);
+                    if (project == null)
+                    {
+                        continue;
+                    }
+
+                    var isInstalled = IsDependencyInstalled(project, installed);
+                    result.Add(new ModDependencyItem
+                    {
+                        ProjectId = project.Id,
+                        VersionId = dependency.VersionId,
+                        Title = project.Title,
+                        DependencyType = dependency.DependencyType,
+                        Installed = isInstalled,
+                        Depth = depth
+                    });
+
+                    var dependencyVersion = await ResolveDependencyVersionAsync(dependency, project, gameVersion, loader, cancellationToken);
+                    if (dependencyVersion != null)
+                    {
+                        await WalkAsync(dependencyVersion, depth + 1);
+                    }
                 }
-
-                var isInstalled = IsDependencyInstalled(project, installed);
-                result.Add(new ModDependencyItem
+                catch
                 {
-                    ProjectId = project.Id,
-                    VersionId = dependency.VersionId,
-                    Title = project.Title,
-                    DependencyType = dependency.DependencyType,
-                    Installed = isInstalled,
-                    Depth = depth
-                });
-
-                var dependencyVersion = await ResolveDependencyVersionAsync(dependency, project, gameVersion, loader, cancellationToken);
-                if (dependencyVersion != null)
-                {
-                    await WalkAsync(dependencyVersion, depth + 1);
+                    // One broken/removed prerequisite must not hide the others.
                 }
             }
         }
