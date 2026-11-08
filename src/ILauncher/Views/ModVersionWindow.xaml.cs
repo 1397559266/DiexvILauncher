@@ -223,9 +223,14 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
             if (Set(ref _missingRequiredCount, value))
             {
                 OnPropertyChanged(nameof(HasMissingRequired));
+                OnPropertyChanged(nameof(MissingRequiredText));
             }
         }
     }
+
+    public string MissingRequiredText => LanguageService.CurrentLanguage == LanguageService.English
+        ? $"{MissingRequiredCount} required prerequisites missing"
+        : $"缺少 {MissingRequiredCount} 个必需前置";
 
     public bool HasDependencies => Dependencies.Count > 0;
     public bool HasMissingRequired => MissingRequiredCount > 0;
@@ -237,9 +242,14 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
             if (Set(ref _unresolvedRequiredCount, value))
             {
                 OnPropertyChanged(nameof(HasUnresolvedRequired));
+                OnPropertyChanged(nameof(UnresolvedRequiredText));
             }
         }
     }
+
+    public string UnresolvedRequiredText => LanguageService.CurrentLanguage == LanguageService.English
+        ? $"{UnresolvedRequiredCount} required prerequisites could not be resolved. Check your network and retry, or install them manually."
+        : $"有 {UnresolvedRequiredCount} 个必需前置无法解析，请检查网络后重试或手动安装。";
 
     public bool HasUnresolvedRequired => UnresolvedRequiredCount > 0;
 
@@ -432,8 +442,11 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
         OnPropertyChanged(nameof(ShowDependencyPanel));
         DependencyStatus = Dependencies.Count == 0
             ? "没有前置模组"
-            : $"共 {Dependencies.Count} 个前置 · 缺少 {MissingRequiredCount} 个必需" +
-              (UnresolvedRequiredCount > 0 ? $" · {UnresolvedRequiredCount} 个无法解析" : "");
+            : LanguageService.CurrentLanguage == LanguageService.English
+                ? $"{Dependencies.Count} prerequisites · {MissingRequiredCount} required missing" +
+                  (UnresolvedRequiredCount > 0 ? $" · {UnresolvedRequiredCount} unresolved" : "")
+                : $"共 {Dependencies.Count} 个前置 · 缺少 {MissingRequiredCount} 个必需" +
+                  (UnresolvedRequiredCount > 0 ? $" · {UnresolvedRequiredCount} 个无法解析" : "");
     }
 
     private async Task InstallSingleDependencyAsync(ModDependencyItem item)
