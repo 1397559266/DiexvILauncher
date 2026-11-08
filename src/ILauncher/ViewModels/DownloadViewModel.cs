@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Windows;
@@ -84,6 +86,7 @@ public sealed class DownloadViewModel : ObservableObject
     private int _searchTotal;
     private int _searchVersion;
     private readonly Dictionary<string, CachedSearchPage> _searchCache = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, IReadOnlyList<JarDependency>> _jarDependencyCache = new(StringComparer.Ordinal);
     private readonly Queue<string> _searchCacheOrder = new();
     private const int SearchPageSize = 20;
     private GameInstance? _contextInstance;
@@ -1590,7 +1593,102 @@ public sealed class DownloadViewModel : ObservableObject
         }
 
         await WalkAsync(version, 0);
+        if (CurrentTab == DownloadTab.Mods && version.File != null)
+        {
+            await AddJarDependenciesAsync(version, gameVersion, loader, installed, result, cancellationToken);
+        }
+
         return result;
+    }
+
+    private async Task AddJarDependenciesAsync(ModrinthVersion version, string gameVersion, string? loader,
+        IReadOnlyList<ModInfo> installed, List<ModDependencyItem> result, CancellationToken cancellationToken)
+    {
+        if (version.File == null)
+        {
+            return;
+        }
+
+        IReadOnlyList<JarDependency> jarDependencies;
+        if (_jarDependencyCache.TryGetValue(version.Id, out var cached))
+        {
+            jarDependencies = cached;
+        }
+        else
+        {
+            jarDependencies = await LoadJarDependenciesAsync(version, cancellationToken);
+            _jarDependencyCache[version.Id] = jarDependencies;
+        }
+
+        foreach (var dependency in jarDependencies)
+        {
+            if (result.Any(item =>
+                    string.Equals(item.Title, dependency.ModId, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(NormalizeDependencyKey(item.Title), NormalizeDependencyKey(dependency.ModId),
+                        StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            var project = await ResolveModIdProjectAsync(dependency.ModId, gameVersion, loader, cancellationToken);
+            result.Add(new ModDependencyItem
+            {
+                ProjectId = project?.Id ?? dependency.ModId,
+                Title = project?.Title ?? dependency.ModId,
+                DependencyType = dependency.Mandatory ? "required" : "optional",
+                Installed = project != null && IsDependencyInstalled(project, installed),
+                Resolved = project != null,
+                Depth = 0
+            });
+        }
+    }
+
+    private async Task<IReadOnlyList<JarDependency>> LoadJarDependenciesAsync(ModrinthVersion version,
+        CancellationToken cancellationToken)
+    {
+        if (version.File == null)
+        {
+            return Array.Empty<JarDependency>();
+        }
+
+        try
+        {
+            var directory = Path.Combine(AppPaths.CacheDirectory, "jar-meta");
+            Directory.CreateDirectory(directory);
+            var path = Path.Combine(directory, version.Id + ".jar");
+            if (!File.Exists(path))
+            {
+                await DownloadHelper.DownloadFileAsync(version.File.Url, path, null, cancellationToken);
+            }
+
+            return ModJarDependencyReader.Read(path);
+        }
+        catch
+        {
+            return Array.Empty<JarDependency>();
+        }
+    }
+
+    private async Task<ModrinthProject?> ResolveModIdProjectAsync(string modId, string gameVersion, string? loader,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var search = await _modrinth.SearchAsync(modId, "mod", gameVersion, loader, index: "relevance",
+                offset: 0, limit: 5, cancellationToken: cancellationToken);
+            var key = NormalizeDependencyKey(modId);
+            return search.Hits.FirstOrDefault(project =>
+                       NormalizeDependencyKey(project.Slug) == key ||
+                       NormalizeDependencyKey(project.Title) == key) ??
+                   search.Hits.FirstOrDefault(project =>
+                       NormalizeDependencyKey(project.Slug).Contains(key, StringComparison.Ordinal) ||
+                       NormalizeDependencyKey(project.Title).Contains(key, StringComparison.Ordinal)) ??
+                   search.Hits.FirstOrDefault();
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private async Task InstallMissingDependenciesAsync(ModrinthVersion version, string gameVersion, string? loader,
@@ -1665,6 +1763,37 @@ public sealed class DownloadViewModel : ObservableObject
         }
 
         await InstallAsync(version);
+
+        if (CurrentTab == DownloadTab.Mods && version.File != null)
+        {
+            var jarDependencies = await LoadJarDependenciesAsync(version, cancellationToken);
+            foreach (var dependency in jarDependencies.Where(item => item.Mandatory))
+            {
+                var project = await ResolveModIdProjectAsync(dependency.ModId, gameVersion, loader, cancellationToken);
+                if (project == null || IsDependencyInstalled(project, installed) ||
+                    installedProjectIds.Contains(NormalizeDependencyKey(project.Slug)))
+                {
+                    continue;
+                }
+
+                var versions = await _modrinth.GetVersionsAsync(project.Id, gameVersion, loader, cancellationToken);
+                var dependencyVersion = versions.FirstOrDefault();
+                if (dependencyVersion?.File == null)
+                {
+                    continue;
+                }
+
+                progress?.Invoke(new DownloadProgress
+                {
+                    Phase = "前置",
+                    Message = $"安装前置 {project.Title}…",
+                    Percent = -1
+                });
+                await _modrinth.InstallVersionAsync(project, dependencyVersion, instance.ModsDirectory, progress, cancellationToken);
+                installedProjectIds.Add(NormalizeDependencyKey(project.Slug));
+                installedProjectIds.Add(NormalizeDependencyKey(project.Title));
+            }
+        }
     }
 
     private static string DependencyKey(ModrinthDependency dependency)
