@@ -169,7 +169,7 @@ public sealed class SettingsViewModel : ObservableObject
         private set => SetProperty(ref _javaSummary, value);
     }
 
-    public string VersionText => "ILauncher 1.0.0";
+    public string VersionText => "Diexv 1.1.0";
 
     public ICommand SaveCommand { get; }
     public ICommand BrowseRootCommand { get; }
