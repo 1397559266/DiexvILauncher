@@ -6,6 +6,7 @@ using System.Windows.Threading;
 using ILauncher.Core;
 using ILauncher.Core.Models;
 using ILauncher.Core.Services;
+using ILauncher.Views;
 using Microsoft.Win32;
 
 namespace ILauncher.ViewModels;
@@ -44,6 +45,7 @@ public sealed class DownloadViewModel : ObservableObject
     private readonly ModpackService _modpacks;
     private readonly Action<string, bool> _toast;
     private readonly Func<GameInstance?> _selectedInstance;
+    private readonly Func<IReadOnlyList<GameInstance>> _allInstances;
     private readonly Func<string> _root;
     private readonly Func<Task> _reloadInstances;
 
@@ -77,6 +79,7 @@ public sealed class DownloadViewModel : ObservableObject
     private int _searchVersion;
     private const int SearchPageSize = 20;
     private GameInstance? _contextInstance;
+    private GameInstance? _selectedTargetInstance;
     private bool _versionsLoaded;
 
     public DownloadViewModel(
@@ -89,6 +92,7 @@ public sealed class DownloadViewModel : ObservableObject
         ModpackService modpacks,
         Action<string, bool> toast,
         Func<GameInstance?> selectedInstance,
+        Func<IReadOnlyList<GameInstance>> allInstances,
         Func<string> root,
         Func<Task> reloadInstances)
     {
@@ -101,6 +105,7 @@ public sealed class DownloadViewModel : ObservableObject
         _modpacks = modpacks;
         _toast = toast;
         _selectedInstance = selectedInstance;
+        _allInstances = allInstances;
         _root = root;
         _reloadInstances = reloadInstances;
 
@@ -182,6 +187,13 @@ public sealed class DownloadViewModel : ObservableObject
                 await InstallProjectAsync(project);
             }
         }, _ => !IsDownloading && _contextInstance != null);
+        OpenVersionPickerCommand = new AsyncRelayCommand(async parameter =>
+        {
+            if (parameter is ModrinthProject project)
+            {
+                await OpenVersionPickerAsync(project);
+            }
+        }, _ => !IsDownloading && _contextInstance != null);
         SetTabCommand = new RelayCommand(parameter =>
         {
             if (parameter is string value && Enum.TryParse<DownloadTab>(value, out var tab))
@@ -203,6 +215,7 @@ public sealed class DownloadViewModel : ObservableObject
     public ObservableCollection<DownloadFilterOption> LoaderFilters { get; }
     public ObservableCollection<DownloadFilterOption> VersionScopeFilters { get; }
     public ObservableCollection<DownloadFilterOption> CategoryFilters { get; }
+    public ObservableCollection<GameInstance> TargetInstances { get; } = new();
     public ObservableCollection<DownloadFilterOption> InstallLoaderOptions { get; }
     public ObservableCollection<string> LoaderVersions { get; }
     public ObservableCollection<DownloadFilterOption> DownloadTypeOptions { get; }
@@ -220,6 +233,7 @@ public sealed class DownloadViewModel : ObservableObject
     public AsyncRelayCommand PreviousPageCommand { get; }
     public AsyncRelayCommand NextPageCommand { get; }
     public AsyncRelayCommand InstallProjectCommand { get; }
+    public AsyncRelayCommand OpenVersionPickerCommand { get; }
     public RelayCommand SetTabCommand { get; }
     public RelayCommand CancelCommand { get; }
 
@@ -318,6 +332,7 @@ public sealed class DownloadViewModel : ObservableObject
                 InstallSelectedCommand.RaiseCanExecuteChanged();
                 OnPropertyChanged(nameof(CanInstallSelected));
                 InstallProjectCommand.RaiseCanExecuteChanged();
+                OpenVersionPickerCommand.RaiseCanExecuteChanged();
                 ImportModpackCommand.RaiseCanExecuteChanged();
                 SearchCommand.RaiseCanExecuteChanged();
             }
@@ -556,6 +571,33 @@ public sealed class DownloadViewModel : ObservableObject
         private set => SetProperty(ref _targetMinecraftVersion, value);
     }
 
+    public GameInstance? SelectedTargetInstance
+    {
+        get => _selectedTargetInstance;
+        set
+        {
+            if (!SetProperty(ref _selectedTargetInstance, value))
+            {
+                return;
+            }
+
+            _contextInstance = value;
+            TargetMinecraftVersion = value?.MinecraftVersion ?? "";
+            OnPropertyChanged(nameof(CurrentInstanceText));
+            OnPropertyChanged(nameof(FilterSummary));
+            InstallProjectCommand.RaiseCanExecuteChanged();
+                OpenVersionPickerCommand.RaiseCanExecuteChanged();
+            InstallFabricCommand.RaiseCanExecuteChanged();
+            InstallQuiltCommand.RaiseCanExecuteChanged();
+            InstallForgeCommand.RaiseCanExecuteChanged();
+            InstallNeoForgeCommand.RaiseCanExecuteChanged();
+            if (CurrentTab != DownloadTab.Game)
+            {
+                _ = SearchAsync();
+            }
+        }
+    }
+
     public string CurrentInstanceText => _contextInstance == null
         ? "未选择版本"
         : $"{_contextInstance.Id} · {_contextInstance.Subtitle}";
@@ -585,8 +627,18 @@ public sealed class DownloadViewModel : ObservableObject
 
     public void RefreshContext()
     {
-        _contextInstance = _selectedInstance();
+        var preferredId = _selectedTargetInstance?.Id ?? _selectedInstance()?.Id;
+        TargetInstances.Clear();
+        foreach (var instance in _allInstances())
+        {
+            TargetInstances.Add(instance);
+        }
+
+        _selectedTargetInstance = TargetInstances.FirstOrDefault(instance => instance.Id == preferredId)
+                                  ?? TargetInstances.FirstOrDefault();
+        _contextInstance = _selectedTargetInstance;
         TargetMinecraftVersion = _contextInstance?.MinecraftVersion ?? "";
+        OnPropertyChanged(nameof(SelectedTargetInstance));
         OnPropertyChanged(nameof(CurrentInstanceText));
         OnPropertyChanged(nameof(FilterSummary));
         OnPropertyChanged(nameof(HasSearchResults));
@@ -596,6 +648,7 @@ public sealed class DownloadViewModel : ObservableObject
         InstallForgeCommand.RaiseCanExecuteChanged();
         InstallNeoForgeCommand.RaiseCanExecuteChanged();
         InstallProjectCommand.RaiseCanExecuteChanged();
+                OpenVersionPickerCommand.RaiseCanExecuteChanged();
         if (_contextInstance == null && CurrentTab != DownloadTab.Game)
         {
             SearchStatus = "请先在主页选择一个版本，才能把内容安装到对应目录。";
@@ -1141,6 +1194,7 @@ public sealed class DownloadViewModel : ObservableObject
         {
             IsSearching = false;
             InstallProjectCommand.RaiseCanExecuteChanged();
+                OpenVersionPickerCommand.RaiseCanExecuteChanged();
             PreviousPageCommand.RaiseCanExecuteChanged();
             NextPageCommand.RaiseCanExecuteChanged();
         }
@@ -1182,6 +1236,59 @@ public sealed class DownloadViewModel : ObservableObject
         {
             SearchStatus = $"找到 {_searchTotal} 个项目";
         }
+    }
+
+    private async Task OpenVersionPickerAsync(ModrinthProject project)
+    {
+        var instance = _contextInstance;
+        if (instance == null)
+        {
+            _toast("请先选择一个游戏版本。", true);
+            return;
+        }
+
+        var loader = CurrentTab == DownloadTab.Mods ? NormalizeLoader(instance.Loader) : null;
+        IReadOnlyList<ModrinthVersion> versions;
+        try
+        {
+            SearchStatus = "正在获取文件版本…";
+            versions = await _modrinth.GetVersionsAsync(project.Id, instance.MinecraftVersion, loader);
+            SearchStatus = $"共 {versions.Count} 个兼容文件版本";
+        }
+        catch (Exception ex)
+        {
+            SearchStatus = $"获取文件版本失败：{ex.Message}";
+            _toast($"无法获取文件版本：{ex.Message}", true);
+            return;
+        }
+
+        if (versions.Count == 0)
+        {
+            _toast("该资源没有适用于当前游戏版本和加载器的文件。", true);
+            return;
+        }
+
+        var window = new ModVersionWindow(project, versions)
+        {
+            Owner = Application.Current.MainWindow
+        };
+        if (window.ShowDialog() != true || window.SelectedVersion?.File == null)
+        {
+            return;
+        }
+
+        var selected = window.SelectedVersion;
+        var destination = CurrentTab switch
+        {
+            DownloadTab.ResourcePacks => Path.Combine(instance.GameDirectory, "resourcepacks"),
+            DownloadTab.Shaders => Path.Combine(instance.GameDirectory, "shaderpacks"),
+            _ => instance.ModsDirectory
+        };
+        await RunDownloadAsync($"安装 {project.DisplayTitle} {selected.VersionNumber}", async (report, token) =>
+        {
+            var path = await _modrinth.InstallVersionAsync(project, selected, destination, report, token);
+            _toast($"已安装 {Path.GetFileName(path)}，重启游戏后生效。", false);
+        });
     }
 
     private async Task InstallProjectAsync(ModrinthProject project)
@@ -1277,6 +1384,8 @@ public sealed class DownloadViewModel : ObservableObject
         _ => null
     };
 }
+
+
 
 
 

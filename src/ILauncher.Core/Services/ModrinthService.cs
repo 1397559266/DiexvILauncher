@@ -59,7 +59,19 @@ public sealed record ModrinthVersion(
     DateTime DatePublished,
     IReadOnlyList<string> GameVersions,
     IReadOnlyList<string> Loaders,
-    ModrinthFile? File);
+    ModrinthFile? File)
+{
+    public string GameVersionsText => string.Join(", ", GameVersions.Take(6));
+    public string LoadersText => string.Join(", ", Loaders);
+    public string ReleaseTypeText => ReleaseType switch
+    {
+        "release" => "正式版",
+        "beta" => "Beta",
+        "alpha" => "Alpha",
+        _ => ReleaseType
+    };
+    public string FileName => File?.FileName ?? "";
+}
 
 public sealed class ModrinthService
 {
@@ -244,6 +256,17 @@ public sealed class ModrinthService
         if (version?.File == null)
         {
             throw new InvalidOperationException("该资源没有适用于当前版本的文件。");
+        }
+
+        return await InstallVersionAsync(project, version, destinationDirectory, progress, cancellationToken);
+    }
+
+    public async Task<string> InstallVersionAsync(ModrinthProject project, ModrinthVersion version,
+        string destinationDirectory, Action<DownloadProgress>? progress, CancellationToken cancellationToken = default)
+    {
+        if (version.File == null)
+        {
+            throw new InvalidOperationException("该版本没有可下载文件。");
         }
 
         Directory.CreateDirectory(destinationDirectory);

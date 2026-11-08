@@ -138,6 +138,7 @@ $env:MS_CLIENT_ID = "你的 Azure Application (client) ID"
 - 从 `fabric.mod.json`、`quilt.mod.json`、`META-INF/mods.toml`、`MANIFEST.MF` 读取显示名、版本、模组 ID 和图标。
 - 启用/禁用通过重命名 `.jar` ↔ `.jar.disabled` 完成，下次启动生效。
 - 搜索、全部/启用/禁用筛选、从文件安装、从链接安装、打开目录、刷新。
+- 模组下载页支持选择目标已安装版本（游戏版本/加载器）和具体模组文件版本；安装前会列出与目标版本兼容的文件，不再直接选第一个。
 - **从链接安装**：粘贴 Modrinth 项目链接会自动解析并下载当前版本兼容文件；也支持 `.jar` 直链。CurseForge 项目页仍需要 API Key，建议浏览器下载后使用「从文件安装」。
 - 「检查更新」通过 Modrinth 的 SHA-1 文件查询找到项目，再按当前 MC 版本/加载器找最新版本；行内「更新」下载新文件并禁用旧文件。
 
@@ -283,6 +284,8 @@ docs/screenshots/            README 截图
 - 模组安装不会自动解析并安装前置依赖；只安装主文件。
 - Forge/NeoForge 走官方安装器，不保证所有版本都能在无界面模式下成功。
 - 启动器自身更新、主题/语言切换等非 Minecraft 功能未实现。
+
+
 
 
 

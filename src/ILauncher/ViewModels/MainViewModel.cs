@@ -690,6 +690,7 @@ public sealed class MainViewModel : ObservableObject
             ModpackService,
             Toast,
             () => SelectedInstance,
+            () => Instances,
             () => RootPath,
             () => ReloadInstancesAsync());
         _downloadPage.RefreshContext();
