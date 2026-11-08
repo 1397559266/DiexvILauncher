@@ -208,10 +208,8 @@
                                             Command="{Binding DataContext.SelectSkinCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                             CommandParameter="{Binding}">
                                         <StackPanel>
-                                            <Border Width="62" Height="62" CornerRadius="12" Background="#FFF3F8FF" HorizontalAlignment="Center"
-                                                    ClipToBounds="True">
-                                                <controls:SkinHead SkinPath="{Binding Path}" Width="62" Height="62" />
-                                            </Border>
+                                            <controls:SkinHead SkinPath="{Binding Path}" Width="62" Height="62"
+                                                               HorizontalAlignment="Center" />
                                             <TextBlock Text="{Binding Name}" FontSize="10.5" FontWeight="SemiBold" HorizontalAlignment="Center"
                                                        Margin="0,7,0,0" TextTrimming="CharacterEllipsis" MaxWidth="90" />
                                             <TextBlock Text="{Binding SourceText}" FontSize="8.5" Foreground="{StaticResource BrushTextMuted}"
