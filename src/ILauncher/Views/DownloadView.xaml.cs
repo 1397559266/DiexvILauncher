@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using ILauncher.Core.Services;
+using ILauncher.ViewModels;
 
 namespace ILauncher.Views;
 
@@ -37,6 +38,18 @@ public partial class DownloadView : UserControl
         {
             list.SelectedItem = version;
         }
+    }
+
+    private void SearchResultsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (sender is not ListBox list || list.SelectedItem is not ModrinthProject project ||
+            DataContext is not DownloadViewModel viewModel)
+        {
+            return;
+        }
+
+        list.SelectedItem = null;
+        viewModel.OpenVersionPickerCommand.Execute(project);
     }
 
     private static T? FindAncestor<T>(DependencyObject? current) where T : DependencyObject

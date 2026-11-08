@@ -402,14 +402,14 @@
                     <Border Grid.Row="0" Style="{StaticResource Divider}" VerticalAlignment="Bottom" />
 
                     <Grid Grid.Row="1">
-                        <ListBox ItemsSource="{Binding SearchResults}" Style="{StaticResource CleanListBox}" Margin="0,4,0,0">
+                        <ListBox ItemsSource="{Binding SearchResults}" Style="{StaticResource CleanListBox}" Margin="0,4,0,0"
+                                 SelectionChanged="SearchResultsList_SelectionChanged">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <Grid Height="72" Margin="11,0">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="48" />
                                             <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <Border Width="42" Height="42" CornerRadius="9" Background="#FFF3F8FF" VerticalAlignment="Center">
                                             <Grid>
@@ -444,14 +444,6 @@
                                                         CommandParameter="{Binding CurseForgeUrl}" ToolTip="在 CurseForge 搜索此项目" />
                                             </StackPanel>
                                         </StackPanel>
-                                        <Button Grid.Column="2" Style="{StaticResource PrimaryButton}" Height="30" MinWidth="70"
-                                                Command="{Binding DataContext.OpenVersionPickerCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                                CommandParameter="{Binding}" AutomationProperties.Name="选择模组版本">
-                                            <StackPanel Orientation="Horizontal">
-                                                <controls:Icon Data="{StaticResource IconDownload}" Fill="#FFFFFFFF" Width="11" Height="11" />
-                                                <TextBlock Text="选择版本" Margin="5,0,0,0" FontSize="10.5" />
-                                            </StackPanel>
-                                        </Button>
                                     </Grid>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>

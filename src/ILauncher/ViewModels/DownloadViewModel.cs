@@ -1327,55 +1327,92 @@ public sealed class DownloadViewModel : ObservableObject
 
     private async Task OpenVersionPickerAsync(ModrinthProject project)
     {
-        var instance = _contextInstance;
-        if (instance == null)
+        var target = _contextInstance;
+        if (target == null)
         {
             _toast("请先选择一个游戏版本。", true);
             return;
         }
 
-        var loader = CurrentTab == DownloadTab.Mods ? NormalizeLoader(instance.Loader) : null;
-        IReadOnlyList<ModrinthVersion> versions;
+        var loader = CurrentTab == DownloadTab.Mods ? NormalizeLoader(target.Loader) : null;
+        var defaultVersion = SelectedSearchGameVersion?.Key switch
+        {
+            null or "current" or "all" => target.MinecraftVersion,
+            var version => version
+        };
+        var gameVersions = SearchGameVersionFilters
+            .Where(option => option.Key is not (null or "current" or "all"))
+            .Select(option => option.Key)
+            .Where(version => !string.IsNullOrWhiteSpace(version))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (!gameVersions.Contains(defaultVersion, StringComparer.OrdinalIgnoreCase))
+        {
+            gameVersions.Insert(0, defaultVersion);
+        }
+
+        ModVersionWindow window;
         try
         {
-            SearchStatus = "正在获取文件版本…";
-            versions = await _modrinth.GetVersionsAsync(project.Id, instance.MinecraftVersion, loader);
-            SearchStatus = $"共 {versions.Count} 个兼容文件版本";
+            window = new ModVersionWindow(project, defaultVersion, gameVersions, loader,
+                async version => (IReadOnlyList<ModrinthVersion>)await _modrinth.GetVersionsAsync(project.Id, version, loader))
+            {
+                Owner = Application.Current.MainWindow
+            };
         }
         catch (Exception ex)
         {
-            SearchStatus = $"获取文件版本失败：{ex.Message}";
-            _toast($"无法获取文件版本：{ex.Message}", true);
+            _toast($"无法打开安装界面：{ex.Message}", true);
             return;
         }
 
-        if (versions.Count == 0)
-        {
-            _toast("该资源没有适用于当前游戏版本和加载器的文件。", true);
-            return;
-        }
-
-        var window = new ModVersionWindow(project, versions)
-        {
-            Owner = Application.Current.MainWindow
-        };
         if (window.ShowDialog() != true || window.SelectedVersion?.File == null)
         {
             return;
         }
-
         var selected = window.SelectedVersion;
+        var selectedGameVersion = window.SelectedGameVersion;
+        var installInstance = ResolveInstallInstance(selectedGameVersion, loader);
+        if (installInstance == null)
+        {
+            _toast($"没有已安装的 Minecraft {selectedGameVersion} 版本，无法安装该文件。", true);
+            return;
+        }
+
         var destination = CurrentTab switch
         {
-            DownloadTab.ResourcePacks => Path.Combine(instance.GameDirectory, "resourcepacks"),
-            DownloadTab.Shaders => Path.Combine(instance.GameDirectory, "shaderpacks"),
-            _ => instance.ModsDirectory
+            DownloadTab.ResourcePacks => Path.Combine(installInstance.GameDirectory, "resourcepacks"),
+            DownloadTab.Shaders => Path.Combine(installInstance.GameDirectory, "shaderpacks"),
+            _ => installInstance.ModsDirectory
         };
         await RunDownloadAsync($"安装 {project.DisplayTitle} {selected.VersionNumber}", async (report, token) =>
         {
             var path = await _modrinth.InstallVersionAsync(project, selected, destination, report, token);
-            _toast($"已安装 {Path.GetFileName(path)}，重启游戏后生效。", false);
+            _toast($"已安装到 {installInstance.Id}：{Path.GetFileName(path)}。", false);
         });
+    }
+
+    private GameInstance? ResolveInstallInstance(string? gameVersion, string? loader)
+    {
+        if (string.IsNullOrWhiteSpace(gameVersion))
+        {
+            return _contextInstance;
+        }
+
+        bool LoaderMatches(GameInstance instance)
+            => loader == null ||
+               string.Equals(NormalizeLoader(instance.Loader), loader, StringComparison.OrdinalIgnoreCase);
+
+        if (_contextInstance != null &&
+            string.Equals(_contextInstance.MinecraftVersion, gameVersion, StringComparison.OrdinalIgnoreCase) &&
+            LoaderMatches(_contextInstance))
+        {
+            return _contextInstance;
+        }
+
+        return _allInstances().FirstOrDefault(instance =>
+            string.Equals(instance.MinecraftVersion, gameVersion, StringComparison.OrdinalIgnoreCase) &&
+            LoaderMatches(instance));
     }
 
     private async Task InstallProjectAsync(ModrinthProject project)
