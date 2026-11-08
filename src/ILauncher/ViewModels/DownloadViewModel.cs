@@ -1334,7 +1334,6 @@ public sealed class DownloadViewModel : ObservableObject
             return;
         }
 
-        var loader = CurrentTab == DownloadTab.Mods ? NormalizeLoader(target.Loader) : null;
         var defaultVersion = SelectedSearchGameVersion?.Key switch
         {
             null or "current" or "all" => target.MinecraftVersion,
@@ -1351,11 +1350,27 @@ public sealed class DownloadViewModel : ObservableObject
             gameVersions.Insert(0, defaultVersion);
         }
 
+        var loaders = CurrentTab == DownloadTab.Mods
+            ? new List<string> { "Forge", "NeoForge", "Fabric", "Quilt" }
+            : new List<string>();
+        var filterLoader = SelectedLoader?.Key;
+        var defaultLoaderKey = CurrentTab == DownloadTab.Mods
+            ? filterLoader is null or "current" or "all"
+                ? NormalizeLoader(target.Loader)
+                : filterLoader
+            : null;
+        var defaultLoaderTitle = LoaderTitle(defaultLoaderKey) ?? (loaders.Count > 0 ? loaders[0] : null);
+        if (defaultLoaderTitle != null && !loaders.Contains(defaultLoaderTitle, StringComparer.OrdinalIgnoreCase))
+        {
+            loaders.Insert(0, defaultLoaderTitle);
+        }
+
         ModVersionWindow window;
         try
         {
-            window = new ModVersionWindow(project, defaultVersion, gameVersions, loader,
-                async version => (IReadOnlyList<ModrinthVersion>)await _modrinth.GetVersionsAsync(project.Id, version, loader))
+            window = new ModVersionWindow(project, defaultVersion, gameVersions, defaultLoaderTitle, loaders,
+                async (version, selectedLoader) => (IReadOnlyList<ModrinthVersion>)await _modrinth.GetVersionsAsync(
+                    project.Id, version, NormalizeLoader(selectedLoader)))
             {
                 Owner = Application.Current.MainWindow
             };
@@ -1372,10 +1387,12 @@ public sealed class DownloadViewModel : ObservableObject
         }
         var selected = window.SelectedVersion;
         var selectedGameVersion = window.SelectedGameVersion;
-        var installInstance = ResolveInstallInstance(selectedGameVersion, loader);
+        var selectedLoaderKey = NormalizeLoader(window.SelectedLoader) ?? defaultLoaderKey;
+        var installInstance = ResolveInstallInstance(selectedGameVersion, selectedLoaderKey);
         if (installInstance == null)
         {
-            _toast($"没有已安装的 Minecraft {selectedGameVersion} 版本，无法安装该文件。", true);
+            var loaderText = LoaderTitle(selectedLoaderKey);
+            _toast($"没有已安装的 Minecraft {selectedGameVersion}{(loaderText == null ? "" : $" + {loaderText}")} 版本，无法安装该文件。", true);
             return;
         }
 
@@ -1507,7 +1524,17 @@ public sealed class DownloadViewModel : ObservableObject
         "Quilt" => "quilt",
         _ => null
     };
+
+    private static string? LoaderTitle(string? loader) => loader switch
+    {
+        "fabric" => "Fabric",
+        "forge" => "Forge",
+        "neoforge" => "NeoForge",
+        "quilt" => "Quilt",
+        _ => null
+    };
 }
+
 
 
 

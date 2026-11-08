@@ -8,21 +8,24 @@ namespace ILauncher.Views;
 
 public partial class ModVersionWindow : Window, INotifyPropertyChanged
 {
-    private readonly Func<string, Task<IReadOnlyList<ModrinthVersion>>> _loadVersions;
+    private readonly Func<string, string?, Task<IReadOnlyList<ModrinthVersion>>> _loadVersions;
     private string _selectedGameVersion;
+    private string? _selectedLoader;
     private ModrinthVersion? _selectedVersion;
     private bool _isLoading;
     private string _statusText = "";
     private bool _loaded;
 
     public ModVersionWindow(ModrinthProject project, string initialGameVersion,
-        IReadOnlyList<string> gameVersions, string? loader,
-        Func<string, Task<IReadOnlyList<ModrinthVersion>>> loadVersions)
+        IReadOnlyList<string> gameVersions, string? initialLoader, IReadOnlyList<string> loaders,
+        Func<string, string?, Task<IReadOnlyList<ModrinthVersion>>> loadVersions)
     {
         Project = project;
-        Loader = loader;
         GameVersions = gameVersions;
+        Loaders = loaders;
+        ShowLoader = loaders.Count > 0;
         _selectedGameVersion = initialGameVersion;
+        _selectedLoader = initialLoader;
         _loadVersions = loadVersions;
         InitializeComponent();
         DataContext = this;
@@ -30,8 +33,9 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
     }
 
     public ModrinthProject Project { get; }
-    public string? Loader { get; }
     public IReadOnlyList<string> GameVersions { get; }
+    public IReadOnlyList<string> Loaders { get; }
+    public bool ShowLoader { get; }
     public ObservableCollection<ModrinthVersion> Versions { get; } = new();
 
     public string SelectedGameVersion
@@ -45,6 +49,20 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
             }
 
             _ = LoadVersionsAsync(value);
+        }
+    }
+
+    public string? SelectedLoader
+    {
+        get => _selectedLoader;
+        set
+        {
+            if (!Set(ref _selectedLoader, value) || !_loaded)
+            {
+                return;
+            }
+
+            _ = LoadVersionsAsync(SelectedGameVersion);
         }
     }
 
@@ -79,7 +97,7 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
         StatusText = "正在获取兼容文件…";
         try
         {
-            var versions = await _loadVersions(gameVersion);
+            var versions = await _loadVersions(gameVersion, SelectedLoader);
             Versions.Clear();
             foreach (var version in versions)
             {

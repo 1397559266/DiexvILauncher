@@ -27,10 +27,19 @@
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                 <TextBlock Text="下载版本" FontSize="10" Foreground="{StaticResource BrushTextMuted}"
                            VerticalAlignment="Center" Margin="0,0,7,0" />
-                <ComboBox Width="180" Height="30"
+                <ComboBox Width="150" Height="30"
                           ItemsSource="{Binding GameVersions}"
                           SelectedItem="{Binding SelectedGameVersion, Mode=TwoWay}"
                           AutomationProperties.Name="下载游戏版本" />
+                <StackPanel Orientation="Horizontal" Margin="15,0,0,0"
+                            Visibility="{Binding ShowLoader, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="加载器" FontSize="10" Foreground="{StaticResource BrushTextMuted}"
+                               VerticalAlignment="Center" Margin="0,0,7,0" />
+                    <ComboBox Width="105" Height="30"
+                              ItemsSource="{Binding Loaders}"
+                              SelectedItem="{Binding SelectedLoader, Mode=TwoWay}"
+                              AutomationProperties.Name="下载加载器" />
+                </StackPanel>
             </StackPanel>
             <TextBlock Text="{Binding StatusText}" FontSize="9" Foreground="{StaticResource BrushTextMuted}"
                        HorizontalAlignment="Right" VerticalAlignment="Center" />
