@@ -144,7 +144,10 @@ public static class LanguageService
         ("无法打开文件夹：", "Could not open folder: "),
         ("无法打开日志：", "Could not open log: "),
         ("无法读取皮肤：", "Could not read skin: "),
+        ("无法打开皮肤文件夹：", "Could not open the skin folder: "),
         ("前置检测失败：", "Prerequisite check failed: "),
+        ("读取模组失败：", "Could not read mods: "),
+        ("复制失败：", "Copy failed: "),
         ("登录失败：", "Sign-in failed: "),
         ("启动失败：", "Launch failed: "),
         ("备份失败：", "Backup failed: "),
@@ -265,6 +268,76 @@ public static class LanguageService
         if ((match = Regex.Match(text, @"^存档已备份到 (.+)$", RegexOptions.CultureInvariant)).Success)
         {
             return $"Saves backed up to {match.Groups[1].Value}";
+        }
+
+        if ((match = Regex.Match(text, @"^文件夹 · (.+)$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"Folder · {match.Groups[1].Value}";
+        }
+
+        if ((match = Regex.Match(text, @"^正在启动「(.+)」，.*$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"Starting {match.Groups[1].Value}…";
+        }
+
+        if ((match = Regex.Match(text, @"^「(.+)」正在运行，.*$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"{match.Groups[1].Value} is running; logs opened.";
+        }
+
+        if ((match = Regex.Match(text, @"^游戏运行中 · (.+)$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"Game running · {match.Groups[1].Value}";
+        }
+
+        if ((match = Regex.Match(text, @"^已手动停止游戏 · 运行 (.+)$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"Stopped manually · ran for {match.Groups[1].Value}";
+        }
+
+        if ((match = Regex.Match(text, @"^游戏正常退出 · 运行 (.+)$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"Game exited normally · ran for {match.Groups[1].Value}";
+        }
+
+        if ((match = Regex.Match(text, @"^已复制 (\d+) 行日志。$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"Copied {match.Groups[1].Value} log lines.";
+        }
+
+        if ((match = Regex.Match(text, @"^已删除 (.+)。$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"Deleted {match.Groups[1].Value}.";
+        }
+
+        if ((match = Regex.Match(text, @"^已导入 (.+)。$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"Imported {match.Groups[1].Value}.";
+        }
+
+        if ((match = Regex.Match(text, @"^Minecraft (.+) 安装完成。$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"Minecraft {match.Groups[1].Value} installed.";
+        }
+
+        if ((match = Regex.Match(text, @"^Minecraft (.+) 已安装。$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"Minecraft {match.Groups[1].Value} is installed.";
+        }
+
+        if ((match = Regex.Match(text, @"^整合包已安装为 (.+)。$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"Modpack installed as {match.Groups[1].Value}.";
+        }
+
+        if ((match = Regex.Match(text, @"^安装前置 (.+)…$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"Installing prerequisite {match.Groups[1].Value}…";
+        }
+
+        if ((match = Regex.Match(text, @"^缺少 Java (\d+)\+$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"Java {match.Groups[1].Value}+ is missing";
         }
 
         return text;
