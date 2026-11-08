@@ -56,6 +56,7 @@ public sealed class DownloadViewModel : ObservableObject
     private bool _isDownloading;
     private bool _isSearching;
     private string _searchQuery = "";
+    private string _effectiveSearchQuery = "";
     private string _searchStatus = "";
     private string _progressTitle = "";
     private string _progressMessage = "";
@@ -1220,6 +1221,21 @@ public sealed class DownloadViewModel : ObservableObject
         var searchVersion = ++_searchVersion;
         try
         {
+            if (resetPage)
+            {
+                var query = SearchQuery.Trim();
+                if (query.Length > 0 && HasCjk(query))
+                {
+                    SearchStatus = "正在匹配中文名…";
+                    var alias = await _mcmod.FindEnglishAliasAsync(query);
+                    _effectiveSearchQuery = string.IsNullOrWhiteSpace(alias) ? query : alias;
+                }
+                else
+                {
+                    _effectiveSearchQuery = query;
+                }
+            }
+
             var loader = CurrentTab == DownloadTab.Mods ? ResolveLoader() : null;
             var gameVersion = SelectedSearchGameVersion?.Key switch
             {
@@ -1228,7 +1244,7 @@ public sealed class DownloadViewModel : ObservableObject
                 var version => version
             };
             var category = SelectedCategory?.Key is null or "all" ? null : SelectedCategory.Key;
-            var result = await _modrinth.SearchAsync(SearchQuery, ProjectType,
+            var result = await _modrinth.SearchAsync(_effectiveSearchQuery, ProjectType,
                 gameVersion, loader, category, _searchOffset, SearchPageSize);
             _searchOffset = result.Offset;
             _searchTotal = result.TotalHits;

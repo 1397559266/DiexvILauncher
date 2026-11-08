@@ -14,6 +14,18 @@ public sealed record McmodInfo(string Name, string Url);
 public sealed class McmodService
 {
     private static readonly HttpClient Http = CreateClient();
+    private static readonly Dictionary<string, string> KnownAliases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["钠"] = "Sodium",
+        ["锂"] = "Lithium",
+        ["磷"] = "Phosphor",
+        ["铷"] = "Rubidium",
+        ["铁氧体磁芯"] = "FerriteCore",
+        ["实体渲染机制优化"] = "Entity Culling",
+        ["苹果皮"] = "AppleSkin",
+        ["小地图"] = "Xaero's Minimap",
+        ["玉"] = "Jade"
+    };
     private static readonly Regex ResultLink = new(
         @"<a\s+[^>]*href=""(?<url>(?:(?:https?:)?//www\.mcmod\.cn)?/class/(?<id>\d+)\.html)""[^>]*>(?<title>.*?)</a>",
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
@@ -21,10 +33,12 @@ public sealed class McmodService
 
     private readonly object _gate = new();
     private readonly Dictionary<string, McmodInfo?> _cache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, string?> _aliases = new(StringComparer.OrdinalIgnoreCase);
     private readonly SemaphoreSlim _requests = new(1, 1);
     private bool _loaded;
 
     private static string CachePath => Path.Combine(AppPaths.DataDirectory, "mcmod-cache-v3.json");
+    private static string AliasCachePath => Path.Combine(AppPaths.DataDirectory, "mcmod-alias-cache-v1.json");
 
     public async Task<McmodInfo?> LookupAsync(string title, CancellationToken cancellationToken = default)
     {
@@ -102,9 +116,135 @@ public sealed class McmodService
         }
     }
 
-    private static McmodInfo? Parse(string html, string projectTitle)
+    public async Task<string?> FindEnglishAliasAsync(string chineseQuery, CancellationToken cancellationToken = default)
     {
-        var projectKey = Normalize(projectTitle);
+        var key = Normalize(chineseQuery);
+        if (key.Length < 1)
+        {
+            return null;
+        }
+
+        if (KnownAliases.TryGetValue(chineseQuery.Trim(), out var known))
+        {
+            return known;
+        }
+
+        lock (_gate)
+        {
+            EnsureLoaded();
+            if (_aliases.TryGetValue(key, out var cached))
+            {
+                return cached;
+            }
+
+            // Reuse the metadata cache as a reverse Chinese-name index when
+            // possible, so an already-resolved mod can be searched in Chinese
+            // without another MC百科 request.
+            foreach (var pair in _cache)
+            {
+                if (pair.Value?.Name.Contains(chineseQuery.Trim(), StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    _aliases[key] = pair.Key;
+                    return pair.Key;
+                }
+            }
+        }
+
+        await _requests.WaitAsync(cancellationToken);
+        try
+        {
+            await Task.Delay(120, cancellationToken);
+            var url = "https://search.mcmod.cn/s?key=" + Uri.EscapeDataString(chineseQuery.Trim()) + "&filter=1&mold=";
+            string? html = null;
+            for (var attempt = 0; attempt < 2 && html == null; attempt++)
+            {
+                try
+                {
+                    html = await Http.GetStringAsync(url, cancellationToken);
+                }
+                catch when (attempt == 0)
+                {
+                    await Task.Delay(400, cancellationToken);
+                }
+            }
+
+            var alias = html == null ? null : ParseEnglishAlias(html, chineseQuery);
+            if (html != null)
+            {
+                lock (_gate)
+                {
+                    _aliases[key] = alias;
+                    SaveAliases();
+                }
+            }
+
+            return alias;
+        }
+        catch
+        {
+            return null;
+        }
+        finally
+        {
+            _requests.Release();
+        }
+    }
+
+    private static string? ParseEnglishAlias(string html, string query)
+    {
+        var queryKey = Normalize(query);
+        string? best = null;
+        var bestScore = 0;
+        var bestLength = int.MaxValue;
+
+        foreach (Match match in ResultLink.Matches(html))
+        {
+            var title = CleanTitle(match.Groups["title"].Value);
+            if (!HasCjk(title))
+            {
+                continue;
+            }
+
+            var parenthetical = Regex.Match(title, @"[\(（]([^\)）]+)[\)）]\s*$");
+            if (!parenthetical.Success)
+            {
+                continue;
+            }
+
+            var english = WebUtility.HtmlDecode(Tag.Replace(parenthetical.Groups[1].Value, " ")).Trim(' ', '_', '-');
+            if (english.Length < 2 || !Regex.IsMatch(english, "[A-Za-z]") || HasCjk(english))
+            {
+                continue;
+            }
+
+            var chinese = title[..parenthetical.Index].Trim();
+            var chineseKey = Normalize(chinese);
+            var score = chineseKey == queryKey
+                ? 100
+                : chineseKey.Contains(queryKey, StringComparison.Ordinal)
+                    ? 80
+                    : queryKey.Contains(chineseKey, StringComparison.Ordinal)
+                        ? 60
+                        : 0;
+            if (score == 0)
+            {
+                continue;
+            }
+
+            var length = chinese.Length;
+            if (score > bestScore || (score == bestScore && length < bestLength))
+            {
+                best = english;
+                bestScore = score;
+                bestLength = length;
+            }
+        }
+
+        return best;
+    }
+
+    private static McmodInfo? Parse(string html, string projectTitle)
+    {        var projectKey = Normalize(projectTitle);
         McmodInfo? best = null;
         var bestScore = 0;
         var bestLength = int.MaxValue;
@@ -193,25 +333,40 @@ public sealed class McmodService
         _loaded = true;
         try
         {
-            if (!File.Exists(CachePath))
+            if (File.Exists(CachePath))
             {
-                return;
-            }
-
-            var cached = JsonSerializer.Deserialize<Dictionary<string, McmodInfo?>>(File.ReadAllText(CachePath));
-            if (cached == null)
-            {
-                return;
-            }
-
-            foreach (var pair in cached)
-            {
-                _cache[pair.Key] = pair.Value;
+                var cached = JsonSerializer.Deserialize<Dictionary<string, McmodInfo?>>(File.ReadAllText(CachePath));
+                if (cached != null)
+                {
+                    foreach (var pair in cached)
+                    {
+                        _cache[pair.Key] = pair.Value;
+                    }
+                }
             }
         }
         catch
         {
             // Ignore a damaged cache; it is rebuilt on demand.
+        }
+
+        try
+        {
+            if (File.Exists(AliasCachePath))
+            {
+                var aliases = JsonSerializer.Deserialize<Dictionary<string, string?>>(File.ReadAllText(AliasCachePath));
+                if (aliases != null)
+                {
+                    foreach (var pair in aliases)
+                    {
+                        _aliases[pair.Key] = pair.Value;
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // Ignore a damaged alias cache.
         }
     }
 
@@ -228,10 +383,24 @@ public sealed class McmodService
         }
     }
 
+    private void SaveAliases()
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(_aliases, new JsonSerializerOptions { WriteIndented = false });
+            File.WriteAllText(AliasCachePath, json);
+        }
+        catch
+        {
+            // A read-only data directory only skips cache persistence.
+        }
+    }
+
     private static HttpClient CreateClient()
     {
-        var client = new HttpClient { Timeout = TimeSpan.FromSeconds(8) };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("ILauncher/1.1");
+        var client = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+        client.DefaultRequestHeaders.UserAgent.ParseAdd(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ILauncher/1.1");
         return client;
     }
 }
