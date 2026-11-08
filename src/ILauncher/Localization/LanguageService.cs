@@ -89,11 +89,54 @@ public static class LanguageService
 
         if (CurrentLanguage == English)
         {
-            return TranslatePattern(text);
+            return TranslatePattern(TranslatePrefixes(text));
         }
 
         return TranslatePatternToChinese(text);
     }
+
+    private static string TranslatePrefixes(string text)
+    {
+        foreach (var (chinese, english) in ErrorPrefixes)
+        {
+            if (text.StartsWith(chinese, StringComparison.Ordinal))
+            {
+                return english + text[chinese.Length..];
+            }
+        }
+
+        return text;
+    }
+
+    private static readonly (string Chinese, string English)[] ErrorPrefixes =
+    {
+        ("安装失败：", "Install failed: "),
+        ("下载失败：", "Download failed: "),
+        ("导入失败：", "Import failed: "),
+        ("导出失败：", "Export failed: "),
+        ("读取失败：", "Read failed: "),
+        ("更新失败：", "Update failed: "),
+        ("删除失败：", "Delete failed: "),
+        ("保存失败：", "Save failed: "),
+        ("获取失败：", "Request failed: "),
+        ("查询失败：", "Lookup failed: "),
+        ("搜索失败：", "Search failed: "),
+        ("连接失败：", "Connection failed: "),
+        ("安装前置失败：", "Failed to install prerequisite: "),
+        ("读取 JAR 前置失败：", "Failed to read JAR prerequisites: "),
+        ("无法打开：", "Could not open: "),
+        ("无法打开目录：", "Could not open directory: "),
+        ("无法打开文件夹：", "Could not open folder: "),
+        ("无法打开日志：", "Could not open log: "),
+        ("无法读取皮肤：", "Could not read skin: "),
+        ("前置检测失败：", "Prerequisite check failed: "),
+        ("登录失败：", "Sign-in failed: "),
+        ("启动失败：", "Launch failed: "),
+        ("备份失败：", "Backup failed: "),
+        ("复制失败：", "Copy failed: "),
+        ("详情加载失败：", "Failed to load details: "),
+        ("启动器遇到未处理的错误：", "The launcher encountered an unhandled error: ")
+    };
 
     private static string TranslatePatternToChinese(string text)
     {
@@ -162,6 +205,46 @@ public static class LanguageService
         if ((match = Regex.Match(text, @"^此版本需要 Java (\d+)\+$", RegexOptions.CultureInvariant)).Success)
         {
             return $"This version requires Java {match.Groups[1].Value}+";
+        }
+
+        if ((match = Regex.Match(text, @"^发现 (\d+) 个可更新模组.*$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"Found {match.Groups[1].Value} updatable mods";
+        }
+
+        if ((match = Regex.Match(text, @"^还缺少 (\d+) 个必需前置.*$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"{match.Groups[1].Value} required prerequisites are missing";
+        }
+
+        if ((match = Regex.Match(text, @"^共 (\d+) 个版本$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"{match.Groups[1].Value} versions";
+        }
+
+        if ((match = Regex.Match(text, @"^共 (\d+) 个文件版本$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"{match.Groups[1].Value} file versions";
+        }
+
+        if ((match = Regex.Match(text, @"^可更新 v(.+)$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"Update to v{match.Groups[1].Value}";
+        }
+
+        if ((match = Regex.Match(text, @"^安装 (.+)$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"Install {match.Groups[1].Value}";
+        }
+
+        if ((match = Regex.Match(text, @"^存档 · (.+)$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"Saves · {match.Groups[1].Value}";
+        }
+
+        if ((match = Regex.Match(text, @"^存档已备份到 (.+)$", RegexOptions.CultureInvariant)).Success)
+        {
+            return $"Saves backed up to {match.Groups[1].Value}";
         }
 
         return text;
