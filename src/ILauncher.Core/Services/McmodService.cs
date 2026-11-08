@@ -21,10 +21,10 @@ public sealed class McmodService
 
     private readonly object _gate = new();
     private readonly Dictionary<string, McmodInfo?> _cache = new(StringComparer.OrdinalIgnoreCase);
-    private readonly SemaphoreSlim _requests = new(3, 3);
+    private readonly SemaphoreSlim _requests = new(1, 1);
     private bool _loaded;
 
-    private static string CachePath => Path.Combine(AppPaths.DataDirectory, "mcmod-cache.json");
+    private static string CachePath => Path.Combine(AppPaths.DataDirectory, "mcmod-cache-v2.json");
 
     public async Task<McmodInfo?> LookupAsync(string title, CancellationToken cancellationToken = default)
     {
@@ -46,25 +46,54 @@ public sealed class McmodService
         await _requests.WaitAsync(cancellationToken);
         try
         {
+            // MC百科 throttles bursts of searches; keep this deliberately
+            // sequential and leave a little breathing room between requests.
+            await Task.Delay(120, cancellationToken);
             var url = "https://search.mcmod.cn/s?key=" + Uri.EscapeDataString(title.Trim()) + "&filter=1&mold=";
-            var html = await Http.GetStringAsync(url, cancellationToken);
-            var result = Parse(html, title);
-            lock (_gate)
+            string? html = null;
+            for (var attempt = 0; attempt < 2 && html == null; attempt++)
             {
-                _cache[key] = result;
-                Save();
+                try
+                {
+                    html = await Http.GetStringAsync(url, cancellationToken);
+                }
+                catch when (attempt == 0)
+                {
+                    await Task.Delay(400, cancellationToken);
+                }
+            }
+
+            var result = html == null ? null : Parse(html, title);
+            if (result == null && html != null)
+            {
+                // Some searches intermittently render an empty/anti-bot page.
+                // Retry once before recording a negative result.
+                await Task.Delay(350, cancellationToken);
+                try
+                {
+                    html = await Http.GetStringAsync(url, cancellationToken);
+                    result = Parse(html, title);
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+
+            if (html != null)
+            {
+                lock (_gate)
+                {
+                    _cache[key] = result;
+                    Save();
+                }
             }
 
             return result;
         }
         catch
         {
-            // A missing/broken lookup must not break the download page.
-            lock (_gate)
-            {
-                _cache[key] = null;
-            }
-
+            // Do not cache transport failures: the next search should retry.
             return null;
         }
         finally
@@ -89,17 +118,27 @@ public sealed class McmodService
             }
 
             var candidateKey = Normalize(title);
+            var parenthetical = Regex.Match(title, @"[\(（]([^\)）]+)[\)）]\s*$");
+            var parentheticalKey = parenthetical.Success ? Normalize(parenthetical.Groups[1].Value) : "";
+            var looksLikeAddon = Regex.IsMatch(title, "非官方|附属|兼容|修复|扩展|前置|移植|重置|增强|支持|插件");
+            if (looksLikeAddon && candidateKey != projectKey && parentheticalKey != projectKey)
+            {
+                continue;
+            }
+
             var score = projectKey.Length == 0
                 ? 0
                 : candidateKey == projectKey
                     ? 100
-                    : candidateKey.StartsWith(projectKey, StringComparison.Ordinal)
-                        ? 80
-                        : candidateKey.Contains(projectKey, StringComparison.Ordinal)
-                            ? 65
-                            : projectKey.Contains(candidateKey, StringComparison.Ordinal)
-                                ? 55
-                                : 0;
+                    : parentheticalKey == projectKey
+                        ? 95
+                        : candidateKey.StartsWith(projectKey, StringComparison.Ordinal)
+                            ? 75
+                            : candidateKey.Contains(projectKey, StringComparison.Ordinal)
+                                ? 65
+                                : projectKey.Contains(candidateKey, StringComparison.Ordinal)
+                                    ? 55
+                                    : 0;
             if (score == 0)
             {
                 continue;
