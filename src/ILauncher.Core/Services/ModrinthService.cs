@@ -120,6 +120,32 @@ public sealed class ModrinthService
         return new ModrinthSearchResult(result, Math.Max(totalHits, result.Count), offset, limit);
     }
 
+    public async Task<ModrinthProject?> GetProjectAsync(string idOrSlug,
+        CancellationToken cancellationToken = default)
+    {
+        var json = await DownloadHelper.GetStringAsync(
+            $"{BaseUrl}/project/{Uri.EscapeDataString(idOrSlug)}", cancellationToken);
+        using var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
+        var id = root.TryGetProperty("id", out var idElement) ? idElement.GetString() : null;
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return null;
+        }
+
+        return new ModrinthProject(
+            id,
+            root.TryGetProperty("slug", out var slug) ? slug.GetString() ?? "" : "",
+            root.TryGetProperty("title", out var title) ? title.GetString() ?? "" : "",
+            root.TryGetProperty("description", out var description) ? description.GetString() ?? "" : "",
+            root.TryGetProperty("icon_url", out var icon) ? icon.GetString() : null,
+            root.TryGetProperty("downloads", out var downloads) && downloads.TryGetInt64(out var count) ? count : 0,
+            root.TryGetProperty("project_type", out var type) ? type.GetString() ?? "mod" : "mod",
+            root.TryGetProperty("categories", out var categories) && categories.ValueKind == JsonValueKind.Array
+                ? categories.EnumerateArray().Select(item => item.GetString() ?? "").Where(item => item.Length > 0).ToList()
+                : new List<string>());
+    }
+
     public async Task<List<ModrinthVersion>> GetVersionsAsync(string projectId, string? gameVersion,
         string? loader, CancellationToken cancellationToken = default)
     {

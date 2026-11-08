@@ -114,6 +114,9 @@ public sealed class ModsViewModel : ObservableObject
     private string _activeFilter = "all";
     private bool _isLoading;
     private bool _isCheckingUpdates;
+    private bool _isLinkInstalling;
+    private string _linkUrl = "";
+    private string _linkInstallStatus = "";
     private int _enabledCount;
     private int _disabledCount;
     private Task _loadTask = Task.CompletedTask;
@@ -152,6 +155,7 @@ public sealed class ModsViewModel : ObservableObject
         });
         OpenFolderCommand = new RelayCommand(OpenFolder, () => _instance != null);
         InstallCommand = new RelayCommand(Install, () => _instance != null);
+        InstallFromLinkCommand = new AsyncRelayCommand(InstallFromLinkAsync, () => _instance != null && !IsLinkInstalling);
         SetFilterCommand = new RelayCommand(SetFilter);
         CheckUpdatesCommand = new AsyncRelayCommand(CheckUpdatesAsync, () => _instance != null && !IsCheckingUpdates);
         UpdateModCommand = new AsyncRelayCommand(async parameter =>
@@ -176,6 +180,7 @@ public sealed class ModsViewModel : ObservableObject
     public AsyncRelayCommand ToggleCommand { get; }
     public RelayCommand OpenFolderCommand { get; }
     public RelayCommand InstallCommand { get; }
+    public AsyncRelayCommand InstallFromLinkCommand { get; }
     public RelayCommand SetFilterCommand { get; }
     public AsyncRelayCommand CheckUpdatesCommand { get; }
     public AsyncRelayCommand UpdateModCommand { get; }
@@ -191,6 +196,30 @@ public sealed class ModsViewModel : ObservableObject
                 OnPropertyChanged(nameof(CheckUpdatesText));
             }
         }
+    }
+
+    public bool IsLinkInstalling
+    {
+        get => _isLinkInstalling;
+        private set
+        {
+            if (SetProperty(ref _isLinkInstalling, value))
+            {
+                InstallFromLinkCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    public string LinkUrl
+    {
+        get => _linkUrl;
+        set => SetProperty(ref _linkUrl, value);
+    }
+
+    public string LinkInstallStatus
+    {
+        get => _linkInstallStatus;
+        private set => SetProperty(ref _linkInstallStatus, value);
     }
 
     public string CheckUpdatesText => IsCheckingUpdates ? "正在检查更新…" : "检查更新";
@@ -256,6 +285,7 @@ public sealed class ModsViewModel : ObservableObject
         RefreshCommand.RaiseCanExecuteChanged();
         OpenFolderCommand.RaiseCanExecuteChanged();
         InstallCommand.RaiseCanExecuteChanged();
+        InstallFromLinkCommand.RaiseCanExecuteChanged();
         CheckUpdatesCommand.RaiseCanExecuteChanged();
         _ = LoadAsync();
     }
@@ -553,6 +583,80 @@ public sealed class ModsViewModel : ObservableObject
         catch (Exception ex)
         {
             _toast($"无法打开文件夹：{ex.Message}", true);
+        }
+    }
+
+    private async Task InstallFromLinkAsync()
+    {
+        if (_instance == null)
+        {
+            return;
+        }
+
+        if (!Uri.TryCreate(LinkUrl.Trim(), UriKind.Absolute, out var uri) ||
+            (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+        {
+            _toast("请输入有效的 http/https 链接。", true);
+            return;
+        }
+
+        IsLinkInstalling = true;
+        LinkInstallStatus = "正在解析链接…";
+        try
+        {
+            if (uri.Host.Contains("modrinth.com", StringComparison.OrdinalIgnoreCase))
+            {
+                var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+                var marker = Array.FindIndex(segments, part => part is "mod" or "project");
+                var slug = marker >= 0 && marker + 1 < segments.Length ? segments[marker + 1] : null;
+                if (string.IsNullOrWhiteSpace(slug))
+                {
+                    throw new InvalidOperationException("无法从 Modrinth 链接中识别项目。");
+                }
+
+                var project = await _modrinth.GetProjectAsync(slug)
+                              ?? throw new InvalidOperationException("Modrinth 项目不存在或无法访问。");
+                var file = await _modrinth.InstallAsync(project, _instance.ModsDirectory,
+                    _instance.MinecraftVersion, LoaderKey(_instance.Loader), null, CancellationToken.None);
+                _toast($"已从链接安装 {Path.GetFileName(file)}。", false);
+            }
+            else if (uri.AbsolutePath.EndsWith(".jar", StringComparison.OrdinalIgnoreCase))
+            {
+                var fileName = Path.GetFileName(Uri.UnescapeDataString(uri.AbsolutePath));
+                if (string.IsNullOrWhiteSpace(fileName))
+                {
+                    fileName = "mod.jar";
+                }
+
+                Directory.CreateDirectory(_instance.ModsDirectory);
+                var target = Path.Combine(_instance.ModsDirectory, fileName);
+                if (File.Exists(target))
+                {
+                    target = Path.Combine(_instance.ModsDirectory,
+                        Path.GetFileNameWithoutExtension(fileName) + "-" + DateTime.Now.ToString("HHmmss") + ".jar");
+                }
+
+                LinkInstallStatus = $"正在下载 {fileName}…";
+                await DownloadHelper.DownloadFileAsync(uri.AbsoluteUri, target, null, CancellationToken.None);
+                _toast($"已从链接安装 {Path.GetFileName(target)}。", false);
+            }
+            else
+            {
+                throw new InvalidOperationException(
+                    "CurseForge 项目页需要 API Key；请在浏览器打开项目页下载 .jar 后使用「从文件安装」，或粘贴文件直链。");
+            }
+
+            LinkUrl = "";
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            LinkInstallStatus = $"安装失败：{ex.Message}";
+            _toast($"链接安装失败：{ex.Message}", true);
+        }
+        finally
+        {
+            IsLinkInstalling = false;
         }
     }
 
