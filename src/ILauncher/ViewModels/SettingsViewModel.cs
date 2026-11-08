@@ -134,6 +134,8 @@ public sealed class SettingsViewModel : ObservableObject
         {
             if (SetProperty(ref _memoryMb, value))
             {
+                _settings.Settings.MemoryMb = Math.Clamp(value, 512, 65536);
+                _settings.Save();
                 OnPropertyChanged(nameof(MemoryText));
             }
         }
