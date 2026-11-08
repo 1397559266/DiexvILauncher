@@ -39,7 +39,7 @@
                 <Grid>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <controls:Icon Data="{StaticResource IconGlobe}" Fill="{StaticResource BrushAccent}" Width="15" Height="15" />
-                        <TextBlock Text="中文 / Language" FontSize="13" FontWeight="SemiBold" Margin="7,0,0,0" />
+                        <TextBlock Text="语言 / Language" FontSize="13" FontWeight="SemiBold" Margin="7,0,0,0" />
                     </StackPanel>
                     <ComboBox Style="{StaticResource FilterCombo}" Width="180" Height="30"
                               HorizontalAlignment="Right"
