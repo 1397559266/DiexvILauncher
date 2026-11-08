@@ -58,25 +58,10 @@
                             Command="{Binding GoAccountCommand}" Margin="4,0,0,0" AutomationProperties.Name="账户" />
                     <Button Style="{StaticResource HeaderTabButton}" Content="设置" Tag="{Binding IsSettingsPage}"
                             Command="{Binding GoSettingsCommand}" Margin="4,0,0,0" AutomationProperties.Name="设置" />
-                    <TextBlock Text="版本页面" FontSize="9" Foreground="#BFFFFFFF" VerticalAlignment="Center"
-                               Margin="14,0,6,0"
-                               Visibility="{Binding IsInstancePage, Converter={StaticResource BoolToVisibility}}" />
-                    <ComboBox Style="{StaticResource FilterCombo}" Width="132" Height="26" VerticalAlignment="Center"
-                              ItemsSource="{Binding CurrentPage.NavItems}"
-                              SelectedItem="{Binding CurrentPage.SelectedNav, Mode=TwoWay}"
-                              ToolTip="{Binding CurrentPage.Instance.Id}"
-                              AutomationProperties.Name="版本页面"
-                              Visibility="{Binding IsInstancePage, Converter={StaticResource BoolToVisibility}}" />
                 </StackPanel>
 
                 <!-- Right actions -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Style="{StaticResource HeaderChipButton}" Command="{Binding CurrentPage.TestGameCommand}"
-                            Visibility="{Binding IsInstancePage, Converter={StaticResource BoolToVisibility}}"
-                            ToolTip="测试游戏并查看日志" Margin="0,0,8,0">
-                        <TextBlock Text="测试游戏" FontSize="11.5" Foreground="#FFFFFFFF" />
-                    </Button>
-
                     <Button Style="{StaticResource HeaderChipButton}" Command="{Binding OpenGameLogCommand}"
                             Visibility="{Binding ShowGameChip, Converter={StaticResource BoolToVisibility}}"
                             ToolTip="查看运行中的游戏日志" Margin="0,0,8,0">
