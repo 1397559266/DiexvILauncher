@@ -403,7 +403,7 @@
 
                     <Grid Grid.Row="1">
                         <ListBox ItemsSource="{Binding SearchResults}" Style="{StaticResource CleanListBox}" Margin="0,4,0,0"
-                                 SelectionChanged="SearchResultsList_SelectionChanged">
+                                 PreviewMouseLeftButtonUp="SearchResultsList_PreviewMouseLeftButtonUp">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <Grid Height="72" Margin="11,0">

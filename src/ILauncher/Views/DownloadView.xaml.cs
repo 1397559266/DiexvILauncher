@@ -40,15 +40,22 @@ public partial class DownloadView : UserControl
         }
     }
 
-    private void SearchResultsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void SearchResultsList_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
-        if (sender is not ListBox list || list.SelectedItem is not ModrinthProject project ||
+        if (FindAncestor<Button>(e.OriginalSource as DependencyObject) != null ||
+            sender is not ListBox ||
             DataContext is not DownloadViewModel viewModel)
         {
             return;
         }
 
-        list.SelectedItem = null;
+        var item = FindAncestor<ListBoxItem>(e.OriginalSource as DependencyObject);
+        if (item?.DataContext is not ModrinthProject project)
+        {
+            return;
+        }
+
+        e.Handled = true;
         viewModel.OpenVersionPickerCommand.Execute(project);
     }
 
