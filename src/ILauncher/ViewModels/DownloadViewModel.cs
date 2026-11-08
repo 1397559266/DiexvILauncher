@@ -6,6 +6,7 @@ using System.Windows.Threading;
 using ILauncher.Core;
 using ILauncher.Core.Models;
 using ILauncher.Core.Services;
+using ILauncher.Models;
 using ILauncher.Views;
 using Microsoft.Win32;
 
@@ -1325,6 +1326,190 @@ public sealed class DownloadViewModel : ObservableObject
         }
     }
 
+    private async Task<IReadOnlyList<ModDependencyItem>> AnalyzeDependenciesAsync(ModrinthVersion version,
+        string gameVersion, string? loader, CancellationToken cancellationToken)
+    {
+        var instance = ResolveInstallInstance(gameVersion, loader);
+        if (instance == null)
+        {
+            return Array.Empty<ModDependencyItem>();
+        }
+
+        var installed = await new ModService().LoadModsAsync(instance, cancellationToken);
+        var result = new List<ModDependencyItem>();
+        var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        async Task WalkAsync(ModrinthVersion current, int depth)
+        {
+            if (depth > 3 || result.Count >= 30)
+            {
+                return;
+            }
+
+            foreach (var dependency in current.Dependencies)
+            {
+                if (dependency.DependencyType is not ("required" or "optional") ||
+                    string.IsNullOrWhiteSpace(dependency.ProjectId) ||
+                    !visited.Add(dependency.ProjectId))
+                {
+                    continue;
+                }
+
+                var project = await _modrinth.GetProjectAsync(dependency.ProjectId, cancellationToken);
+                if (project == null)
+                {
+                    continue;
+                }
+
+                var isInstalled = IsDependencyInstalled(project, installed);
+                result.Add(new ModDependencyItem
+                {
+                    ProjectId = project.Id,
+                    VersionId = dependency.VersionId,
+                    Title = project.Title,
+                    DependencyType = dependency.DependencyType,
+                    Installed = isInstalled,
+                    Depth = depth
+                });
+
+                var dependencyVersion = await ResolveDependencyVersionAsync(dependency, project, gameVersion, loader, cancellationToken);
+                if (dependencyVersion != null)
+                {
+                    await WalkAsync(dependencyVersion, depth + 1);
+                }
+            }
+        }
+
+        await WalkAsync(version, 0);
+        return result;
+    }
+
+    private async Task InstallMissingDependenciesAsync(ModrinthVersion version, string gameVersion, string? loader,
+        Action<DownloadProgress>? progress, CancellationToken cancellationToken)
+    {
+        var instance = ResolveInstallInstance(gameVersion, loader);
+        if (instance == null)
+        {
+            throw new InvalidOperationException("找不到对应的已安装版本。");
+        }
+
+        var installed = await new ModService().LoadModsAsync(instance, cancellationToken);
+        var installedProjectIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var mod in installed)
+        {
+            installedProjectIds.Add(NormalizeDependencyKey(mod.ModId));
+            installedProjectIds.Add(NormalizeDependencyKey(mod.Name));
+            installedProjectIds.Add(NormalizeDependencyKey(mod.FileName));
+        }
+
+        var visiting = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        async Task InstallAsync(ModrinthVersion current, int depth)
+        {
+            if (depth > 3)
+            {
+                return;
+            }
+
+            foreach (var dependency in current.Dependencies.Where(item => item.DependencyType == "required"))
+            {
+                if (string.IsNullOrWhiteSpace(dependency.ProjectId) || !visiting.Add(dependency.ProjectId))
+                {
+                    continue;
+                }
+
+                var project = await _modrinth.GetProjectAsync(dependency.ProjectId, cancellationToken);
+                if (project == null)
+                {
+                    continue;
+                }
+
+                var alreadyInstalled = IsDependencyInstalled(project, installed) ||
+                                       installedProjectIds.Contains(NormalizeDependencyKey(project.Slug));
+                var dependencyVersion = await ResolveDependencyVersionAsync(dependency, project, gameVersion, loader, cancellationToken);
+                if (dependencyVersion?.File != null && !alreadyInstalled)
+                {
+                    progress?.Invoke(new DownloadProgress
+                    {
+                        Phase = "前置",
+                        Message = $"安装前置 {project.Title}…",
+                        Percent = -1
+                    });
+                    await _modrinth.InstallVersionAsync(project, dependencyVersion, instance.ModsDirectory, progress, cancellationToken);
+                    installedProjectIds.Add(NormalizeDependencyKey(project.Slug));
+                    installedProjectIds.Add(NormalizeDependencyKey(project.Title));
+                }
+
+                if (dependencyVersion != null)
+                {
+                    await InstallAsync(dependencyVersion, depth + 1);
+                }
+            }
+        }
+
+        await InstallAsync(version, 0);
+    }
+
+    private async Task<ModrinthVersion?> ResolveDependencyVersionAsync(ModrinthDependency dependency,
+        ModrinthProject project, string gameVersion, string? loader, CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(dependency.VersionId))
+        {
+            var exact = await _modrinth.GetVersionAsync(dependency.VersionId, cancellationToken);
+            if (exact != null)
+            {
+                return exact;
+            }
+        }
+
+        var versions = await _modrinth.GetVersionsAsync(project.Id, gameVersion, loader, cancellationToken);
+        return versions.FirstOrDefault();
+    }
+
+    private static bool IsDependencyInstalled(ModrinthProject project, IReadOnlyList<ModInfo> installed)
+    {
+        var projectKeys = new[]
+        {
+            NormalizeDependencyKey(project.Slug),
+            NormalizeDependencyKey(project.Title)
+        }.Where(key => key.Length >= 4).Distinct().ToArray();
+        if (projectKeys.Length == 0)
+        {
+            return false;
+        }
+
+        foreach (var mod in installed)
+        {
+            var modKeys = new[]
+            {
+                NormalizeDependencyKey(mod.ModId),
+                NormalizeDependencyKey(mod.Name),
+                NormalizeDependencyKey(mod.FileName),
+                NormalizeDependencyKey(Path.GetFileNameWithoutExtension(mod.FileName))
+            }.Where(key => key.Length >= 4);
+
+            foreach (var projectKey in projectKeys)
+            {
+                foreach (var modKey in modKeys)
+                {
+                    if (modKey == projectKey ||
+                        modKey.Contains(projectKey, StringComparison.Ordinal) ||
+                        projectKey.Contains(modKey, StringComparison.Ordinal))
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static string NormalizeDependencyKey(string? value)
+        => string.IsNullOrWhiteSpace(value)
+            ? ""
+            : new string(value.Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant).ToArray());
+
     private async Task OpenVersionPickerAsync(ModrinthProject project)
     {
         var target = _contextInstance;
@@ -1370,7 +1555,11 @@ public sealed class DownloadViewModel : ObservableObject
         {
             window = new ModVersionWindow(project, defaultVersion, gameVersions, defaultLoaderTitle, loaders,
                 async (version, selectedLoader) => (IReadOnlyList<ModrinthVersion>)await _modrinth.GetVersionsAsync(
-                    project.Id, version, NormalizeLoader(selectedLoader)))
+                    project.Id, version, NormalizeLoader(selectedLoader)),
+                (version, gameVersion, selectedLoader) => AnalyzeDependenciesAsync(
+                    version, gameVersion, NormalizeLoader(selectedLoader), CancellationToken.None),
+                (version, gameVersion, selectedLoader, progress) => InstallMissingDependenciesAsync(
+                    version, gameVersion, NormalizeLoader(selectedLoader), progress, CancellationToken.None))
             {
                 Owner = Application.Current.MainWindow
             };

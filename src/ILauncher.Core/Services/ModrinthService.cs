@@ -50,6 +50,12 @@ public sealed record ModrinthSearchResult(
     int Offset,
     int Limit);
 
+public sealed record ModrinthDependency(
+    string? VersionId,
+    string? ProjectId,
+    string? FileName,
+    string DependencyType);
+
 public sealed record ModrinthVersion(
     string Id,
     string ProjectId,
@@ -59,7 +65,8 @@ public sealed record ModrinthVersion(
     DateTime DatePublished,
     IReadOnlyList<string> GameVersions,
     IReadOnlyList<string> Loaders,
-    ModrinthFile? File)
+    ModrinthFile? File,
+    IReadOnlyList<ModrinthDependency> Dependencies)
 {
     public string GameVersionsText => string.Join(", ", GameVersions.Take(6));
     public string LoadersText => string.Join(", ", Loaders);
@@ -192,6 +199,22 @@ public sealed class ModrinthService
             .ToList();
     }
 
+    public async Task<ModrinthVersion?> GetVersionAsync(string versionId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var json = await DownloadHelper.GetStringAsync(
+                $"{BaseUrl}/version/{Uri.EscapeDataString(versionId)}", cancellationToken);
+            using var document = JsonDocument.Parse(json);
+            return ParseVersion(document.RootElement);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     public async Task<ModrinthVersion?> GetVersionByHashAsync(string sha1, CancellationToken cancellationToken = default)
     {
         try
@@ -244,7 +267,36 @@ public sealed class ModrinthService
             DateTime.TryParse(GetString(element, "date_published"), out var date) ? date : DateTime.MinValue,
             GetStringArray(element, "game_versions"),
             GetStringArray(element, "loaders"),
-            file);
+            file,
+            ParseDependencies(element));
+    }
+
+    private static List<ModrinthDependency> ParseDependencies(JsonElement element)
+    {
+        if (!element.TryGetProperty("dependencies", out var dependencies) ||
+            dependencies.ValueKind != JsonValueKind.Array)
+        {
+            return new List<ModrinthDependency>();
+        }
+
+        var result = new List<ModrinthDependency>();
+        foreach (var dependency in dependencies.EnumerateArray())
+        {
+            var projectId = GetString(dependency, "project_id");
+            var versionId = GetString(dependency, "version_id");
+            if (string.IsNullOrWhiteSpace(projectId) && string.IsNullOrWhiteSpace(versionId))
+            {
+                continue;
+            }
+
+            result.Add(new ModrinthDependency(
+                string.IsNullOrWhiteSpace(versionId) ? null : versionId,
+                string.IsNullOrWhiteSpace(projectId) ? null : projectId,
+                GetString(dependency, "file_name") is { Length: > 0 } fileName ? fileName : null,
+                GetString(dependency, "dependency_type")));
+        }
+
+        return result;
     }
 
     public async Task<string> InstallAsync(ModrinthProject project, string destinationDirectory, string? gameVersion,

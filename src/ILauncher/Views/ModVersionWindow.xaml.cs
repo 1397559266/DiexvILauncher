@@ -3,22 +3,31 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using ILauncher.Core.Services;
+using ILauncher.Models;
 
 namespace ILauncher.Views;
 
 public partial class ModVersionWindow : Window, INotifyPropertyChanged
 {
     private readonly Func<string, string?, Task<IReadOnlyList<ModrinthVersion>>> _loadVersions;
+    private readonly Func<ModrinthVersion, string, string?, Task<IReadOnlyList<ModDependencyItem>>> _analyzeDependencies;
+    private readonly Func<ModrinthVersion, string, string?, Action<DownloadProgress>?, Task> _installMissingDependencies;
     private string _selectedGameVersion;
     private string? _selectedLoader;
     private ModrinthVersion? _selectedVersion;
     private bool _isLoading;
+    private bool _isAnalyzing;
+    private bool _isInstallingDependencies;
     private string _statusText = "";
+    private string _dependencyStatus = "";
+    private int _missingRequiredCount;
     private bool _loaded;
 
     public ModVersionWindow(ModrinthProject project, string initialGameVersion,
         IReadOnlyList<string> gameVersions, string? initialLoader, IReadOnlyList<string> loaders,
-        Func<string, string?, Task<IReadOnlyList<ModrinthVersion>>> loadVersions)
+        Func<string, string?, Task<IReadOnlyList<ModrinthVersion>>> loadVersions,
+        Func<ModrinthVersion, string, string?, Task<IReadOnlyList<ModDependencyItem>>> analyzeDependencies,
+        Func<ModrinthVersion, string, string?, Action<DownloadProgress>?, Task> installMissingDependencies)
     {
         Project = project;
         GameVersions = gameVersions;
@@ -27,6 +36,8 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
         _selectedGameVersion = initialGameVersion;
         _selectedLoader = initialLoader;
         _loadVersions = loadVersions;
+        _analyzeDependencies = analyzeDependencies;
+        _installMissingDependencies = installMissingDependencies;
         InitializeComponent();
         DataContext = this;
         Loaded += OnLoaded;
@@ -37,6 +48,7 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
     public IReadOnlyList<string> Loaders { get; }
     public bool ShowLoader { get; }
     public ObservableCollection<ModrinthVersion> Versions { get; } = new();
+    public ObservableCollection<ModDependencyItem> Dependencies { get; } = new();
 
     public string SelectedGameVersion
     {
@@ -69,7 +81,13 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
     public ModrinthVersion? SelectedVersion
     {
         get => _selectedVersion;
-        set => Set(ref _selectedVersion, value);
+        set
+        {
+            if (Set(ref _selectedVersion, value) && _loaded)
+            {
+                _ = AnalyzeDependenciesAsync();
+            }
+        }
     }
 
     public bool IsLoading
@@ -78,11 +96,44 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
         private set => Set(ref _isLoading, value);
     }
 
+    public bool IsAnalyzing
+    {
+        get => _isAnalyzing;
+        private set => Set(ref _isAnalyzing, value);
+    }
+
+    public bool IsInstallingDependencies
+    {
+        get => _isInstallingDependencies;
+        private set => Set(ref _isInstallingDependencies, value);
+    }
+
     public string StatusText
     {
         get => _statusText;
         private set => Set(ref _statusText, value);
     }
+
+    public string DependencyStatus
+    {
+        get => _dependencyStatus;
+        private set => Set(ref _dependencyStatus, value);
+    }
+
+    public int MissingRequiredCount
+    {
+        get => _missingRequiredCount;
+        private set
+        {
+            if (Set(ref _missingRequiredCount, value))
+            {
+                OnPropertyChanged(nameof(HasMissingRequired));
+            }
+        }
+    }
+
+    public bool HasDependencies => Dependencies.Count > 0;
+    public bool HasMissingRequired => MissingRequiredCount > 0;
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
@@ -95,6 +146,9 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
     {
         IsLoading = true;
         StatusText = "正在获取兼容文件…";
+        Dependencies.Clear();
+        OnPropertyChanged(nameof(HasDependencies));
+        MissingRequiredCount = 0;
         try
         {
             var versions = await _loadVersions(gameVersion, SelectedLoader);
@@ -121,6 +175,74 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
         }
     }
 
+    private async Task AnalyzeDependenciesAsync()
+    {
+        if (!ShowLoader || SelectedVersion == null)
+        {
+            Dependencies.Clear();
+            OnPropertyChanged(nameof(HasDependencies));
+            MissingRequiredCount = 0;
+            DependencyStatus = "";
+            return;
+        }
+
+        IsAnalyzing = true;
+        DependencyStatus = "正在检测前置…";
+        try
+        {
+            var items = await _analyzeDependencies(SelectedVersion, SelectedGameVersion, SelectedLoader);
+            Dependencies.Clear();
+            foreach (var item in items)
+            {
+                Dependencies.Add(item);
+            }
+
+            MissingRequiredCount = Dependencies.Count(item => item.Missing);
+            OnPropertyChanged(nameof(HasDependencies));
+            DependencyStatus = Dependencies.Count == 0
+                ? "没有前置模组"
+                : MissingRequiredCount > 0
+                    ? $"缺少 {MissingRequiredCount} 个必需前置"
+                    : "必需前置已安装";
+        }
+        catch (Exception ex)
+        {
+            Dependencies.Clear();
+            MissingRequiredCount = 0;
+            OnPropertyChanged(nameof(HasDependencies));
+            DependencyStatus = $"前置检测失败：{ex.Message}";
+        }
+        finally
+        {
+            IsAnalyzing = false;
+        }
+    }
+
+    private async void InstallDependencies_Click(object sender, RoutedEventArgs e)
+    {
+        if (SelectedVersion == null || IsInstallingDependencies)
+        {
+            return;
+        }
+
+        IsInstallingDependencies = true;
+        DependencyStatus = "正在安装缺失前置…";
+        try
+        {
+            await _installMissingDependencies(SelectedVersion, SelectedGameVersion, SelectedLoader,
+                progress => DependencyStatus = progress.Message);
+            await AnalyzeDependenciesAsync();
+        }
+        catch (Exception ex)
+        {
+            DependencyStatus = $"安装前置失败：{ex.Message}";
+        }
+        finally
+        {
+            IsInstallingDependencies = false;
+        }
+    }
+
     private void Install_Click(object sender, RoutedEventArgs e)
     {
         if (IsLoading)
@@ -132,6 +254,13 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
         if (SelectedVersion == null)
         {
             MessageBox.Show("请选择一个文件版本。", "安装模组", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        if (MissingRequiredCount > 0)
+        {
+            MessageBox.Show($"还缺少 {MissingRequiredCount} 个必需前置，请先点击「一键安装缺失前置」。",
+                "缺少前置", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -148,7 +277,10 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
         }
 
         field = value;
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        OnPropertyChanged(propertyName);
         return true;
     }
+
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
