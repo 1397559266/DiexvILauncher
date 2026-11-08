@@ -408,9 +408,6 @@
                             </StackPanel>
                         </Grid>
                     </Border>
-
-                    <TextBlock Text="PCL2 风格界面 · HMCL 式测试启动" FontSize="9.5" Foreground="{StaticResource BrushTextMuted}"
-                               HorizontalAlignment="Center" Margin="0,16,0,0" />
                 </StackPanel>
             </Grid>
         </ScrollViewer>
