@@ -197,7 +197,7 @@
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
                                         <Border Width="28" Height="28" CornerRadius="7" Background="#FFF3F8FF" VerticalAlignment="Center">
-                                            <Image Source="{Binding Id, Converter={StaticResource BlockIcon}}" Width="22" Height="22"
+                                            <Image Source="{Binding Converter={StaticResource BlockIcon}}" Width="22" Height="22"
                                                    RenderOptions.BitmapScalingMode="NearestNeighbor" />
                                         </Border>
                                         <StackPanel Grid.Column="1" Margin="9,0,8,0" VerticalAlignment="Center">

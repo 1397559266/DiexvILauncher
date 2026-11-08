@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media.Imaging;
 using ILauncher.Models;
+using ILauncher.Services;
 
 namespace ILauncher.Core;
 
@@ -155,20 +156,21 @@ public sealed class LogLevelBrushConverter : IValueConverter
 
 public sealed class BlockIconConverter : IValueConverter
 {
-    private static readonly string[] Blocks = { "grass", "stone", "diamond", "redstone", "command", "gold", "planks", "obsidian" };
-    private static readonly Dictionary<string, BitmapImage> Cache = new();
-
-    public object Convert(object? value, Type targetType, object parameter, CultureInfo culture)
+    private static readonly HashSet<string> AprilFoolsIds = new(StringComparer.OrdinalIgnoreCase)
     {
-        var id = value as string ?? "";
-        var hash = 17;
-        foreach (var ch in id)
+        "15w14a", "1.RV-Pre1", "3D Shareware v1.34", "20w14infinite",
+        "22w13oneblockatatime", "23w13a_or_b", "24w14potato", "25w14craftmine"
+    };
+    private static readonly Dictionary<string, BitmapSource> Cache = new();
+
+    public object? Convert(object? value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is not ILauncher.Core.Services.RemoteVersion version)
         {
-            hash = unchecked(hash * 31 + ch);
+            return null;
         }
 
-        var index = Math.Abs(hash) % Blocks.Length;
-        var name = Blocks[index];
+        var name = IsAprilFools(version) ? "potato" : version.Type == "release" ? "grass" : "command";
         lock (Cache)
         {
             if (Cache.TryGetValue(name, out var cached))
@@ -176,16 +178,46 @@ public sealed class BlockIconConverter : IValueConverter
                 return cached;
             }
 
-            var image = new BitmapImage();
-            image.BeginInit();
-            image.CacheOption = BitmapCacheOption.OnLoad;
-            image.UriSource = new Uri($"pack://application:,,,/Assets/Blocks/{name}.png", UriKind.Absolute);
-            image.EndInit();
-            image.Freeze();
-            Cache[name] = image;
-            return image;
+            try
+            {
+                var image = new BitmapImage();
+                image.BeginInit();
+                image.CacheOption = BitmapCacheOption.OnLoad;
+                var extracted = BlockTextureService.GetTexturePath(name);
+                if (extracted != null)
+                {
+                    image.UriSource = new Uri(extracted, UriKind.Absolute);
+                }
+                else
+                {
+                    var fallback = name == "potato" ? "gold" : name;
+                    image.UriSource = new Uri($"pack://application:,,,/Assets/Blocks/{fallback}.png", UriKind.Absolute);
+                }
+
+                image.EndInit();
+                BitmapSource source = image;
+                if (image.PixelHeight > image.PixelWidth && image.PixelHeight % image.PixelWidth == 0)
+                {
+                    // Animated block textures are stored as a vertical strip of
+                    // square frames (e.g. command_block_front 16x64). Use the
+                    // first frame as the icon.
+                    source = new CroppedBitmap(image, new Int32Rect(0, 0, image.PixelWidth, image.PixelWidth));
+                }
+
+                source.Freeze();
+                Cache[name] = source;
+                return source;
+            }
+            catch
+            {
+                return null;
+            }
         }
     }
+
+    private static bool IsAprilFools(ILauncher.Core.Services.RemoteVersion version)
+        => AprilFoolsIds.Contains(version.Id) ||
+           (version.Type != "release" && version.ReleaseTime.Month == 4 && version.ReleaseTime.Day == 1);
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         => throw new NotSupportedException();
