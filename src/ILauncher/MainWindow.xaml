@@ -74,9 +74,7 @@
 
                     <Button Style="{StaticResource HeaderChipButton}" Command="{Binding GoAccountCommand}" ToolTip="账户与皮肤">
                         <StackPanel Orientation="Horizontal">
-                            <Border Width="26" Height="26" CornerRadius="13" Background="#FFE8F1FD" ClipToBounds="True">
-                                <controls:SkinHead SkinPath="{Binding SkinPath}" Width="26" Height="26" />
-                            </Border>
+                            <controls:SkinHead SkinPath="{Binding SkinPath}" Width="26" Height="26" />
                             <StackPanel Margin="8,0,0,0" VerticalAlignment="Center">
                                 <TextBlock Text="{Binding PlayerName}" FontSize="11.5" FontWeight="SemiBold" Foreground="#FFFFFFFF" />
                                 <TextBlock Text="{Binding AccountStatus}" FontSize="9" Foreground="#BFFFFFFF" />
