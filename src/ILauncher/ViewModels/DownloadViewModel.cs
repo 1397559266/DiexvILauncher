@@ -65,6 +65,12 @@ public sealed class DownloadViewModel : ObservableObject
     private DownloadFilterOption? _selectedVersionScope;
     private DownloadFilterOption? _selectedCategory;
     private DownloadFilterOption? _selectedDownloadType;
+    private RemoteVersion? _selectedRemoteVersion;
+    private DownloadFilterOption? _selectedInstallLoader;
+    private string? _selectedLoaderVersion;
+    private bool _isLoadingLoaderVersions;
+    private string _loaderVersionStatus = "";
+    private CancellationTokenSource? _loaderVersionCts;
     private int _searchOffset;
     private int _searchTotal;
     private int _searchVersion;
@@ -121,6 +127,16 @@ public sealed class DownloadViewModel : ObservableObject
             new() { Key = "all", Title = "全部版本" }
         };
         CategoryFilters = new ObservableCollection<DownloadFilterOption>();
+        InstallLoaderOptions = new ObservableCollection<DownloadFilterOption>
+        {
+            new() { Key = "vanilla", Title = "原版", IsSelected = true },
+            new() { Key = "fabric", Title = "Fabric" },
+            new() { Key = "quilt", Title = "Quilt" },
+            new() { Key = "forge", Title = "Forge" },
+            new() { Key = "neoforge", Title = "NeoForge" }
+        };
+        LoaderVersions = new ObservableCollection<string>();
+        _selectedInstallLoader = InstallLoaderOptions[0];
         DownloadTypeOptions = new ObservableCollection<DownloadFilterOption>
         {
             new() { Key = "Game", Title = "游戏版本", IsSelected = true },
@@ -145,6 +161,7 @@ public sealed class DownloadViewModel : ObservableObject
         InstallQuiltCommand = new AsyncRelayCommand(InstallQuiltAsync, () => !IsDownloading && _contextInstance != null);
         InstallForgeCommand = new AsyncRelayCommand(InstallForgeAsync, () => !IsDownloading && _contextInstance != null);
         InstallNeoForgeCommand = new AsyncRelayCommand(InstallNeoForgeAsync, () => !IsDownloading && _contextInstance != null);
+        InstallSelectedCommand = new AsyncRelayCommand(InstallSelectedAsync, () => CanInstallSelected);
         SearchCommand = new AsyncRelayCommand(SearchAsync, () => !IsSearching && !IsDownloading);
         OpenLinkCommand = new RelayCommand(parameter =>
         {
@@ -185,6 +202,8 @@ public sealed class DownloadViewModel : ObservableObject
     public ObservableCollection<DownloadFilterOption> LoaderFilters { get; }
     public ObservableCollection<DownloadFilterOption> VersionScopeFilters { get; }
     public ObservableCollection<DownloadFilterOption> CategoryFilters { get; }
+    public ObservableCollection<DownloadFilterOption> InstallLoaderOptions { get; }
+    public ObservableCollection<string> LoaderVersions { get; }
     public ObservableCollection<DownloadFilterOption> DownloadTypeOptions { get; }
 
     public AsyncRelayCommand RefreshGameVersionsCommand { get; }
@@ -193,6 +212,7 @@ public sealed class DownloadViewModel : ObservableObject
     public AsyncRelayCommand InstallQuiltCommand { get; }
     public AsyncRelayCommand InstallForgeCommand { get; }
     public AsyncRelayCommand InstallNeoForgeCommand { get; }
+    public AsyncRelayCommand InstallSelectedCommand { get; }
     public AsyncRelayCommand SearchCommand { get; }
     public RelayCommand OpenLinkCommand { get; }
     public AsyncRelayCommand ImportModpackCommand { get; }
@@ -294,6 +314,8 @@ public sealed class DownloadViewModel : ObservableObject
                 InstallQuiltCommand.RaiseCanExecuteChanged();
                 InstallForgeCommand.RaiseCanExecuteChanged();
                 InstallNeoForgeCommand.RaiseCanExecuteChanged();
+                InstallSelectedCommand.RaiseCanExecuteChanged();
+                OnPropertyChanged(nameof(CanInstallSelected));
                 InstallProjectCommand.RaiseCanExecuteChanged();
                 ImportModpackCommand.RaiseCanExecuteChanged();
                 SearchCommand.RaiseCanExecuteChanged();
@@ -419,6 +441,77 @@ public sealed class DownloadViewModel : ObservableObject
             }
         }
     }
+
+    public RemoteVersion? SelectedRemoteVersion
+    {
+        get => _selectedRemoteVersion;
+        set
+        {
+            if (!SetProperty(ref _selectedRemoteVersion, value))
+            {
+                return;
+            }
+
+            OnPropertyChanged(nameof(SelectedVersionTitle));
+            OnPropertyChanged(nameof(SelectedVersionSubtitle));
+            OnPropertyChanged(nameof(CanInstallSelected));
+            InstallSelectedCommand.RaiseCanExecuteChanged();
+            _ = ReloadLoaderVersionsAsync();
+        }
+    }
+
+    public DownloadFilterOption? SelectedInstallLoader
+    {
+        get => _selectedInstallLoader;
+        set
+        {
+            if (!SetProperty(ref _selectedInstallLoader, value) || value == null)
+            {
+                return;
+            }
+
+            SelectSingle(InstallLoaderOptions, value);
+            OnPropertyChanged(nameof(CanInstallSelected));
+            InstallSelectedCommand.RaiseCanExecuteChanged();
+            _ = ReloadLoaderVersionsAsync();
+        }
+    }
+
+    public string? SelectedLoaderVersion
+    {
+        get => _selectedLoaderVersion;
+        set
+        {
+            if (SetProperty(ref _selectedLoaderVersion, value))
+            {
+                OnPropertyChanged(nameof(CanInstallSelected));
+                InstallSelectedCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    public bool IsLoadingLoaderVersions
+    {
+        get => _isLoadingLoaderVersions;
+        private set => SetProperty(ref _isLoadingLoaderVersions, value);
+    }
+
+    public string LoaderVersionStatus
+    {
+        get => _loaderVersionStatus;
+        private set => SetProperty(ref _loaderVersionStatus, value);
+    }
+
+    public string SelectedVersionTitle => SelectedRemoteVersion?.Id ?? "未选择版本";
+    public string SelectedVersionSubtitle => SelectedRemoteVersion == null
+        ? "从左侧版本列表中选择一个版本"
+        : $"{SelectedRemoteVersion.TypeText} · {SelectedRemoteVersion.ReleaseTime:yyyy-MM-dd}";
+
+    public bool CanInstallSelected
+        => !IsDownloading &&
+           SelectedRemoteVersion != null &&
+           (string.Equals(SelectedInstallLoader?.Key, "vanilla", StringComparison.OrdinalIgnoreCase) ||
+            !string.IsNullOrWhiteSpace(SelectedLoaderVersion));
 
     public int SearchPage => _searchTotal <= 0 ? 1 : _searchOffset / SearchPageSize + 1;
     public int SearchTotalPages => Math.Max(1, (int)Math.Ceiling(_searchTotal / (double)SearchPageSize));
@@ -564,6 +657,160 @@ public sealed class DownloadViewModel : ObservableObject
         }
 
         OnPropertyChanged(nameof(FilterSummary));
+        var selected = SelectedRemoteVersion;
+        if (selected == null || !GameVersions.Contains(selected))
+        {
+            SelectedRemoteVersion = GameVersions.FirstOrDefault();
+        }
+    }
+
+    private async Task ReloadLoaderVersionsAsync()
+    {
+        _loaderVersionCts?.Cancel();
+        _loaderVersionCts?.Dispose();
+        var cts = _loaderVersionCts = new CancellationTokenSource();
+        LoaderVersions.Clear();
+        SelectedLoaderVersion = null;
+        OnPropertyChanged(nameof(CanInstallSelected));
+        InstallSelectedCommand.RaiseCanExecuteChanged();
+
+        var version = SelectedRemoteVersion;
+        var loader = SelectedInstallLoader?.Key ?? "vanilla";
+        if (version == null)
+        {
+            LoaderVersionStatus = "请选择左侧的 Minecraft 版本";
+            return;
+        }
+
+        IsLoadingLoaderVersions = true;
+        LoaderVersionStatus = "正在获取版本…";
+        try
+        {
+            var values = new List<string>();
+            switch (loader)
+            {
+                case "vanilla":
+                    values.Add("原版");
+                    break;
+                case "fabric":
+                    values.AddRange((await _fabric.GetLoadersAsync(version.Id, cts.Token)).Select(item => item.Version));
+                    break;
+                case "quilt":
+                    values.AddRange((await _quilt.GetLoadersAsync(version.Id, cts.Token)).Select(item => item.Version));
+                    break;
+                case "forge":
+                    values.AddRange(await _installers.GetForgeVersionsAsync(version.Id, cts.Token));
+                    break;
+                case "neoforge":
+                    values.AddRange(await _installers.GetNeoForgeVersionsAsync(version.Id, cts.Token));
+                    break;
+            }
+
+            if (cts.IsCancellationRequested)
+            {
+                return;
+            }
+
+            foreach (var value in values.Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                LoaderVersions.Add(value);
+            }
+
+            SelectedLoaderVersion = LoaderVersions.FirstOrDefault();
+            LoaderVersionStatus = LoaderVersions.Count == 0
+                ? "该加载器没有适用于此版本的版本"
+                : $"共 {LoaderVersions.Count} 个版本";
+        }
+        catch (OperationCanceledException)
+        {
+            // A newer selection replaced this request.
+        }
+        catch (Exception ex)
+        {
+            LoaderVersionStatus = $"获取版本失败：{ex.Message}";
+        }
+        finally
+        {
+            if (ReferenceEquals(_loaderVersionCts, cts))
+            {
+                IsLoadingLoaderVersions = false;
+                OnPropertyChanged(nameof(CanInstallSelected));
+                InstallSelectedCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    private async Task InstallSelectedAsync()
+    {
+        var version = SelectedRemoteVersion;
+        if (version == null)
+        {
+            _toast("请先从左侧选择一个 Minecraft 版本。", true);
+            return;
+        }
+
+        var loader = SelectedInstallLoader?.Key ?? "vanilla";
+        var loaderVersion = SelectedLoaderVersion;
+        var root = _root();
+        if (string.IsNullOrWhiteSpace(root))
+        {
+            _toast("没有找到 .minecraft 目录。", true);
+            return;
+        }
+
+        var title = string.Equals(loader, "vanilla", StringComparison.OrdinalIgnoreCase)
+            ? $"安装 Minecraft {version.Id}"
+            : $"安装 {SelectedInstallLoader?.Title} {loaderVersion} · Minecraft {version.Id}";
+        await RunDownloadAsync(title, async (report, token) =>
+        {
+            var baseJson = Path.Combine(root, "versions", version.Id, version.Id + ".json");
+            if (!string.Equals(loader, "vanilla", StringComparison.OrdinalIgnoreCase) && !File.Exists(baseJson))
+            {
+                await _mojang.InstallAsync(version, root, downloadAssets: true, report, token);
+            }
+
+            switch (loader)
+            {
+                case "fabric":
+                    if (string.IsNullOrWhiteSpace(loaderVersion))
+                    {
+                        throw new InvalidOperationException("请选择 Fabric 版本。");
+                    }
+
+                    await _fabric.InstallAsync(version.Id, loaderVersion, root, report, token);
+                    break;
+                case "quilt":
+                    if (string.IsNullOrWhiteSpace(loaderVersion))
+                    {
+                        throw new InvalidOperationException("请选择 Quilt 版本。");
+                    }
+
+                    await _quilt.InstallAsync(version.Id, loaderVersion, root, report, token);
+                    break;
+                case "forge":
+                    if (string.IsNullOrWhiteSpace(loaderVersion))
+                    {
+                        throw new InvalidOperationException("请选择 Forge 版本。");
+                    }
+
+                    await _installers.InstallForgeVersionAsync(version.Id, loaderVersion, root, report, token);
+                    break;
+                case "neoforge":
+                    if (string.IsNullOrWhiteSpace(loaderVersion))
+                    {
+                        throw new InvalidOperationException("请选择 NeoForge 版本。");
+                    }
+
+                    await _installers.InstallNeoForgeVersionAsync(version.Id, loaderVersion, root, report, token);
+                    break;
+                default:
+                    await _mojang.InstallAsync(version, root, downloadAssets: true, report, token);
+                    break;
+            }
+
+            await _reloadInstances();
+            _toast($"Minecraft {version.Id} 安装完成。", false);
+        });
     }
 
     private static bool SelectSingle(IEnumerable<DownloadFilterOption> options, DownloadFilterOption selected)

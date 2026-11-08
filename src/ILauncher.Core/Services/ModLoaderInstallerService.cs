@@ -171,6 +171,82 @@ public sealed class ModLoaderInstallerService
         return id;
     }
 
+    public async Task<List<string>> GetForgeVersionsAsync(string minecraftVersion, CancellationToken cancellationToken = default)
+    {
+        var versions = new List<string>();
+        try
+        {
+            var json = await DownloadHelper.GetStringAsync(
+                "https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json", cancellationToken);
+            using var document = System.Text.Json.JsonDocument.Parse(json);
+            if (document.RootElement.TryGetProperty("promos", out var promos))
+            {
+                foreach (var key in new[] { $"{minecraftVersion}-recommended", $"{minecraftVersion}-latest" })
+                {
+                    if (promos.TryGetProperty(key, out var value) &&
+                        value.GetString() is { Length: > 0 } version)
+                    {
+                        versions.Add(version);
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // The maven metadata below is the fallback.
+        }
+
+        try
+        {
+            var xml = await DownloadHelper.GetStringAsync(
+                "https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml", cancellationToken);
+            var document = XDocument.Parse(xml);
+            var prefix = minecraftVersion + "-";
+            versions.AddRange(document.Descendants("version")
+                .Select(element => element.Value)
+                .Where(value => value.StartsWith(prefix, StringComparison.Ordinal))
+                .Select(value => value[prefix.Length..])
+                .Where(value => !value.Contains("installer", StringComparison.OrdinalIgnoreCase)));
+        }
+        catch
+        {
+            // Keep promotion versions if maven is unavailable.
+        }
+
+        return versions.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    public async Task<List<string>> GetNeoForgeVersionsAsync(string minecraftVersion, CancellationToken cancellationToken = default)
+    {
+        var match = Regex.Match(minecraftVersion, @"^1\.(\d+)(?:\.(\d+))?");
+        if (!match.Success)
+        {
+            return new List<string>();
+        }
+
+        var minor = int.Parse(match.Groups[1].Value);
+        var patch = match.Groups[2].Success ? int.Parse(match.Groups[2].Value) : 0;
+        var prefix = minor == 20 && patch <= 1
+            ? "47.1."
+            : $"{minor}.{patch}.";
+        try
+        {
+            var xml = await DownloadHelper.GetStringAsync(
+                "https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml", cancellationToken);
+            var document = XDocument.Parse(xml);
+            return document.Descendants("version")
+                .Select(element => element.Value)
+                .Where(value => value.StartsWith(prefix, StringComparison.Ordinal))
+                .Where(value => !value.Contains("installer", StringComparison.OrdinalIgnoreCase))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+        catch
+        {
+            return new List<string>();
+        }
+    }
+
     private static async Task<string?> GetForgeVersionAsync(string minecraftVersion, CancellationToken cancellationToken)
     {
         try
