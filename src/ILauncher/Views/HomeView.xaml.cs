@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using ILauncher.Services;
 using ILauncher.ViewModels;
 
 namespace ILauncher.Views;
@@ -10,6 +11,24 @@ public partial class HomeView : UserControl
     public HomeView()
     {
         InitializeComponent();
+        Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        InstanceIconService.Changed -= OnIconChanged;
+        InstanceIconService.Changed += OnIconChanged;
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        InstanceIconService.Changed -= OnIconChanged;
+    }
+
+    private void OnIconChanged(object? sender, string instanceId)
+    {
+        Dispatcher.Invoke(() => VersionList.Items.Refresh());
     }
 
     private void VersionList_MouseDoubleClick(object sender, MouseButtonEventArgs e)

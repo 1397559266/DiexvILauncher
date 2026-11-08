@@ -67,6 +67,13 @@ public sealed class OverviewViewModel : ObservableObject
         var overrides = settings.GetInstanceSettings(instance.Id);
         var memory = overrides.MemoryMb ?? settings.Settings.MemoryMb;
         _memoryText = $"{memory:N0} MB";
+        InstanceIconService.Changed += (_, changedId) =>
+        {
+            if (string.Equals(changedId, Instance.Id, StringComparison.OrdinalIgnoreCase))
+            {
+                OnPropertyChanged(nameof(IconSource));
+            }
+        };
         _ = LoadAsync();
     }
 
