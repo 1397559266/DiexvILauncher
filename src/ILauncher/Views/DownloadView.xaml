@@ -42,6 +42,7 @@
 
         <Style x:Key="VersionRow" TargetType="ListBoxItem">
             <Setter Property="Padding" Value="0" />
+            <Setter Property="Height" Value="56" />
             <Setter Property="Margin" Value="5,1" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="Focusable" Value="False" />
@@ -183,9 +184,10 @@
                     </Border>
 
                     <Grid Grid.Row="2">
-                        <ListBox ItemsSource="{Binding GameVersions}" Style="{StaticResource CleanListBox}"
+                        <ListBox x:Name="GameVersionList" ItemsSource="{Binding GameVersions}" Style="{StaticResource CleanListBox}"
                                  ItemContainerStyle="{StaticResource VersionRow}" Margin="0,4,0,0"
                                  SelectedItem="{Binding SelectedRemoteVersion, Mode=TwoWay}"
+                                 PreviewMouseLeftButtonDown="GameVersionList_PreviewMouseLeftButtonDown"
                                  AutomationProperties.Name="Minecraft 版本列表">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
@@ -262,9 +264,10 @@
                                 <TextBlock Text="{Binding LoaderVersionStatus}" FontSize="8.5"
                                            Foreground="{StaticResource BrushTextMuted}" HorizontalAlignment="Right" />
                             </Grid>
-                            <ListBox ItemsSource="{Binding LoaderVersions}"
+                            <ListBox x:Name="LoaderVersionList" ItemsSource="{Binding LoaderVersions}"
                                      SelectedItem="{Binding SelectedLoaderVersion, Mode=TwoWay}"
                                      Height="176" Margin="0,5,0,0"
+                                     PreviewMouseLeftButtonDown="LoaderVersionList_PreviewMouseLeftButtonDown"
                                      AutomationProperties.Name="加载器版本列表">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
