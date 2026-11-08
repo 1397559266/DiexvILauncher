@@ -3,6 +3,7 @@ using System.Windows.Input;
 using ILauncher.Core;
 using ILauncher.Core.Models;
 using ILauncher.Core.Services;
+using ILauncher.Localization;
 using Microsoft.Win32;
 
 namespace ILauncher.ViewModels;
@@ -87,16 +88,20 @@ public sealed class InstanceSettingsViewModel : ObservableObject
 
     public string VersionName => _instance.Id;
     public string VersionSubtitle => _instance.Subtitle;
-    public string JavaRequirement => $"此版本需要 Java {_instance.RequiredJavaMajor}+";
+    public string JavaRequirement => LanguageService.CurrentLanguage == LanguageService.English
+        ? $"This version requires Java {_instance.RequiredJavaMajor}+"
+        : $"此版本需要 Java {_instance.RequiredJavaMajor}+";
     public string PlayerName => _settings.ResolvePlayerName();
     public string GameDirectory => _instance.GameDirectory;
     public string VersionDirectory => _instance.Directory;
-    public string IsolationText => _instance.IsIsolated ? "已启用版本隔离（模组、存档位于版本目录）" : "未隔离（使用 .minecraft 根目录）";
+    public string IsolationText => LanguageService.Translate(_instance.IsIsolated
+        ? "已启用版本隔离（模组、存档位于版本目录）"
+        : "未隔离（使用 .minecraft 根目录）");
 
     public string JavaSummary
     {
         get => _javaSummary;
-        private set => SetProperty(ref _javaSummary, value);
+        private set => SetProperty(ref _javaSummary, LanguageService.Translate(value));
     }
 
     public int MemoryMb
@@ -149,7 +154,9 @@ public sealed class InstanceSettingsViewModel : ObservableObject
         }
     }
 
-    public string ResolutionText => UseCustomResolution ? $"{Width} × {Height}" : "跟随游戏默认";
+    public string ResolutionText => UseCustomResolution
+        ? $"{Width} × {Height}"
+        : LanguageService.Translate("跟随游戏默认");
 
     public ICommand SaveCommand { get; }
     public ICommand ResetCommand { get; }

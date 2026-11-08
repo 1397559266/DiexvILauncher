@@ -339,32 +339,32 @@ public sealed class DownloadViewModel : ObservableObject
         _ => "mod"
     };
 
-    public string TabTitle => CurrentTab switch
+    public string TabTitle => LanguageService.Translate(CurrentTab switch
     {
         DownloadTab.Mods => "模组",
         DownloadTab.Modpacks => "整合包",
         DownloadTab.ResourcePacks => "资源包",
         DownloadTab.Shaders => "光影",
         _ => "游戏版本"
-    };
+    });
 
-    public string TabDescription => CurrentTab switch
+    public string TabDescription => LanguageService.Translate(CurrentTab switch
     {
         DownloadTab.Mods => "搜索并安装模组到当前版本。",
         DownloadTab.Modpacks => "搜索并安装整合包，会自动创建对应版本。",
         DownloadTab.ResourcePacks => "搜索资源包并安装到当前版本。",
         DownloadTab.Shaders => "搜索光影并安装到当前版本。",
         _ => "从 Mojang 官方源下载并安装游戏版本，也可以为当前版本安装 Fabric / Quilt。"
-    };
+    });
 
-    public string SearchPlaceholder => CurrentTab switch
+    public string SearchPlaceholder => LanguageService.Translate(CurrentTab switch
     {
         DownloadTab.Mods => "搜索模组名称、简介或标签…",
         DownloadTab.Modpacks => "搜索整合包…",
         DownloadTab.ResourcePacks => "搜索资源包…",
         DownloadTab.Shaders => "搜索光影…",
         _ => "搜索…"
-    };
+    });
 
     public bool IsLoadingVersions
     {
@@ -609,9 +609,9 @@ public sealed class DownloadViewModel : ObservableObject
         private set => SetProperty(ref _loaderVersionStatus, value);
     }
 
-    public string SelectedVersionTitle => SelectedRemoteVersion?.Id ?? "未选择版本";
+    public string SelectedVersionTitle => SelectedRemoteVersion?.Id ?? LanguageService.Translate("未选择版本");
     public string SelectedVersionSubtitle => SelectedRemoteVersion == null
-        ? "从左侧版本列表中选择一个版本"
+        ? LanguageService.Translate("从左侧版本列表中选择一个版本")
         : $"{SelectedRemoteVersion.TypeText} · {SelectedRemoteVersion.ReleaseTime:yyyy-MM-dd}";
 
     public bool CanInstallSelected
@@ -623,8 +623,10 @@ public sealed class DownloadViewModel : ObservableObject
     public int SearchPage => _searchTotal <= 0 ? 1 : _searchOffset / SearchPageSize + 1;
     public int SearchTotalPages => Math.Max(1, (int)Math.Ceiling(_searchTotal / (double)SearchPageSize));
     public string SearchPageText => _searchTotal <= 0
-        ? "第 1 页"
-        : $"第 {SearchPage} / {SearchTotalPages} 页 · 共 {_searchTotal} 个";
+        ? LanguageService.Translate("第 1 页")
+        : LanguageService.CurrentLanguage == LanguageService.English
+            ? $"Page {SearchPage} / {SearchTotalPages} · {_searchTotal} total"
+            : $"第 {SearchPage} / {SearchTotalPages} 页 · 共 {_searchTotal} 个";
 
     public string SearchStatus
     {
