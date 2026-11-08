@@ -1,0 +1,316 @@
+<UserControl x:Class="ILauncher.Views.LaunchLogView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:ILauncher.Controls">
+
+    <Grid Margin="24,18,24,18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- ═══════════ Session header ═══════════ -->
+        <Border Style="{StaticResource CardShadow}" CornerRadius="14" Padding="20,16">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Border Width="50" Height="50" CornerRadius="14" VerticalAlignment="Top">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#FF0F6BE8" Offset="0" />
+                            <GradientStop Color="#FF4A9BF7" Offset="1" />
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <controls:Icon Data="{StaticResource IconFlask}" Fill="Transparent" Stroke="#FFFFFFFF" StrokeThickness="1.7"
+                                   Width="25" Height="25" />
+                </Border>
+
+                <StackPanel Grid.Column="1" Margin="14,0,20,0">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding SessionTitle}" FontSize="20" FontWeight="Bold" />
+                        <Border CornerRadius="10" Padding="8,2" Margin="10,2,0,0" Background="#FFF4F8FD"
+                                VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="6" Height="6" Fill="{Binding StatusBrush}" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding StatusText}" FontSize="10" Foreground="{Binding StatusBrush}"
+                                           Margin="5,0,0,0" FontWeight="SemiBold" />
+                            </StackPanel>
+                        </Border>
+                        <Border Background="#FFEAF2FE" CornerRadius="6" Padding="6,2" Margin="7,2,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="全部输出" FontSize="9" Foreground="{StaticResource BrushAccent}" />
+                        </Border>
+                    </StackPanel>
+                    <TextBlock Text="{Binding InstanceSubtitle}" FontSize="10.5" Foreground="{StaticResource BrushTextSecondary}"
+                               Margin="0,3,0,0" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding StatusDetail}" FontSize="10.5" Foreground="{StaticResource BrushTextMuted}"
+                               Margin="0,5,0,0" TextTrimming="CharacterEllipsis" MaxWidth="640" ToolTip="{Binding StatusDetail}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,16,0">
+                            <controls:Icon Data="{StaticResource IconClock}" Fill="#FF9AABBF" Width="12" Height="12" />
+                            <TextBlock Text="{Binding ElapsedText}" FontFamily="{StaticResource FontMono}" FontSize="10"
+                                       Foreground="{StaticResource BrushTextSecondary}" Margin="5,0,0,0" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,16,0">
+                            <controls:Icon Data="{StaticResource IconTerminal}" Fill="#FF9AABBF" Width="12" Height="12" />
+                            <TextBlock Text="{Binding PidText}" FontFamily="{StaticResource FontMono}" FontSize="10"
+                                       Foreground="{StaticResource BrushTextSecondary}" Margin="5,0,0,0" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding InstanceId}" FontSize="9.5" Foreground="{StaticResource BrushTextMuted}"
+                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="260" />
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top" Margin="0,2,0,0">
+                    <Button Style="{StaticResource DangerButton}" Height="36" Command="{Binding StopCommand}"
+                            Visibility="{Binding IsRunning, Converter={StaticResource BoolToVisibility}}"
+                            AutomationProperties.Name="停止游戏">
+                        <StackPanel Orientation="Horizontal">
+                            <controls:Icon Data="{StaticResource IconStop}" Fill="{StaticResource BrushDanger}" Width="12" Height="12" />
+                            <TextBlock Text="停止游戏" Margin="6,0,0,0" FontSize="11.5" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource SecondaryButton}" Height="36" Command="{Binding RetryCommand}"
+                            Visibility="{Binding IsRunning, Converter={StaticResource InverseBoolToVisibility}}"
+                            AutomationProperties.Name="重新测试">
+                        <StackPanel Orientation="Horizontal">
+                            <controls:Icon Data="{StaticResource IconRefresh}" Fill="#FF3A5674" Width="12" Height="12" />
+                            <TextBlock Text="重新测试" Margin="6,0,0,0" FontSize="11.5" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource IconButton}" Margin="6,0,0,0" Command="{Binding OpenLogFolderCommand}"
+                            ToolTip="打开日志文件夹">
+                        <controls:Icon Data="{StaticResource IconFolderOpen}" Fill="{StaticResource BrushTextSecondary}" Width="15" Height="15" />
+                    </Button>
+                    <Button Style="{StaticResource IconButton}" Margin="2,0,0,0" Command="{Binding OpenLogFileCommand}"
+                            ToolTip="打开日志文件">
+                        <controls:Icon Data="{StaticResource IconExternal}" Fill="{StaticResource BrushTextSecondary}" Width="14" Height="14" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ═══════════ Stage strip ═══════════ -->
+        <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,12,0,12" Padding="18,12" CornerRadius="11">
+            <Grid>
+                <ItemsControl ItemsSource="{Binding Steps}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                                <Grid Width="26" Height="26">
+                                    <Ellipse Fill="{Binding Brush}" />
+                                    <TextBlock Text="{Binding Glyph}" Foreground="{Binding GlyphBrush}" FontSize="11"
+                                               FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Grid>
+                                <StackPanel Margin="8,0,0,0" VerticalAlignment="Center" Width="72">
+                                    <TextBlock Text="{Binding Title}" FontSize="11" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding StateText}" FontSize="8.8" Foreground="{StaticResource BrushTextMuted}"
+                                               Margin="0,1,0,0" />
+                                </StackPanel>
+                                <Border Width="34" Height="2" Background="{Binding ConnectorBrush}" Margin="10,0,14,0"
+                                        VerticalAlignment="Center"
+                                        Visibility="{Binding IsLast, Converter={StaticResource InverseBoolToVisibility}}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Border Background="#FFF6FAFF" BorderBrush="#FFE9F1FB" BorderThickness="1" CornerRadius="7" Padding="9,4">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="5" Height="5" Fill="{StaticResource BrushSuccess}" VerticalAlignment="Center" />
+                            <TextBlock Text="stdout + stderr" FontFamily="{StaticResource FontMono}" FontSize="9"
+                                       Foreground="{StaticResource BrushTextSecondary}" Margin="5,0,0,0" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ═══════════ Log terminal ═══════════ -->
+        <Border Grid.Row="2" Style="{StaticResource Card}" Padding="0" CornerRadius="12" ClipToBounds="True">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- Toolbar -->
+                <Grid Height="50" Margin="14,0">
+                    <ItemsControl ItemsSource="{Binding LevelFilters}" VerticalAlignment="Center">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <ToggleButton Style="{StaticResource FilterChip}" Height="30" Margin="0,0,6,0"
+                                              IsChecked="{Binding IsSelected, Mode=OneWay}"
+                                              Command="{Binding DataContext.SetFilterCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                              CommandParameter="{Binding Key}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Ellipse Width="5" Height="5" Fill="{Binding DotBrush}" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding DisplayTitle}" FontSize="11" Margin="5,0,0,0" />
+                                    </StackPanel>
+                                </ToggleButton>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Grid Width="196" Height="32">
+                            <TextBox Style="{StaticResource InputTextBox}" Height="32" Padding="28,0,8,0"
+                                     Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                     Background="#FFF9FBFF" />
+                            <controls:Icon Data="{StaticResource IconSearch}" Fill="#FF9AABBF" Width="13" Height="13"
+                                           HorizontalAlignment="Left" Margin="9,0,0,0" IsHitTestVisible="False" />
+                            <TextBlock Text="筛选日志…" FontSize="10.5" Foreground="{StaticResource BrushTextMuted}"
+                                       Margin="28,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                                       Visibility="{Binding SearchText, Converter={StaticResource EmptyToVisibility}}" />
+                        </Grid>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+                            <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding AutoScroll, Mode=TwoWay}" />
+                            <TextBlock Text="自动滚动" FontSize="10" Foreground="{StaticResource BrushTextSecondary}"
+                                       Margin="6,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <Border Width="1" Height="18" Background="{StaticResource BrushBorder}" Margin="10,0,6,0" />
+                        <Button Style="{StaticResource IconButton}" Width="28" Height="28" ToolTip="清空日志"
+                                Command="{Binding ClearCommand}">
+                            <controls:Icon Data="{StaticResource IconTrash}" Fill="{StaticResource BrushTextSecondary}" Width="13" Height="13" />
+                        </Button>
+                        <Button Style="{StaticResource IconButton}" Width="28" Height="28" ToolTip="复制全部可见日志"
+                                Command="{Binding CopyCommand}">
+                            <controls:Icon Data="{StaticResource IconCopy}" Fill="{StaticResource BrushTextSecondary}" Width="13" Height="13" />
+                        </Button>
+                    </StackPanel>
+                </Grid>
+
+                <Border Grid.Row="0" Style="{StaticResource Divider}" VerticalAlignment="Bottom" />
+
+                <!-- Rows -->
+                <Grid Grid.Row="1">
+                    <ListBox x:Name="LogList" ItemsSource="{Binding LogsView}" Style="{StaticResource LogListBox}"
+                             Background="#FFFBFDFF">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border Height="22">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="Transparent" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Kind}" Value="Error">
+                                                    <Setter Property="Background" Value="#FFFDF3F3" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Kind}" Value="Warn">
+                                                    <Setter Property="Background" Value="#FFFFFBEF" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding IsLauncher}" Value="True">
+                                                    <Setter Property="Background" Value="#FFF5FAFF" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <Grid Margin="14,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="82" />
+                                            <ColumnDefinition Width="46" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding Time}" FontFamily="{StaticResource FontMono}" FontSize="9.5"
+                                                   Foreground="#FF9DABBB" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Level}" FontFamily="{StaticResource FontMono}"
+                                                   FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center"
+                                                   Foreground="{Binding Kind, Converter={StaticResource LogLevelBrush}}" />
+                                        <TextBlock Grid.Column="2" Text="{Binding Message}" FontFamily="{StaticResource FontMono}"
+                                                   FontSize="11" VerticalAlignment="Center" ToolTip="{Binding Message}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="#FF334155" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Kind}" Value="Error">
+                                                            <Setter Property="Foreground" Value="#FFB42318" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Kind}" Value="Warn">
+                                                            <Setter Property="Foreground" Value="#FF9A5B12" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsLauncher}" Value="True">
+                                                            <Setter Property="Foreground" Value="#FF2168C4" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                                Visibility="{Binding ShowEmptyState, Converter={StaticResource BoolToVisibility}}">
+                        <Border Width="58" Height="58" CornerRadius="17" Background="#FFEFF6FF" HorizontalAlignment="Center">
+                            <controls:Icon Data="{StaticResource IconFlask}" Fill="Transparent" Stroke="{StaticResource BrushAccent}"
+                                           StrokeThickness="1.6" Width="27" Height="27" />
+                        </Border>
+                        <TextBlock Text="还没有启动日志" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,14,0,0" />
+                        <TextBlock Text="点击左下角的「测试游戏」按钮，启动结果和游戏的全部输出会实时显示在这里。"
+                                   FontSize="10.5" Foreground="{StaticResource BrushTextSecondary}" TextAlignment="Center"
+                                   TextWrapping="Wrap" MaxWidth="400" Margin="0,7,0,0" LineHeight="18" />
+                        <Button Style="{StaticResource PrimaryButton}" Height="36" MinWidth="130" Margin="0,16,0,0"
+                                Command="{Binding RetryCommand}" HorizontalAlignment="Center">
+                            <StackPanel Orientation="Horizontal">
+                                <controls:Icon Data="{StaticResource IconFlask}" Fill="Transparent" Stroke="#FFFFFFFF"
+                                               StrokeThickness="1.8" Width="14" Height="14" />
+                                <TextBlock Text="开始测试" Margin="6,0,0,0" FontSize="11.5" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Footer -->
+                <Border Grid.Row="2" Background="#FFF8FBFF" BorderBrush="{StaticResource BrushBorder}" BorderThickness="0,1,0,0"
+                        Padding="14,8">
+                    <Grid>
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="6" Height="6" Fill="{StaticResource BrushSuccess}" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding CaptureStateText}" FontSize="9.5" Foreground="{StaticResource BrushTextSecondary}"
+                                       Margin="6,0,0,0" VerticalAlignment="Center" />
+                            <Border Width="1" Height="11" Background="{StaticResource BrushBorder}" Margin="10,0" />
+                            <TextBlock Text="{Binding LineCountText}" FontSize="9.5" Foreground="{StaticResource BrushTextMuted}"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Text="错误" FontSize="9.5" Foreground="{StaticResource BrushTextMuted}" Margin="10,0,0,0"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding ErrorCountText}" FontSize="9.5" Foreground="{StaticResource BrushDanger}"
+                                       Margin="4,0,0,0" VerticalAlignment="Center" />
+                            <TextBlock Text="警告" FontSize="9.5" Foreground="{StaticResource BrushTextMuted}" Margin="10,0,0,0"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding WarnCountText}" FontSize="9.5" Foreground="{StaticResource BrushWarning}"
+                                       Margin="4,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <TextBlock Text="{Binding LogPathDisplay}" FontSize="9" Foreground="{StaticResource BrushTextMuted}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                   MaxWidth="380" ToolTip="{Binding LogPathDisplay}" />
+
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <controls:Icon Data="{StaticResource IconTerminal}" Fill="#FFA2AFC0" Width="11" Height="11" />
+                            <TextBlock Text="UTF-8" FontFamily="{StaticResource FontMono}" FontSize="9"
+                                       Foreground="{StaticResource BrushTextMuted}" Margin="5,0,0,0" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

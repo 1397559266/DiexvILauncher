@@ -1,0 +1,14 @@
+# Build output
+bin/
+obj/
+dist/
+# Local research / temporary files
+.research/
+*.user
+*.suo
+.vs/
+*.pdb
+*.log
+# OS
+Thumbs.db
+Desktop.ini

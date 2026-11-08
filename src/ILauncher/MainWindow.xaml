@@ -1,0 +1,180 @@
+<Window x:Class="ILauncher.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:ILauncher.Controls"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        Title="ILauncher"
+        Width="1240" Height="800" MinWidth="1060" MinHeight="690"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="SingleBorderWindow"
+        ResizeMode="CanResize"
+        Background="{StaticResource BrushBackground}"
+        FontFamily="{StaticResource FontUi}"
+        FontSize="13"
+        Foreground="{StaticResource BrushText}"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        Icon="Assets/app.ico"
+        TextOptions.TextFormattingMode="Display">
+
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="0" ResizeBorderThickness="6" CornerRadius="12"
+                            GlassFrameThickness="0" UseAeroCaptionButtons="False" />
+    </shell:WindowChrome.WindowChrome>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="62" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- ═══════════ Header ═══════════ -->
+        <Border Grid.Row="0" Background="{StaticResource BrushHeader}" MouseLeftButtonDown="Header_MouseLeftButtonDown">
+            <Grid Margin="18,0,10,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Brand -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center"
+                            Visibility="{Binding IsHome, Converter={StaticResource BoolToVisibility}}">
+                    <Border Width="36" Height="36" CornerRadius="10" Background="#FFFFFFFF">
+                        <Border.Effect>
+                            <DropShadowEffect Color="#FF063A82" BlurRadius="10" ShadowDepth="2" Opacity="0.25" />
+                        </Border.Effect>
+                        <Image Source="Assets/app.png" Width="26" Height="26" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+                    </Border>
+                    <StackPanel Margin="11,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="ILauncher" FontSize="16.5" FontWeight="Bold" Foreground="#FFFFFFFF" />
+                        <TextBlock Text="MINECRAFT LAUNCHER" FontSize="8.5" Foreground="#AFFFFFFF"
+                                   FontFamily="Segoe UI" Margin="0,1,0,0" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Sub page title -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center"
+                            Visibility="{Binding IsHome, Converter={StaticResource InverseBoolToVisibility}}">
+                    <Button Style="{StaticResource HeaderRoundButton}" Command="{Binding GoHomeCommand}"
+                            ToolTip="返回主页" Margin="0,0,14,0" AutomationProperties.Name="返回主页">
+                        <controls:Icon Data="{StaticResource IconBack}" Fill="#FFFFFFFF" Width="17" Height="17" />
+                    </Button>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding HeaderTitle}" FontSize="17" FontWeight="SemiBold" Foreground="#FFFFFFFF" />
+                        <TextBlock Text="{Binding HeaderSubtitle}" FontSize="10.5" Foreground="#BFFFFFFF"
+                                   TextTrimming="CharacterEllipsis" MaxWidth="520" Margin="0,1,0,0" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Root navigation -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="34,0,0,0"
+                            Visibility="{Binding IsHome, Converter={StaticResource BoolToVisibility}}">
+                    <Button Style="{StaticResource HeaderTabButton}" Content="主页" Tag="{Binding IsHome}"
+                            Command="{Binding GoHomeCommand}" AutomationProperties.Name="主页" />
+                    <Button Style="{StaticResource HeaderTabButton}" Content="下载" Tag="{Binding IsDownloadPage}"
+                            Command="{Binding GoDownloadCommand}" Margin="4,0,0,0" AutomationProperties.Name="下载" />
+                    <Button Style="{StaticResource HeaderTabButton}" Content="账户" Tag="{Binding IsAccountPage}"
+                            Command="{Binding GoAccountCommand}" Margin="4,0,0,0" AutomationProperties.Name="账户" />
+                    <Button Style="{StaticResource HeaderTabButton}" Content="设置" Tag="{Binding IsSettingsPage}"
+                            Command="{Binding GoSettingsCommand}" Margin="4,0,0,0" AutomationProperties.Name="设置" />
+                </StackPanel>
+
+                <!-- Right actions -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Style="{StaticResource HeaderChipButton}" Command="{Binding OpenGameLogCommand}"
+                            Visibility="{Binding ShowGameChip, Converter={StaticResource BoolToVisibility}}"
+                            ToolTip="查看运行中的游戏日志" Margin="0,0,8,0">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="7" Height="7" Fill="#FF7BE39A" VerticalAlignment="Center" />
+                            <TextBlock Text="游戏运行中" FontSize="11.5" Foreground="#FFFFFFFF" Margin="6,0,2,0" />
+                            <controls:Icon Data="{StaticResource IconChevronRight}" Fill="#CCFFFFFF" Width="12" Height="12" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Style="{StaticResource HeaderChipButton}" Command="{Binding GoAccountCommand}" ToolTip="账户与皮肤">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="26" Height="26" CornerRadius="13" Background="#FFE8F1FD" ClipToBounds="True">
+                                <controls:SkinHead SkinPath="{Binding SkinPath}" Width="26" Height="26" />
+                            </Border>
+                            <StackPanel Margin="8,0,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding PlayerName}" FontSize="11.5" FontWeight="SemiBold" Foreground="#FFFFFFFF" />
+                                <TextBlock Text="{Binding AccountStatus}" FontSize="9" Foreground="#BFFFFFFF" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Button>
+
+                    <Border Width="1" Height="18" Background="#33FFFFFF" Margin="10,0,6,0" VerticalAlignment="Center" />
+
+                    <Button Style="{StaticResource TitleBarButton}" Click="MinimizeButton_Click" ToolTip="最小化">
+                        <controls:Icon Data="{StaticResource IconMinimize}" Fill="#FFFFFFFF" Width="14" Height="14" />
+                    </Button>
+                    <Button x:Name="MaximizeButton" Style="{StaticResource TitleBarButton}" Click="MaximizeButton_Click" ToolTip="最大化">
+                        <controls:Icon x:Name="MaximizeIcon" Data="{StaticResource IconMaximize}" Fill="#FFFFFFFF" Width="12" Height="12" />
+                    </Button>
+                    <Button Style="{StaticResource TitleBarCloseButton}" Click="CloseButton_Click" ToolTip="关闭">
+                        <controls:Icon Data="{StaticResource IconClose}" Fill="#FFFFFFFF" Width="13" Height="13" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ═══════════ Content ═══════════ -->
+        <ContentControl Grid.Row="1" Content="{Binding CurrentPage}" />
+
+        <!-- Busy overlay -->
+        <Border Grid.Row="1" Background="#66F2F6FC" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}">
+            <Border Style="{StaticResource CardShadow}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Padding="24,18" CornerRadius="14">
+                <StackPanel Orientation="Horizontal">
+                    <controls:Icon Data="{StaticResource IconRefresh}" Fill="{StaticResource BrushAccent}" Width="18" Height="18"
+                                   RenderTransformOrigin="0.5,0.5">
+                        <controls:Icon.RenderTransform>
+                            <RotateTransform x:Name="BusyRotate" />
+                        </controls:Icon.RenderTransform>
+                        <controls:Icon.Triggers>
+                            <EventTrigger RoutedEvent="Loaded">
+                                <BeginStoryboard>
+                                    <Storyboard RepeatBehavior="Forever">
+                                        <DoubleAnimation Storyboard.TargetName="BusyRotate" Storyboard.TargetProperty="Angle"
+                                                         From="0" To="360" Duration="0:0:1.1" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </controls:Icon.Triggers>
+                    </controls:Icon>
+                    <TextBlock Text="正在扫描游戏版本…" Margin="10,0,0,0" VerticalAlignment="Center" FontSize="13" />
+                </StackPanel>
+            </Border>
+        </Border>
+
+        <!-- Toast -->
+        <Border Grid.Row="1" Background="{StaticResource BrushText}" CornerRadius="10" Padding="14,10"
+                HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,26"
+                Visibility="{Binding ToastVisible, Converter={StaticResource BoolToVisibility}}"
+                Panel.ZIndex="50">
+            <Border.Effect>
+                <DropShadowEffect Color="#FF0C1E36" BlurRadius="18" ShadowDepth="4" Opacity="0.28" />
+            </Border.Effect>
+            <StackPanel Orientation="Horizontal">
+                <controls:Icon Width="15" Height="15" VerticalAlignment="Center" Margin="0,0,8,0">
+                    <controls:Icon.Style>
+                        <Style TargetType="controls:Icon">
+                            <Setter Property="Data" Value="{StaticResource IconInfo}" />
+                            <Setter Property="Fill" Value="#FF8CC4FF" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ToastIsError}" Value="True">
+                                    <Setter Property="Data" Value="{StaticResource IconError}" />
+                                    <Setter Property="Fill" Value="#FFFF9AA0" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </controls:Icon.Style>
+                </controls:Icon>
+                <TextBlock Text="{Binding ToastMessage}" Foreground="#FFF2F7FE" FontSize="12" VerticalAlignment="Center"
+                           TextWrapping="Wrap" MaxWidth="620" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>
+

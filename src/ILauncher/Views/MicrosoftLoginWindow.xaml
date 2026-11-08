@@ -1,0 +1,78 @@
+<Window x:Class="ILauncher.Views.MicrosoftLoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="微软正版登录"
+        Width="540" Height="430"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="{StaticResource BrushBackground}"
+        FontFamily="{StaticResource FontUi}">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <TextBlock Text="微软正版登录" FontSize="19" FontWeight="Bold" />
+            <TextBlock Text="使用 Microsoft 账户登录 Xbox Live 与 Minecraft Services。" FontSize="10.5"
+                       Foreground="{StaticResource BrushTextSecondary}" Margin="0,5,0,0" />
+        </StackPanel>
+
+        <Grid Grid.Row="1" Margin="0,18,0,0">
+            <StackPanel x:Name="SetupPanel" Visibility="Collapsed">
+                <Border Background="#FFFFF8E8" BorderBrush="#FFF0D79A" BorderThickness="1" CornerRadius="10" Padding="12">
+                    <TextBlock TextWrapping="Wrap" FontSize="10.5" LineHeight="17" Foreground="#FF7A5A1A"
+                               Text="启动器不内置第三方 OAuth 应用，避免冒用他人应用 ID。请先注册一个自己的 Azure 应用（免费），再填入 Application (client) ID。" />
+                </Border>
+                <TextBlock Margin="0,14,0,0" FontSize="10.5" Foreground="{StaticResource BrushTextSecondary}">
+                    <Run Text="1. 打开" />
+                    <Hyperlink RequestNavigate="OpenAzure_Click" NavigateUri="https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade">Azure 应用注册</Hyperlink>
+                    <Run Text="，新建注册，账户类型选择“个人 Microsoft 账户”或“任何组织目录中的账户和个人 Microsoft 账户”。" />
+                </TextBlock>
+                <TextBlock Margin="0,6,0,0" FontSize="10.5" Foreground="{StaticResource BrushTextSecondary}" TextWrapping="Wrap"
+                           Text="2. 在“身份验证”中启用“允许公共客户端流”，保存后复制“应用程序(客户端) ID”。" />
+                <TextBlock Margin="0,6,0,0" FontSize="10.5" Foreground="{StaticResource BrushTextSecondary}" TextWrapping="Wrap">
+                    <Run Text="3. 如果提示“在目录外部创建应用程序已弃用”，先注册" />
+                    <Hyperlink RequestNavigate="OpenAzure_Click" NavigateUri="https://azure.microsoft.com/free/">Azure 免费账户</Hyperlink>
+                    <Run Text="生成默认目录；学生可走 Azure for Students，通常无需信用卡。" />
+                </TextBlock>
+                <TextBlock Text="Application (client) ID" FontSize="10.5" Foreground="{StaticResource BrushTextSecondary}" Margin="0,14,0,5" />
+                <TextBox x:Name="ClientIdBox" Style="{StaticResource InputTextBox}" Height="36"
+                         AutomationProperties.Name="微软客户端 ID" />
+                <TextBlock Text="应用 ID 会保存在本地设置中，不会上传到启动器服务器。" FontSize="9"
+                           Foreground="{StaticResource BrushTextMuted}" Margin="2,5,0,0" />
+            </StackPanel>
+
+            <StackPanel x:Name="LoginPanel" Visibility="Collapsed">
+                <TextBlock Text="在浏览器中输入以下代码：" FontSize="11" Foreground="{StaticResource BrushTextSecondary}" />
+                <Border Background="#FFF2F8FF" BorderBrush="{StaticResource BrushBorder}" BorderThickness="1"
+                        CornerRadius="12" Padding="18,12" Margin="0,8,0,0">
+                    <TextBlock x:Name="CodeText" FontFamily="{StaticResource FontMono}" FontSize="30"
+                               FontWeight="Bold" Foreground="{StaticResource BrushAccent}" HorizontalAlignment="Center" />
+                </Border>
+                <TextBlock x:Name="MessageText" FontSize="10" Foreground="{StaticResource BrushTextSecondary}"
+                           TextWrapping="Wrap" Margin="0,10,0,0" />
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                    <Button x:Name="VerifyButton" Style="{StaticResource LinkButton}" Content="打开微软登录页面"
+                            Click="OpenVerify_Click" AutomationProperties.Name="打开微软登录页面" />
+                    <TextBlock Text="·" FontSize="10" Foreground="{StaticResource BrushTextMuted}"
+                               VerticalAlignment="Center" Margin="4,0" />
+                    <Button Style="{StaticResource LinkButton}" Content="更换应用 ID"
+                            Click="ChangeClientId_Click" AutomationProperties.Name="更换应用 ID" />
+                </StackPanel>
+                <TextBlock x:Name="StatusText" FontSize="10" Foreground="{StaticResource BrushAccent}"
+                           TextWrapping="Wrap" Margin="0,14,0,0" Text="正在准备登录…" />
+            </StackPanel>
+        </Grid>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+            <Button x:Name="CancelButton" Style="{StaticResource SecondaryButton}" Height="36" MinWidth="86"
+                    Content="取消" Click="Cancel_Click" />
+            <Button x:Name="ContinueButton" Style="{StaticResource PrimaryButton}" Height="36" MinWidth="110"
+                    Margin="8,0,0,0" Content="保存并登录" Click="Continue_Click"
+                    Visibility="Collapsed" AutomationProperties.Name="保存并登录" />
+        </StackPanel>
+    </Grid>
+</Window>

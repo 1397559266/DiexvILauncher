@@ -1,0 +1,258 @@
+<UserControl x:Class="ILauncher.Views.OverviewView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:ILauncher.Controls">
+
+    <UserControl.Resources>
+        <Style x:Key="InfoLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="9.5" />
+            <Setter Property="Foreground" Value="{StaticResource BrushTextMuted}" />
+        </Style>
+        <Style x:Key="InfoValue" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11.5" />
+            <Setter Property="Foreground" Value="{StaticResource BrushText}" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            <Setter Property="Margin" Value="0,2,0,0" />
+        </Style>
+        <Style x:Key="ChipBorder" TargetType="Border">
+            <Setter Property="Background" Value="#FFF2F7FD" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Padding" Value="7,2" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+        </Style>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="24,18,24,22">
+        <StackPanel>
+            <!-- Hero -->
+            <Border Style="{StaticResource CardShadow}" CornerRadius="14" Padding="20,18">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Border Width="78" Height="78" CornerRadius="16" Background="#FFEFF6FF" VerticalAlignment="Top">
+                        <Image Source="{Binding IconSource}" Width="64" Height="64"
+                               RenderOptions.BitmapScalingMode="NearestNeighbor" />
+                    </Border>
+                    <StackPanel Grid.Column="1" Margin="16,0,18,0" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Name}" FontSize="23" FontWeight="Bold" TextTrimming="CharacterEllipsis"
+                                   ToolTip="{Binding Name}" />
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                            <Border Style="{StaticResource ChipBorder}">
+                                <TextBlock Text="{Binding MinecraftVersion}" FontSize="10" Foreground="{StaticResource BrushTextSecondary}" />
+                            </Border>
+                            <Border Style="{StaticResource ChipBorder}">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="5" Height="5" Fill="{Binding Loader, Converter={StaticResource LoaderBrush}}"
+                                             VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding LoaderVersion}" FontSize="10" Foreground="{StaticResource BrushTextSecondary}"
+                                               Margin="4,0,0,0" />
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource ChipBorder}">
+                                <TextBlock Text="{Binding VersionType}" FontSize="10" Foreground="{StaticResource BrushTextSecondary}" />
+                            </Border>
+                            <Border Style="{StaticResource ChipBorder}">
+                                <TextBlock Text="{Binding IsIsolatedText}" FontSize="10" Foreground="{StaticResource BrushTextSecondary}" />
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Text="{Binding Path}" FontSize="9.5" Foreground="{StaticResource BrushTextMuted}" Margin="0,8,0,0"
+                                   TextTrimming="CharacterEllipsis" ToolTip="{Binding Path}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Style="{StaticResource PrimaryButton}" MinWidth="142" Height="42" Command="{Binding LaunchCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <controls:Icon Data="{StaticResource IconPlay}" Fill="#FFFFFFFF" Width="14" Height="14" />
+                                <TextBlock Text="启动游戏" Margin="7,0,0,0" FontSize="12.5" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource SecondaryButton}" Height="42" Margin="9,0,0,0"
+                                Command="{Binding OpenVersionFolderCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <controls:Icon Data="{StaticResource IconFolderOpen}" Fill="#FF3A5674" Width="14" Height="14" />
+                                <TextBlock Text="版本文件夹" Margin="6,0,0,0" FontSize="12" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Info cards -->
+            <Grid Margin="0,14,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1.1*" />
+                    <ColumnDefinition Width="14" />
+                    <ColumnDefinition Width="1*" />
+                </Grid.ColumnDefinitions>
+
+                <Border Style="{StaticResource Card}" Padding="20,16" Grid.Column="0">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,13">
+                            <controls:Icon Data="{StaticResource IconInfo}" Fill="{StaticResource BrushAccent}" Width="15" Height="15" />
+                            <TextBlock Text="版本信息" FontSize="13" FontWeight="SemiBold" Margin="7,0,0,0" />
+                        </StackPanel>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="82" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="游戏目录" Style="{StaticResource InfoLabel}" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" Text="{Binding GameDirectory}" Style="{StaticResource InfoValue}"
+                                       ToolTip="{Binding GameDirectory}" />
+                        </Grid>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="82" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="模组目录" Style="{StaticResource InfoLabel}" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" Text="{Binding ModsDirectory}" Style="{StaticResource InfoValue}"
+                                       ToolTip="{Binding ModsDirectory}" />
+                        </Grid>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="82" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Java 需求" Style="{StaticResource InfoLabel}" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" Text="{Binding JavaRequirement}" Style="{StaticResource InfoValue}" />
+                        </Grid>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="82" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="最后修改" Style="{StaticResource InfoLabel}" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" Text="{Binding LastWriteText}" Style="{StaticResource InfoValue}" />
+                        </Grid>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="82" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="隔离模式" Style="{StaticResource InfoLabel}" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" Text="{Binding IsIsolatedText}" Style="{StaticResource InfoValue}" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Card}" Padding="20,16" Grid.Column="2">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,13">
+                            <controls:Icon Data="{StaticResource IconShield}" Fill="{StaticResource BrushAccent}" Width="15" Height="15" />
+                            <TextBlock Text="运行环境" FontSize="13" FontWeight="SemiBold" Margin="7,0,0,0" />
+                        </StackPanel>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="82" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Java 运行时" Style="{StaticResource InfoLabel}" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" Text="{Binding JavaText}" Style="{StaticResource InfoValue}"
+                                       ToolTip="{Binding JavaText}" />
+                        </Grid>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="82" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="分配内存" Style="{StaticResource InfoLabel}" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" Text="{Binding MemoryText}" Style="{StaticResource InfoValue}" />
+                        </Grid>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="82" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="模组数量" Style="{StaticResource InfoLabel}" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" Text="{Binding ModSummary}" Style="{StaticResource InfoValue}" />
+                        </Grid>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="82" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Minecraft" Style="{StaticResource InfoLabel}" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" Text="{Binding MinecraftVersion}" Style="{StaticResource InfoValue}" />
+                        </Grid>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="82" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="加载器" Style="{StaticResource InfoLabel}" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" Text="{Binding LoaderVersion}" Style="{StaticResource InfoValue}" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Shortcuts -->
+            <Border Style="{StaticResource Card}" Margin="0,14,0,0" Padding="20,16">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <controls:Icon Data="{StaticResource IconFolderOpen}" Fill="{StaticResource BrushAccent}" Width="15" Height="15" />
+                        <TextBlock Text="快捷操作" FontSize="13" FontWeight="SemiBold" Margin="7,0,0,0" />
+                    </StackPanel>
+                    <WrapPanel>
+                        <Button Style="{StaticResource SecondaryButton}" Height="36" Margin="0,0,9,0" Command="{Binding OpenVersionFolderCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <controls:Icon Data="{StaticResource IconBox}" Fill="#FF3A5674" Width="13" Height="13" />
+                                <TextBlock Text="版本文件夹" Margin="6,0,0,0" FontSize="11.5" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource SecondaryButton}" Height="36" Margin="0,0,9,0" Command="{Binding OpenGameFolderCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <controls:Icon Data="{StaticResource IconFolder}" Fill="#FF3A5674" Width="13" Height="13" />
+                                <TextBlock Text="游戏目录" Margin="6,0,0,0" FontSize="11.5" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource SecondaryButton}" Height="36" Margin="0,0,9,0" Command="{Binding OpenModsFolderCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <controls:Icon Data="{StaticResource IconPuzzle}" Fill="#FF3A5674" Width="13" Height="13" />
+                                <TextBlock Text="模组目录" Margin="6,0,0,0" FontSize="11.5" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource SecondaryButton}" Height="36" Margin="0,0,9,0" Command="{Binding OpenLogsFolderCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <controls:Icon Data="{StaticResource IconTerminal}" Fill="#FF3A5674" Width="13" Height="13" />
+                                <TextBlock Text="日志目录" Margin="6,0,0,0" FontSize="11.5" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource SecondaryButton}" Height="36" Margin="0,0,9,0" Command="{Binding ExportScriptCommand}" AutomationProperties.Name="导出启动脚本">
+                            <StackPanel Orientation="Horizontal">
+                                <controls:Icon Data="{StaticResource IconTerminal}" Fill="#FF3A5674" Width="13" Height="13" />
+                                <TextBlock Text="导出启动脚本" Margin="6,0,0,0" FontSize="11.5" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource SecondaryButton}" Height="36" Margin="0,0,9,0" Command="{Binding ExportInstanceCommand}" AutomationProperties.Name="导出实例">
+                            <StackPanel Orientation="Horizontal">
+                                <controls:Icon Data="{StaticResource IconBox}" Fill="#FF3A5674" Width="13" Height="13" />
+                                <TextBlock Text="导出实例 ZIP" Margin="6,0,0,0" FontSize="11.5" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource SecondaryButton}" Height="36" Margin="0,0,9,0" Command="{Binding ChangeIconCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <controls:Icon Data="{StaticResource IconEdit}" Fill="#FF3A5674" Width="13" Height="13" />
+                                <TextBlock Text="更换图标" Margin="6,0,0,0" FontSize="11.5" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource GhostButton}" Height="36" Margin="0,0,9,0" Command="{Binding ResetIconCommand}" Content="重置图标" />
+                        <Button Style="{StaticResource GhostButton}" Height="36" Command="{Binding CopyPathCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <controls:Icon Data="{StaticResource IconCopy}" Fill="{StaticResource BrushTextSecondary}" Width="13" Height="13" />
+                                <TextBlock Text="复制版本路径" Margin="6,0,0,0" FontSize="11.5" />
+                            </StackPanel>
+                        </Button>
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
+
+
+
+

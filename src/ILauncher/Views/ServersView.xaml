@@ -1,0 +1,124 @@
+<UserControl x:Class="ILauncher.Views.ServersView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:ILauncher.Controls">
+
+    <Grid Margin="24,18,24,20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Border Style="{StaticResource Card}" Padding="20,16">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Border Width="46" Height="46" CornerRadius="13" Background="#FFEFF6FF" VerticalAlignment="Top">
+                    <controls:Icon Data="{StaticResource IconServer}" Fill="{StaticResource BrushAccent}" Width="22" Height="22" />
+                </Border>
+                <StackPanel Grid.Column="1" Margin="13,0,12,0" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="服务器" FontSize="19" FontWeight="Bold" />
+                        <Border Background="#FFEAF2FE" CornerRadius="8" Padding="7,1" Margin="9,2,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding CountText}" FontSize="9.5" Foreground="{StaticResource BrushAccent}" />
+                        </Border>
+                    </StackPanel>
+                    <TextBlock Text="从当前版本的 servers.dat 读取服务器列表，点击即可启动并自动连接。" FontSize="10.5"
+                               Foreground="{StaticResource BrushTextSecondary}" Margin="0,4,0,0" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Style="{StaticResource PrimaryButton}" Height="36" Margin="0,0,8,0" Command="{Binding AddCommand}" AutomationProperties.Name="添加服务器">
+                        <StackPanel Orientation="Horizontal">
+                            <controls:Icon Data="{StaticResource IconPlus}" Fill="#FFFFFFFF" Width="13" Height="13" />
+                            <TextBlock Text="添加服务器" Margin="6,0,0,0" FontSize="11.5" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource SecondaryButton}" Height="36" Command="{Binding OpenFolderCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <controls:Icon Data="{StaticResource IconFolderOpen}" Fill="#FF3A5674" Width="13" Height="13" />
+                            <TextBlock Text="游戏目录" Margin="6,0,0,0" FontSize="11.5" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource IconButton}" Margin="6,0,0,0" Command="{Binding RefreshCommand}" ToolTip="刷新">
+                        <controls:Icon Data="{StaticResource IconRefresh}" Fill="{StaticResource BrushTextSecondary}" Width="14" Height="14" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,12,0,0" Padding="14">
+            <Grid>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding Servers}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Width="300" Height="104" Margin="4" Padding="12" CornerRadius="11"
+                                        Background="#FFFBFDFF" BorderBrush="{StaticResource BrushBorder}" BorderThickness="1">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="52" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border Width="46" Height="46" CornerRadius="10" Background="#FFF2F8FF" VerticalAlignment="Top">
+                                            <Grid>
+                                                <controls:Icon Data="{StaticResource IconServer}" Fill="#FFB3CBE8" Width="20" Height="20" />
+                                                <Image Source="{Binding IconBase64, Converter={StaticResource Base64Image}}" Stretch="UniformToFill" />
+                                            </Grid>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="9,0,0,0">
+                                            <TextBlock Text="{Binding Name}" FontSize="12.5" FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" />
+                                            <TextBlock Text="{Binding Ip}" FontFamily="{StaticResource FontMono}" FontSize="9"
+                                                       Foreground="{StaticResource BrushTextMuted}" Margin="0,3,0,0"
+                                                       TextTrimming="CharacterEllipsis" ToolTip="{Binding Ip}" />
+                                            <StackPanel Orientation="Horizontal" Margin="0,9,0,0">
+                                                <Button Style="{StaticResource PrimaryButton}" Height="28" MinWidth="68"
+                                                        Command="{Binding DataContext.JoinCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <controls:Icon Data="{StaticResource IconPlay}" Fill="#FFFFFFFF" Width="10" Height="10" />
+                                                        <TextBlock Text="加入" Margin="5,0,0,0" FontSize="10" />
+                                                    </StackPanel>
+                                                </Button>
+                                                <Button Style="{StaticResource GhostButton}" Height="28" Margin="4,0,0,0"
+                                                        Command="{Binding DataContext.EditCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}">
+                                                    <TextBlock Text="编辑" FontSize="9.5" />
+                                                </Button>
+                                                <Button Style="{StaticResource IconButton}" Width="26" Height="26" ToolTip="删除服务器" AutomationProperties.Name="删除服务器"
+                                                        Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}">
+                                                    <controls:Icon Data="{StaticResource IconTrash}" Fill="{StaticResource BrushTextSecondary}" Width="11" Height="11" />
+                                                </Button>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                            Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}">
+                    <Border Width="56" Height="56" CornerRadius="16" Background="#FFF2F8FF" HorizontalAlignment="Center">
+                        <controls:Icon Data="{StaticResource IconServer}" Fill="#FFA9C6E8" Width="26" Height="26" />
+                    </Border>
+                    <TextBlock Text="还没有服务器" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,12,0,0" />
+                    <TextBlock Text="在游戏里添加服务器后，这里会显示 servers.dat 中的列表。" FontSize="10.5"
+                               Foreground="{StaticResource BrushTextSecondary}" TextAlignment="Center"
+                               TextWrapping="Wrap" MaxWidth="420" Margin="0,6,0,0" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>
+
