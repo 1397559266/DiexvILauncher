@@ -127,6 +127,8 @@ public sealed class SettingsViewModel : ObservableObject
 
     public string SkinPath => _settings.Settings.SkinPath;
 
+    public void RefreshSkin() => OnPropertyChanged(nameof(SkinPath));
+
     public int MemoryMb
     {
         get => _memoryMb;

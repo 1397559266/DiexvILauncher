@@ -32,6 +32,7 @@ public sealed class MainViewModel : ObservableObject
     private bool _isDownloadPage;
     private bool _isInstancePage;
     private DownloadViewModel? _downloadPage;
+    private SettingsViewModel? _settingsPage;
     private string _headerTitle = "";
     private string _headerSubtitle = "";
     private string _toastMessage = "";
@@ -640,14 +641,15 @@ public sealed class MainViewModel : ObservableObject
 
     private void GoSettings()
     {
-        var settings = new SettingsViewModel(SettingsService, JavaService, Toast, async () =>
+        _settingsPage ??= new SettingsViewModel(SettingsService, JavaService, Toast, async () =>
         {
             await ReloadInstancesAsync();
             OnPropertyChanged(nameof(PlayerName));
             OnPropertyChanged(nameof(PlayerInitial));
             OnPropertyChanged(nameof(MemoryText));
         });
-        CurrentPage = settings;
+        _settingsPage.RefreshSkin();
+        CurrentPage = _settingsPage;
         IsSettingsPage = true;
         IsInstancePage = false;
         IsAccountPage = false;
