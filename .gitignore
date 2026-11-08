@@ -12,3 +12,7 @@ dist/
 # OS
 Thumbs.db
 Desktop.ini
+
+# Local tools
+.tools/
+
