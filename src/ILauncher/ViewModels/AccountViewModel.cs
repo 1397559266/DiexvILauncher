@@ -7,6 +7,7 @@ using System.Windows.Input;
 using ILauncher.Core;
 using ILauncher.Core.Minecraft;
 using ILauncher.Core.Services;
+using ILauncher.Localization;
 using ILauncher.Models;
 using ILauncher.Services;
 using ILauncher.Views;
@@ -169,9 +170,9 @@ public sealed class AccountViewModel : ObservableObject
     public string SkinName => string.IsNullOrWhiteSpace(SkinPath) ? "Steve" : Path.GetFileNameWithoutExtension(SkinPath);
 
     public string AccountTypeText =>
-        IsMicrosoftAccount
+        LanguageService.Translate(IsMicrosoftAccount
             ? "微软账户 · 正版登录"
-            : "离线账户 · 本地启动";
+            : "离线账户 · 本地启动");
 
     public bool IsMicrosoftAccount =>
         string.Equals(_settings.Settings.AccountType, "微软账户", StringComparison.Ordinal) &&

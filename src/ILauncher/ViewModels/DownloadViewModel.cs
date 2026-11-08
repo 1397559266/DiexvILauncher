@@ -9,6 +9,7 @@ using System.Windows.Threading;
 using ILauncher.Core;
 using ILauncher.Core.Models;
 using ILauncher.Core.Services;
+using ILauncher.Localization;
 using ILauncher.Models;
 using ILauncher.Views;
 using Microsoft.Win32;
@@ -27,9 +28,15 @@ public enum DownloadTab
 public sealed class DownloadFilterOption : ObservableObject
 {
     private bool _isSelected;
+    private string _title = "";
 
     public required string Key { get; init; }
-    public required string Title { get; init; }
+
+    public required string Title
+    {
+        get => LanguageService.Translate(_title);
+        init => _title = value;
+    }
 
     public bool IsSelected
     {
@@ -1504,7 +1511,9 @@ public sealed class DownloadViewModel : ObservableObject
 
             SearchResults[index] = project with
             {
-                ChineseName = HasCjk(info.Name) ? info.Name : null,
+                ChineseName = LanguageService.CurrentLanguage == LanguageService.English
+                    ? null
+                    : HasCjk(info.Name) ? info.Name : null,
                 McmodUrl = info.Url
             };
 

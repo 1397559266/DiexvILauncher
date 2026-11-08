@@ -13,9 +13,13 @@ public sealed record ModrinthProject(
     string ProjectType,
     IReadOnlyList<string> Categories)
 {
+    public static bool PreferChineseNames { get; set; } = true;
+
     public string? ChineseName { get; init; }
     public string? McmodUrl { get; init; }
-    public string DisplayTitle => string.IsNullOrWhiteSpace(ChineseName) ? Title : ChineseName;
+    public string DisplayTitle => !PreferChineseNames || string.IsNullOrWhiteSpace(ChineseName)
+        ? Title
+        : ChineseName;
     public bool HasMcmod => !string.IsNullOrWhiteSpace(McmodUrl);
     public string ModrinthUrl
     {

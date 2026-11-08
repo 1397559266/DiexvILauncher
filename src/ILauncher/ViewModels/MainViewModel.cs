@@ -404,10 +404,11 @@ public sealed class MainViewModel : ObservableObject
     public string SkinModel => SettingsService.Settings.SkinModel;
 
     public string AccountStatus =>
-        string.Equals(SettingsService.Settings.AccountType, "微软账户", StringComparison.Ordinal) &&
-        !string.IsNullOrWhiteSpace(SettingsService.Settings.MicrosoftAccessToken)
-            ? "微软账户 · 正版登录"
-            : "离线账户 · 本地皮肤";
+        LanguageService.Translate(
+            string.Equals(SettingsService.Settings.AccountType, "微软账户", StringComparison.Ordinal) &&
+            !string.IsNullOrWhiteSpace(SettingsService.Settings.MicrosoftAccessToken)
+                ? "微软账户 · 正版登录"
+                : "离线账户 · 本地皮肤");
 
     public string MemoryText => $"{SettingsService.Settings.MemoryMb:N0} MB";
 

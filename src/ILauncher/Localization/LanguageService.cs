@@ -5,6 +5,7 @@ using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Threading;
+using ILauncher.Core.Services;
 
 namespace ILauncher.Localization;
 
@@ -42,6 +43,7 @@ public static class LanguageService
         CurrentLanguage = string.Equals(language, English, StringComparison.OrdinalIgnoreCase)
             ? English
             : Chinese;
+        ModrinthProject.PreferChineseNames = CurrentLanguage != English;
         Apply();
     }
 
