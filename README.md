@@ -88,13 +88,14 @@ $env:MS_CLIENT_ID = "你的 Azure Application (client) ID"
 - 导入 `.mrpack` 时自动读取根目录 `icon.png`、`pack.png`，以及 `overrides/`、`client-overrides/` 中的 `icon.png`，复制为对应版本的本地图标。
 - 主页版本列表支持按 **加载器（原版/Forge/Fabric/NeoForge/Quilt/OptiFine）**、**正式版/快照/旧版** 和版本名筛选；加载器和类型使用下拉菜单，筛选控件固定在同一行标题栏中，不会改变列表布局。数量会显示为“筛选结果 / 总数”。
 - 版本列表布局只能手动切换：**列表 · 1 个/行**、**2 个/行**、**3 个/行**、**4 个/行**，选择会保存到设置，不会根据版本数量自动变化。
-- 版本卡片、主页大卡、版本页侧栏、概览都会使用本地图标；未设置时按加载器自动使用 **Fabric / Quilt / Forge / NeoForge / OptiFine** 官方徽标，原版使用方块图标。徽标来源见 `Assets/Loaders/README.md`。
+- 版本卡片、主页大卡、版本页顶部、概览都会使用本地图标；未设置时按加载器自动使用 **Fabric / Quilt / Forge / NeoForge / OptiFine** 官方徽标，原版使用方块图标。徽标来源见 `Assets/Loaders/README.md`。
 - 模组图标从 jar 内部读取（Fabric/Quilt/Forge/NeoForge 元数据），资源包读取 `pack.png`，存档读取 `icon.png`。
 
 ### 顶部导航
 
 - 顶部固定显示 **主页 / 下载 / 账户 / 设置**；切换根界面不再依赖返回按钮，也不会在子页隐藏导航。
 - 下载页不再使用「游戏版本 / 模组 / 资源包 / 光影」二级标签，改为页面右上角的**下载类型**下拉。
+- 版本页取消左侧导航栏；**概览 / 设置 / 模组管理 / 资源包 / 光影 / 存档 / 截图 / 服务器** 统一放在顶部“版本页面”下拉中切换，测试游戏入口也在顶栏。
 
 ### 下载中心
 
@@ -139,7 +140,7 @@ $env:MS_CLIENT_ID = "你的 Azure Application (client) ID"
 
 ### 独立「测试游戏」按钮（HMCL 式）
 
-按钮固定在版本设置侧栏的**最底部**，位于「测试工具」分隔线下方，**不在导航 ListBox 中**，因此不会和概览/设置/模组管理共用单选状态。点击后：
+按钮固定在启动器顶部导航栏右侧，进入版本页后显示；概览/设置/模组管理等功能通过顶部的**版本页面**下拉切换，不再使用左侧导航栏。点击后：
 
 1. 右侧内容切换到「测试游戏 · 启动日志」；
 2. 按当前版本配置启动 Java 进程；
@@ -180,7 +181,7 @@ $env:MS_CLIENT_ID = "你的 Azure Application (client) ID"
 - `Plain Craft Launcher 2/Pages/PageInstance/PageInstanceLeft.xaml`：版本设置左侧导航，使用 `MyListItem` 单选列表。
 - `Plain Craft Launcher 2/Controls/MyListItem.xaml`：导航项图标、标题、选中态。
 - `Plain Craft Launcher 2/Application.xaml`：主题色（`#343D4A` 文本、`#1370F3` 主色、`#FBFBFB` 背景）与字体。
-- PCL2 的版本管理页也有「测试游戏」入口（概览 → 管理），本项目按需求把它移动到左侧栏底部并做成独立按钮。
+- PCL2 的版本管理页也有「测试游戏」入口（概览 → 管理），本项目按需求把它移动到启动器顶栏并做成独立按钮。
 
 ### HMCL
 
@@ -277,6 +278,8 @@ docs/screenshots/            README 截图
 - 模组安装不会自动解析并安装前置依赖；只安装主文件。
 - Forge/NeoForge 走官方安装器，不保证所有版本都能在无界面模式下成功。
 - 启动器自身更新、主题/语言切换等非 Minecraft 功能未实现。
+
+
 
 
 
