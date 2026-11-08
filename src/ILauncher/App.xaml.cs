@@ -26,8 +26,8 @@ public partial class App : Application
         var viewModel = new MainViewModel();
         window.DataContext = viewModel;
         MainWindow = window;
+        window.Loaded += (_, _) => LanguageService.SetLanguage(viewModel.SettingsService.Settings.UiLanguage);
         window.Show();
-        LanguageService.SetLanguage(viewModel.SettingsService.Settings.UiLanguage);
         _ = viewModel.InitializeAsync();
     }
 
