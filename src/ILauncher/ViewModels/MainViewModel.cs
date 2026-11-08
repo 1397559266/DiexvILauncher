@@ -19,6 +19,8 @@ public sealed class MainViewModel : ObservableObject
     private object? _currentPage;
     private GameInstance? _selectedInstance;
     private string _instanceSearch = "";
+    private DownloadFilterOption? _selectedHomeLoader;
+    private DownloadFilterOption? _selectedHomeType;
     private string _rootPath = "";
     private string _selectedJavaText = "检测中…";
     private bool _isBusy;
@@ -93,8 +95,8 @@ public sealed class MainViewModel : ObservableObject
             new() { Key = "snapshot", Title = "快照" },
             new() { Key = "old", Title = "旧版" }
         };
-        SetHomeLoaderFilterCommand = new RelayCommand(parameter => SelectHomeLoader(parameter));
-        SetHomeTypeFilterCommand = new RelayCommand(parameter => SelectHomeType(parameter));
+        _selectedHomeLoader = HomeLoaderFilters[0];
+        _selectedHomeType = HomeTypeFilters[0];
 
         _currentPage = this;
         GoHomeCommand = new RelayCommand(GoHome);
@@ -160,8 +162,6 @@ public sealed class MainViewModel : ObservableObject
     public ObservableCollection<GameInstance> FilteredInstances { get; }
     public ObservableCollection<DownloadFilterOption> HomeLoaderFilters { get; }
     public ObservableCollection<DownloadFilterOption> HomeTypeFilters { get; }
-    public RelayCommand SetHomeLoaderFilterCommand { get; }
-    public RelayCommand SetHomeTypeFilterCommand { get; }
     public ObservableCollection<JavaInfo> JavaRuntimes { get; }
 
     public object? CurrentPage
@@ -231,8 +231,35 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
-    public DownloadFilterOption? SelectedHomeLoader => HomeLoaderFilters.FirstOrDefault(option => option.IsSelected);
-    public DownloadFilterOption? SelectedHomeType => HomeTypeFilters.FirstOrDefault(option => option.IsSelected);
+    public DownloadFilterOption? SelectedHomeLoader
+    {
+        get => _selectedHomeLoader;
+        set
+        {
+            if (!SetProperty(ref _selectedHomeLoader, value) || value == null)
+            {
+                return;
+            }
+
+            SelectSingleFilter(HomeLoaderFilters, value);
+            ApplyInstanceFilter();
+        }
+    }
+
+    public DownloadFilterOption? SelectedHomeType
+    {
+        get => _selectedHomeType;
+        set
+        {
+            if (!SetProperty(ref _selectedHomeType, value) || value == null)
+            {
+                return;
+            }
+
+            SelectSingleFilter(HomeTypeFilters, value);
+            ApplyInstanceFilter();
+        }
+    }
 
     public bool IsHome
     {
@@ -508,24 +535,6 @@ public sealed class MainViewModel : ObservableObject
             _ => true
         };
 
-    private void SelectHomeLoader(object? parameter)
-    {
-        if (parameter is DownloadFilterOption option && SelectSingleFilter(HomeLoaderFilters, option))
-        {
-            OnPropertyChanged(nameof(SelectedHomeLoader));
-            ApplyInstanceFilter();
-        }
-    }
-
-    private void SelectHomeType(object? parameter)
-    {
-        if (parameter is DownloadFilterOption option && SelectSingleFilter(HomeTypeFilters, option))
-        {
-            OnPropertyChanged(nameof(SelectedHomeType));
-            ApplyInstanceFilter();
-        }
-    }
-
     private static bool SelectSingleFilter(IEnumerable<DownloadFilterOption> options, DownloadFilterOption selected)
     {
         var changed = false;
@@ -763,5 +772,6 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 }
+
 
 

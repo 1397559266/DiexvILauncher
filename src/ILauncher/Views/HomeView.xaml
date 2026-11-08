@@ -50,39 +50,92 @@
                 </Setter.Value>
             </Setter>
         </Style>
-        <Style x:Key="HomeFilterChip" TargetType="Button">
-            <Setter Property="Height" Value="25" />
-            <Setter Property="Padding" Value="8,0" />
-            <Setter Property="Margin" Value="0,0,5,0" />
-            <Setter Property="Background" Value="#FFF8FBFF" />
-            <Setter Property="BorderBrush" Value="{StaticResource BrushBorder}" />
-            <Setter Property="Foreground" Value="{StaticResource BrushTextSecondary}" />
-            <Setter Property="FontSize" Value="9" />
-            <Setter Property="Cursor" Value="Hand" />
+        <Style x:Key="HomeFilterComboItem" TargetType="ComboBoxItem">
+            <Setter Property="Padding" Value="9,6" />
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="Foreground" Value="{StaticResource BrushText}" />
+            <Setter Property="AutomationProperties.Name" Value="{Binding Title}" />
             <Setter Property="Template">
                 <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="1" CornerRadius="7" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter VerticalAlignment="Center" />
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="Bd" Background="Transparent" CornerRadius="5" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter />
                         </Border>
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#FFF1F7FF" />
-                                <Setter TargetName="Bd" Property="BorderBrush" Value="#FFB9D5F7" />
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#FFEAF3FF" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource BrushAccentSoft}" />
+                                <Setter Property="Foreground" Value="{StaticResource BrushAccent}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True">
-                    <Setter Property="Background" Value="{StaticResource BrushAccentSoft}" />
-                    <Setter Property="BorderBrush" Value="{StaticResource BrushAccent}" />
-                    <Setter Property="Foreground" Value="{StaticResource BrushAccent}" />
-                    <Setter Property="FontWeight" Value="SemiBold" />
-                </DataTrigger>
-            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="HomeFilterCombo" TargetType="ComboBox">
+            <Setter Property="Height" Value="26" />
+            <Setter Property="FontSize" Value="9.5" />
+            <Setter Property="Foreground" Value="{StaticResource BrushTextSecondary}" />
+            <Setter Property="Background" Value="#FFF8FBFF" />
+            <Setter Property="BorderBrush" Value="{StaticResource BrushBorder}" />
+            <Setter Property="Padding" Value="9,0,24,0" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="ItemContainerStyle" Value="{StaticResource HomeFilterComboItem}" />
+            <Setter Property="ItemTemplate">
+                <Setter.Value>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Title}" />
+                    </DataTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <ToggleButton x:Name="ToggleButton" Focusable="False" ClickMode="Press"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="7">
+                                            <Path Data="M 0 0 L 4 4 L 8 0" Stroke="{StaticResource BrushTextMuted}"
+                                                  StrokeThickness="1.2" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                  Margin="0,0,9,0" />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Bd" Property="Background" Value="#FFF1F7FF" />
+                                                <Setter TargetName="Bd" Property="BorderBrush" Value="#FFB9D5F7" />
+                                            </Trigger>
+                                            <Trigger Property="IsChecked" Value="True">
+                                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource BrushAccent}" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <ContentPresenter x:Name="ContentSite" IsHitTestVisible="False"
+                                              Margin="{TemplateBinding Padding}" VerticalAlignment="Center"
+                                              HorizontalAlignment="Left"
+                                              Content="{TemplateBinding SelectionBoxItem}"
+                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" />
+                            <Popup x:Name="Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   AllowsTransparency="True" Focusable="False" PopupAnimation="Fade" StaysOpen="False">
+                                <Border MinWidth="{TemplateBinding ActualWidth}" MaxHeight="{TemplateBinding MaxDropDownHeight}"
+                                        Background="#FFFFFFFF" BorderBrush="{StaticResource BrushBorder}" BorderThickness="1"
+                                        CornerRadius="8" Padding="4" Margin="0,4,0,0">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <ItemsPresenter />
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
     </UserControl.Resources>
@@ -252,6 +305,16 @@
                             </Border>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <ComboBox Style="{StaticResource HomeFilterCombo}" Width="104" Margin="0,0,6,0"
+                                      ItemsSource="{Binding HomeLoaderFilters}"
+                                      SelectedItem="{Binding SelectedHomeLoader, Mode=TwoWay}"
+                                      ToolTip="按加载器筛选"
+                                      AutomationProperties.Name="按加载器筛选" />
+                            <ComboBox Style="{StaticResource HomeFilterCombo}" Width="86" Margin="0,0,8,0"
+                                      ItemsSource="{Binding HomeTypeFilters}"
+                                      SelectedItem="{Binding SelectedHomeType, Mode=TwoWay}"
+                                      ToolTip="按版本类型筛选"
+                                      AutomationProperties.Name="按版本类型筛选" />
                             <Grid Width="132" Height="26" Margin="0,0,8,0">
                                 <TextBox Style="{StaticResource InputTextBox}" Height="26" Padding="8,0"
                                          VerticalContentAlignment="Center"
@@ -269,49 +332,6 @@
                             </Button>
                         </StackPanel>
                     </Grid>
-
-                    <WrapPanel Margin="2,0,4,9">
-                        <StackPanel Orientation="Horizontal" Margin="0,0,14,0" VerticalAlignment="Center">
-                            <TextBlock Text="加载器" FontSize="9" Foreground="{StaticResource BrushTextMuted}"
-                                       VerticalAlignment="Center" Margin="0,0,5,0" />
-                            <ItemsControl ItemsSource="{Binding HomeLoaderFilters}" VerticalAlignment="Center">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <StackPanel Orientation="Horizontal" />
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Button Style="{StaticResource HomeFilterChip}" Content="{Binding Title}"
-                                                Tag="{Binding IsSelected}"
-                                                Command="{Binding DataContext.SetHomeLoaderFilterCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                CommandParameter="{Binding}" />
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </StackPanel>
-
-                        <StackPanel Orientation="Horizontal" Margin="0,0,12,0" VerticalAlignment="Center">
-                            <TextBlock Text="类型" FontSize="9" Foreground="{StaticResource BrushTextMuted}"
-                                       VerticalAlignment="Center" Margin="0,0,5,0" />
-                            <ItemsControl ItemsSource="{Binding HomeTypeFilters}" VerticalAlignment="Center">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <StackPanel Orientation="Horizontal" />
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Button Style="{StaticResource HomeFilterChip}" Content="{Binding Title}"
-                                                Tag="{Binding IsSelected}"
-                                                Command="{Binding DataContext.SetHomeTypeFilterCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                CommandParameter="{Binding}" />
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </StackPanel>
-
-                    </WrapPanel>
 
                     <TextBlock Text="没有符合筛选条件的版本" FontSize="11" Foreground="{StaticResource BrushTextMuted}"
                                Margin="4,7,0,4"
@@ -524,5 +544,6 @@
         </Border>
     </Grid>
 </UserControl>
+
 
 
