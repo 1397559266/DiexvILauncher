@@ -67,7 +67,7 @@ PCL2 发布版之所以能“点一下正版登录”，是因为构建时通过
 
 ```powershell
 $env:MS_CLIENT_ID = "你的 Azure Application (client) ID"
-.\ILauncher.exe
+.\DiexvMinecraftLauncher.exe
 ```
 
 或使用 `ILAUNCHER_MS_CLIENT_ID`。设置后，登录窗口不再要求填写客户端 ID，直接进入设备码流程。这个 ID 仍然必须是你自己注册的 Azure 应用，不能使用 PCL2、HMCL 或其他项目的应用 ID。
@@ -190,13 +190,13 @@ $env:MS_CLIENT_ID = "你的 Azure Application (client) ID"
 dotnet build ILauncher.sln -c Release
 
 dotnet publish src/ILauncher/ILauncher.csproj -c Release -r win-x64 `
-  --self-contained false -o dist/ILauncher
+  --self-contained false -o dist/DiexvMinecraftLauncher
 ```
 
 运行：
 
 ```powershell
-.\dist\ILauncher\ILauncher.exe
+.\dist\DiexvMinecraftLauncher\DiexvMinecraftLauncher.exe
 ```
 
 也可以 `dotnet run --project src/ILauncher/ILauncher.csproj`。
@@ -267,6 +267,7 @@ docs/screenshots/            README 截图
 - 模组安装不会自动解析并安装前置依赖；只安装主文件。
 - Forge/NeoForge 走官方安装器，不保证所有版本都能在无界面模式下成功。
 - 启动器自身更新、主题/语言切换等非 Minecraft 功能未实现。
+
 
 
 

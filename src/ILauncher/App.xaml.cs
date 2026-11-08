@@ -43,7 +43,7 @@ public partial class App : Application
 
         MessageBox.Show(
             $"启动器遇到未处理的错误：\n\n{e.Exception.Message}\n\n详细信息已写入日志。",
-            "ILauncher",
+            "DiexvMinecraftLauncher",
             MessageBoxButton.OK,
             MessageBoxImage.Error);
         e.Handled = true;

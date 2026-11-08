@@ -7,14 +7,14 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>12</LangVersion>
-    <AssemblyName>ILauncher</AssemblyName>
+    <AssemblyName>DiexvMinecraftLauncher</AssemblyName>
     <RootNamespace>ILauncher</RootNamespace>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Version>1.1.0</Version>
     <FileVersion>1.1.0.0</FileVersion>
-    <Product>ILauncher</Product>
-    <Description>ILauncher — 带有 HMCL 风格测试游戏日志面板的 Minecraft 启动器</Description>
+    <Product>DiexvMinecraftLauncher</Product>
+    <Description>DiexvMinecraftLauncher — 带有 HMCL 风格测试游戏日志面板的 Minecraft 启动器</Description>
     <SatelliteResourceLanguages>zh-Hans</SatelliteResourceLanguages>
   </PropertyGroup>
 

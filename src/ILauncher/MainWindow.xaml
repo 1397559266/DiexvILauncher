@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:ILauncher.Controls"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
-        Title="ILauncher"
+        Title="DiexvMinecraftLauncher"
         Width="1240" Height="800" MinWidth="1060" MinHeight="690"
         WindowStartupLocation="CenterScreen"
         WindowStyle="SingleBorderWindow"
