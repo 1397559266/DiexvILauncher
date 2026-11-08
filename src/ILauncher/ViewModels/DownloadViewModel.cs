@@ -244,6 +244,7 @@ public sealed class DownloadViewModel : ObservableObject
 
         RebuildCategoryFilters();
         LoadSearchCacheFromDisk();
+        LoadJarDependencyCacheFromDisk();
         RefreshContext();
     }
 
@@ -1661,16 +1662,68 @@ public sealed class DownloadViewModel : ObservableObject
             return Array.Empty<JarDependency>();
         }
 
+        if (_jarDependencyCache.TryGetValue(version.Id, out var cached))
+        {
+            return cached;
+        }
+
         try
         {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeout.CancelAfter(TimeSpan.FromSeconds(8));
-            return await ModJarDependencyReader.ReadFromUrlAsync(
+            timeout.CancelAfter(TimeSpan.FromSeconds(30));
+            var result = await ModJarDependencyReader.ReadFromUrlAsync(
                 version.File.Url, version.File.Size, timeout.Token);
+            _jarDependencyCache[version.Id] = result;
+            SaveJarDependencyCacheToDisk();
+            return result;
         }
         catch
         {
             return Array.Empty<JarDependency>();
+        }
+    }
+
+    private static string JarDependencyCacheFilePath
+        => Path.Combine(AppPaths.CacheDirectory, "jar-dependencies.json");
+
+    private void LoadJarDependencyCacheFromDisk()
+    {
+        try
+        {
+            if (!File.Exists(JarDependencyCacheFilePath))
+            {
+                return;
+            }
+
+            var cached = JsonSerializer.Deserialize<Dictionary<string, List<JarDependency>>>(
+                File.ReadAllText(JarDependencyCacheFilePath));
+            if (cached == null)
+            {
+                return;
+            }
+
+            foreach (var pair in cached)
+            {
+                _jarDependencyCache[pair.Key] = pair.Value;
+            }
+        }
+        catch
+        {
+            // Ignore a damaged jar dependency cache.
+        }
+    }
+
+    private void SaveJarDependencyCacheToDisk()
+    {
+        try
+        {
+            Directory.CreateDirectory(AppPaths.CacheDirectory);
+            File.WriteAllText(JarDependencyCacheFilePath,
+                JsonSerializer.Serialize(_jarDependencyCache));
+        }
+        catch
+        {
+            // Best-effort cache.
         }
     }
 

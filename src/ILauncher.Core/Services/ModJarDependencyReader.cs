@@ -58,7 +58,7 @@ public static class ModJarDependencyReader
 
         try
         {
-            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(12) };
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
             var tailLength = (int)Math.Min(131072, fileSize);
             var tail = await ReadRangeAsync(client, url, fileSize - tailLength, fileSize - 1, cancellationToken);
             var eocd = FindEndOfCentralDirectory(tail);
