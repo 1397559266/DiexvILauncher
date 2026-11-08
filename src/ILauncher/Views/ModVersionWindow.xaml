@@ -166,7 +166,12 @@
                     </ListBox>
 
                     <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                Visibility="{Binding HasDependencies, Converter={StaticResource InverseBoolToVisibility}}">
+                                Visibility="{Binding ShowDependencySearching, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Text="正在搜索前置…" FontSize="10" Foreground="{StaticResource BrushTextSecondary}" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                Visibility="{Binding ShowNoDependencies, Converter={StaticResource BoolToVisibility}}">
                         <TextBlock Text="没有前置模组" FontSize="10" Foreground="{StaticResource BrushTextMuted}" />
                     </StackPanel>
 

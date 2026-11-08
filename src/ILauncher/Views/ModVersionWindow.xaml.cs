@@ -151,7 +151,15 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
     public bool IsAnalyzing
     {
         get => _isAnalyzing;
-        private set => Set(ref _isAnalyzing, value);
+        private set
+        {
+            if (Set(ref _isAnalyzing, value))
+            {
+                OnPropertyChanged(nameof(ShowDependencyPanel));
+                OnPropertyChanged(nameof(ShowDependencySearching));
+                OnPropertyChanged(nameof(ShowNoDependencies));
+            }
+        }
     }
 
     public bool IsJarLoading
@@ -162,11 +170,15 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
             if (Set(ref _isJarLoading, value))
             {
                 OnPropertyChanged(nameof(ShowDependencyPanel));
+                OnPropertyChanged(nameof(ShowDependencySearching));
+                OnPropertyChanged(nameof(ShowNoDependencies));
             }
         }
     }
 
-    public bool ShowDependencyPanel => HasDependencies || IsJarLoading || HasJarError;
+    public bool ShowDependencyPanel => HasDependencies || IsJarLoading || HasJarError || IsAnalyzing;
+    public bool ShowDependencySearching => IsAnalyzing || IsJarLoading;
+    public bool ShowNoDependencies => !HasDependencies && !ShowDependencySearching && !HasJarError;
 
     public bool HasJarError
     {
@@ -176,6 +188,7 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
             if (Set(ref _hasJarError, value))
             {
                 OnPropertyChanged(nameof(ShowDependencyPanel));
+                OnPropertyChanged(nameof(ShowNoDependencies));
             }
         }
     }
@@ -239,6 +252,7 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
         StatusText = "正在获取兼容文件…";
         Dependencies.Clear();
         OnPropertyChanged(nameof(HasDependencies));
+            OnPropertyChanged(nameof(ShowNoDependencies));
             OnPropertyChanged(nameof(ShowDependencyPanel));
         MissingRequiredCount = 0;
         UnresolvedRequiredCount = 0;
@@ -296,6 +310,7 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
         {
             Dependencies.Clear();
             OnPropertyChanged(nameof(HasDependencies));
+            OnPropertyChanged(nameof(ShowNoDependencies));
             OnPropertyChanged(nameof(ShowDependencyPanel));
             MissingRequiredCount = 0;
             UnresolvedRequiredCount = 0;
@@ -316,7 +331,18 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
                 Dependencies.Add(item);
             }
 
-            UpdateDependencySummary();
+            if (Dependencies.Count == 0 && selectedVersion.File != null)
+            {
+                DependencyStatus = "正在搜索前置…";
+                OnPropertyChanged(nameof(ShowDependencySearching));
+                OnPropertyChanged(nameof(ShowNoDependencies));
+                OnPropertyChanged(nameof(ShowDependencyPanel));
+            }
+            else
+            {
+                UpdateDependencySummary();
+            }
+
             _ = LoadJarDependenciesAsync(selectedVersion);
         }
         catch (Exception ex)
@@ -325,6 +351,7 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
             MissingRequiredCount = 0;
             UnresolvedRequiredCount = 0;
             OnPropertyChanged(nameof(HasDependencies));
+            OnPropertyChanged(nameof(ShowNoDependencies));
             OnPropertyChanged(nameof(ShowDependencyPanel));
             DependencyStatus = $"前置检测失败：{ex.Message}";
         }
@@ -397,6 +424,7 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
         MissingRequiredCount = Dependencies.Count(item => item.Missing);
         UnresolvedRequiredCount = Dependencies.Count(item => item.UnresolvedRequired);
         OnPropertyChanged(nameof(HasDependencies));
+            OnPropertyChanged(nameof(ShowNoDependencies));
         OnPropertyChanged(nameof(ShowDependencyPanel));
         DependencyStatus = Dependencies.Count == 0
             ? "没有前置模组"
@@ -549,5 +577,6 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
+
 
 
