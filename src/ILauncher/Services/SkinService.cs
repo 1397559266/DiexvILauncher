@@ -93,14 +93,7 @@ public sealed class SkinService
         try
         {
             var skin = LoadBitmap(path);
-            var baseHead = new CroppedBitmap(skin, new Int32Rect(8, 8, 8, 8));
-            CroppedBitmap? hat = null;
-            if (showHat && skin.PixelWidth >= 64 && skin.PixelHeight >= 64)
-            {
-                hat = new CroppedBitmap(skin, new Int32Rect(40, 8, 8, 8));
-            }
-
-            var bitmap = RenderHeadNearest(baseHead, hat, pixelSize);
+            var bitmap = RenderHead(skin, pixelSize, showHat);
             _headCache[key] = bitmap;
             return bitmap;
         }
@@ -397,59 +390,62 @@ public sealed class SkinService
         encoder.Save(stream);
     }
 
-    private static BitmapSource RenderHeadNearest(BitmapSource baseHead, BitmapSource? hat, int size)
+    private static BitmapSource RenderHead(BitmapSource skin, int size, bool showHat)
     {
-        const int sourceSize = 8;
-        var baseFormatted = new FormatConvertedBitmap(baseHead, PixelFormats.Bgra32, null, 0);
-        var basePixels = new byte[sourceSize * sourceSize * 4];
-        baseFormatted.CopyPixels(basePixels, sourceSize * 4, 0);
-
-        byte[]? hatPixels = null;
-        if (hat != null)
+        var visual = new DrawingVisual();
+        using (var context = visual.RenderOpen())
         {
-            var hatFormatted = new FormatConvertedBitmap(hat, PixelFormats.Bgra32, null, 0);
-            hatPixels = new byte[sourceSize * sourceSize * 4];
-            hatFormatted.CopyPixels(hatPixels, sourceSize * 4, 0);
-        }
-
-        var stride = size * 4;
-        var output = new byte[stride * size];
-        for (var y = 0; y < size; y++)
-        {
-            var sourceY = y * sourceSize / size;
-            for (var x = 0; x < size; x++)
+            var front = new Rect(size * 0.18, size * 0.30, size * 0.62, size * 0.62);
+            var offset = size * 0.12;
+            var top = new StreamGeometry();
+            using (var geometry = top.Open())
             {
-                var sourceX = x * sourceSize / size;
-                var sourceOffset = (sourceY * sourceSize + sourceX) * 4;
-                var targetOffset = y * stride + x * 4;
-                var b = basePixels[sourceOffset];
-                var g = basePixels[sourceOffset + 1];
-                var r = basePixels[sourceOffset + 2];
-                var a = basePixels[sourceOffset + 3];
-                if (hatPixels != null)
-                {
-                    var hatAlpha = hatPixels[sourceOffset + 3];
-                    if (hatAlpha > 0)
-                    {
-                        var alpha = hatAlpha / 255d;
-                        b = (byte)(hatPixels[sourceOffset] * alpha + b * (1 - alpha));
-                        g = (byte)(hatPixels[sourceOffset + 1] * alpha + g * (1 - alpha));
-                        r = (byte)(hatPixels[sourceOffset + 2] * alpha + r * (1 - alpha));
-                        a = (byte)Math.Min(255, a + hatAlpha * (255 - a) / 255);
-                    }
-                }
-
-                output[targetOffset] = b;
-                output[targetOffset + 1] = g;
-                output[targetOffset + 2] = r;
-                output[targetOffset + 3] = a;
+                geometry.BeginFigure(new Point(front.X + offset, front.Y - offset), true, true);
+                geometry.LineTo(new Point(front.Right + offset, front.Y - offset), true, false);
+                geometry.LineTo(new Point(front.Right, front.Y), true, false);
+                geometry.LineTo(new Point(front.X, front.Y), true, false);
             }
+
+            top.Freeze();
+            var side = new StreamGeometry();
+            using (var geometry = side.Open())
+            {
+                geometry.BeginFigure(new Point(front.Right, front.Y), true, true);
+                geometry.LineTo(new Point(front.Right + offset, front.Y - offset), true, false);
+                geometry.LineTo(new Point(front.Right + offset, front.Bottom - offset), true, false);
+                geometry.LineTo(new Point(front.Right, front.Bottom), true, false);
+            }
+
+            side.Freeze();
+
+            void DrawFace(Rect baseRect, Rect hatRect, Geometry geometry)
+            {
+                context.DrawGeometry(new ImageBrush(new CroppedBitmap(skin, ToRect(baseRect)))
+                {
+                    Stretch = Stretch.Fill
+                }, null, geometry);
+                if (showHat && skin.PixelWidth >= 64 && skin.PixelHeight >= 64)
+                {
+                    context.DrawGeometry(new ImageBrush(new CroppedBitmap(skin, ToRect(hatRect)))
+                    {
+                        Stretch = Stretch.Fill
+                    }, null, geometry);
+                }
+            }
+
+            DrawFace(new Rect(8, 8, 8, 8), new Rect(40, 8, 8, 8), new RectangleGeometry(front));
+            DrawFace(new Rect(8, 0, 8, 8), new Rect(40, 0, 8, 8), top);
+            DrawFace(new Rect(0, 8, 8, 8), new Rect(32, 8, 8, 8), side);
         }
 
-        var bitmap = BitmapSource.Create(size, size, 96, 96, PixelFormats.Bgra32, null, output, stride);
+        var bitmap = new RenderTargetBitmap(size, size, 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(visual);
         bitmap.Freeze();
         return bitmap;
     }
+
+    private static Int32Rect ToRect(Rect rect)
+        => new((int)rect.X, (int)rect.Y, (int)rect.Width, (int)rect.Height);
 
     private static BitmapImage LoadBitmap(string path)    {
         using var stream = File.OpenRead(path);
