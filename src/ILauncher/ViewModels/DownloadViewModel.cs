@@ -2268,8 +2268,8 @@ public sealed class DownloadViewModel : ObservableObject
         dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
         {
             ProgressMessage = string.IsNullOrWhiteSpace(progress.Phase)
-                ? progress.Message
-                : $"{progress.Phase} · {progress.Message}";
+                ? LanguageService.Translate(progress.Message)
+                : $"{LanguageService.Translate(progress.Phase)} · {LanguageService.Translate(progress.Message)}";
             if (progress.Percent >= 0)
             {
                 ProgressValue = progress.Percent;

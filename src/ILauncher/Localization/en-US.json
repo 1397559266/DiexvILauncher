@@ -577,5 +577,15 @@
   "Minecraft 皮肤 (*.png)|*.png": "Minecraft skin (*.png)|*.png",
   "PNG 图片 (*.png)|*.png": "PNG image (*.png)|*.png",
   "Modrinth 整合包 (*.mrpack)|*.mrpack|ZIP 压缩包 (*.zip)|*.zip": "Modrinth modpack (*.mrpack)|*.mrpack|ZIP archive (*.zip)|*.zip",
-  "Java executable (java.exe)|java.exe|可执行文件 (*.exe)|*.exe|所有文件 (*.*)|*.*": "Java executable (java.exe)|java.exe|Executable (*.exe)|*.exe|All files (*.*)|*.*"
+  "Java executable (java.exe)|java.exe|可执行文件 (*.exe)|*.exe|所有文件 (*.*)|*.*": "Java executable (java.exe)|java.exe|Executable (*.exe)|*.exe|All files (*.*)|*.*",
+  "准备": "Preparing",
+  "客户端": "Client",
+  "下载文件": "Downloading Files",
+  "下载客户端 jar…": "Downloading client jar…",
+  "完成": "Done",
+  "导出实例": "Export Instance",
+  "正在解压整合包…": "Extracting modpack…",
+  "安装模组加载器…": "Installing mod loader…",
+  "解压中…": "Extracting…",
+  "正在获取版本…": "Fetching versions…"
 }
