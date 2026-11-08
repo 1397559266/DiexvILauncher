@@ -50,6 +50,41 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <Style x:Key="HomeFilterChip" TargetType="Button">
+            <Setter Property="Height" Value="25" />
+            <Setter Property="Padding" Value="8,0" />
+            <Setter Property="Margin" Value="0,0,5,0" />
+            <Setter Property="Background" Value="#FFF8FBFF" />
+            <Setter Property="BorderBrush" Value="{StaticResource BrushBorder}" />
+            <Setter Property="Foreground" Value="{StaticResource BrushTextSecondary}" />
+            <Setter Property="FontSize" Value="9" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1" CornerRadius="7" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#FFF1F7FF" />
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#FFB9D5F7" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True">
+                    <Setter Property="Background" Value="{StaticResource BrushAccentSoft}" />
+                    <Setter Property="BorderBrush" Value="{StaticResource BrushAccent}" />
+                    <Setter Property="Foreground" Value="{StaticResource BrushAccent}" />
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
     </UserControl.Resources>
 
     <Grid>
@@ -212,18 +247,76 @@
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="游戏版本" Style="{StaticResource TextSection}" FontSize="16" />
                             <Border Background="#FFEAF2FE" CornerRadius="9" Padding="7,1" Margin="9,1,0,0" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding InstanceCount}" FontSize="10" Foreground="{StaticResource BrushAccent}" />
+                                <TextBlock Text="{Binding InstanceCountText}" FontSize="10" Foreground="{StaticResource BrushAccent}" />
                             </Border>
                         </StackPanel>
-                        <Button Style="{StaticResource GhostButton}" HorizontalAlignment="Right" Command="{Binding RefreshCommand}" ToolTip="重新扫描版本">
-                            <StackPanel Orientation="Horizontal">
-                                <controls:Icon Data="{StaticResource IconRefresh}" Fill="{StaticResource BrushTextSecondary}" Width="13" Height="13" />
-                                <TextBlock Text="刷新" Margin="5,0,0,0" FontSize="11.5" />
-                            </StackPanel>
-                        </Button>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <Grid Width="132" Height="26" Margin="0,0,8,0">
+                                <TextBox Style="{StaticResource InputTextBox}" Height="26" Padding="8,0"
+                                         VerticalContentAlignment="Center"
+                                         Text="{Binding InstanceSearch, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="搜索版本名称" AutomationProperties.Name="搜索本地版本" />
+                                <TextBlock Text="搜索版本" FontSize="9" Foreground="{StaticResource BrushTextMuted}"
+                                           Margin="9,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                                           Visibility="{Binding InstanceSearch, Converter={StaticResource EmptyToVisibility}}" />
+                            </Grid>
+                            <Button Style="{StaticResource GhostButton}" Command="{Binding RefreshCommand}" ToolTip="重新扫描版本">
+                                <StackPanel Orientation="Horizontal">
+                                    <controls:Icon Data="{StaticResource IconRefresh}" Fill="{StaticResource BrushTextSecondary}" Width="13" Height="13" />
+                                    <TextBlock Text="刷新" Margin="5,0,0,0" FontSize="11.5" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
                     </Grid>
 
-                    <ListBox x:Name="VersionList" ItemsSource="{Binding Instances}" SelectedItem="{Binding SelectedInstance, Mode=TwoWay}"
+                    <WrapPanel Margin="2,0,4,9">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,14,0" VerticalAlignment="Center">
+                            <TextBlock Text="加载器" FontSize="9" Foreground="{StaticResource BrushTextMuted}"
+                                       VerticalAlignment="Center" Margin="0,0,5,0" />
+                            <ItemsControl ItemsSource="{Binding HomeLoaderFilters}" VerticalAlignment="Center">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Style="{StaticResource HomeFilterChip}" Content="{Binding Title}"
+                                                Tag="{Binding IsSelected}"
+                                                Command="{Binding DataContext.SetHomeLoaderFilterCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,0,12,0" VerticalAlignment="Center">
+                            <TextBlock Text="类型" FontSize="9" Foreground="{StaticResource BrushTextMuted}"
+                                       VerticalAlignment="Center" Margin="0,0,5,0" />
+                            <ItemsControl ItemsSource="{Binding HomeTypeFilters}" VerticalAlignment="Center">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Style="{StaticResource HomeFilterChip}" Content="{Binding Title}"
+                                                Tag="{Binding IsSelected}"
+                                                Command="{Binding DataContext.SetHomeTypeFilterCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                    </WrapPanel>
+
+                    <TextBlock Text="没有符合筛选条件的版本" FontSize="11" Foreground="{StaticResource BrushTextMuted}"
+                               Margin="4,7,0,4"
+                               Visibility="{Binding IsHomeFilterEmpty, Converter={StaticResource BoolToVisibility}}" />
+
+                    <ListBox x:Name="VersionList" ItemsSource="{Binding FilteredInstances}" SelectedItem="{Binding SelectedInstance, Mode=TwoWay}"
                              Style="{StaticResource CleanListBox}" ScrollViewer.VerticalScrollBarVisibility="Disabled"
                              ItemContainerStyle="{StaticResource VersionCardItem}" MouseDoubleClick="VersionList_MouseDoubleClick"
                              HorizontalContentAlignment="Left">

@@ -18,6 +18,7 @@ public sealed class MainViewModel : ObservableObject
     private readonly DispatcherTimer _toastTimer;
     private object? _currentPage;
     private GameInstance? _selectedInstance;
+    private string _instanceSearch = "";
     private string _rootPath = "";
     private string _selectedJavaText = "检测中…";
     private bool _isBusy;
@@ -73,7 +74,27 @@ public sealed class MainViewModel : ObservableObject
         };
 
         Instances = new ObservableCollection<GameInstance>();
+        FilteredInstances = new ObservableCollection<GameInstance>();
         JavaRuntimes = new ObservableCollection<JavaInfo>();
+        HomeLoaderFilters = new ObservableCollection<DownloadFilterOption>
+        {
+            new() { Key = "all", Title = "全部", IsSelected = true },
+            new() { Key = "vanilla", Title = "原版" },
+            new() { Key = "forge", Title = "Forge" },
+            new() { Key = "fabric", Title = "Fabric" },
+            new() { Key = "neoforge", Title = "NeoForge" },
+            new() { Key = "quilt", Title = "Quilt" },
+            new() { Key = "optifine", Title = "OptiFine" }
+        };
+        HomeTypeFilters = new ObservableCollection<DownloadFilterOption>
+        {
+            new() { Key = "all", Title = "全部", IsSelected = true },
+            new() { Key = "release", Title = "正式版" },
+            new() { Key = "snapshot", Title = "快照" },
+            new() { Key = "old", Title = "旧版" }
+        };
+        SetHomeLoaderFilterCommand = new RelayCommand(parameter => SelectHomeLoader(parameter));
+        SetHomeTypeFilterCommand = new RelayCommand(parameter => SelectHomeType(parameter));
 
         _currentPage = this;
         GoHomeCommand = new RelayCommand(GoHome);
@@ -136,6 +157,11 @@ public sealed class MainViewModel : ObservableObject
     public LaunchLogViewModel LaunchLog { get; }
 
     public ObservableCollection<GameInstance> Instances { get; }
+    public ObservableCollection<GameInstance> FilteredInstances { get; }
+    public ObservableCollection<DownloadFilterOption> HomeLoaderFilters { get; }
+    public ObservableCollection<DownloadFilterOption> HomeTypeFilters { get; }
+    public RelayCommand SetHomeLoaderFilterCommand { get; }
+    public RelayCommand SetHomeTypeFilterCommand { get; }
     public ObservableCollection<JavaInfo> JavaRuntimes { get; }
 
     public object? CurrentPage
@@ -187,6 +213,26 @@ public sealed class MainViewModel : ObservableObject
     public string SelectedTypeText => SelectedInstance?.TypeLabel ?? "";
 
     public int InstanceCount => Instances.Count;
+    public int FilteredInstanceCount => FilteredInstances.Count;
+    public string InstanceCountText => FilteredInstanceCount == InstanceCount
+        ? InstanceCount.ToString()
+        : $"{FilteredInstanceCount} / {InstanceCount}";
+    public bool IsHomeFilterEmpty => Instances.Count > 0 && FilteredInstances.Count == 0;
+
+    public string InstanceSearch
+    {
+        get => _instanceSearch;
+        set
+        {
+            if (SetProperty(ref _instanceSearch, value))
+            {
+                ApplyInstanceFilter();
+            }
+        }
+    }
+
+    public DownloadFilterOption? SelectedHomeLoader => HomeLoaderFilters.FirstOrDefault(option => option.IsSelected);
+    public DownloadFilterOption? SelectedHomeType => HomeTypeFilters.FirstOrDefault(option => option.IsSelected);
 
     public bool IsHome
     {
@@ -381,14 +427,119 @@ public sealed class MainViewModel : ObservableObject
 
         var selected = Instances.FirstOrDefault(i => i.Id == selectedId) ?? Instances.FirstOrDefault();
         SelectedInstance = selected;
+        ApplyInstanceFilter();
         _suppressSelectionSave = false;
 
         OnPropertyChanged(nameof(InstanceCount));
+        OnPropertyChanged(nameof(FilteredInstanceCount));
+        OnPropertyChanged(nameof(InstanceCountText));
         OnPropertyChanged(nameof(ShowEmptyState));
+        OnPropertyChanged(nameof(IsHomeFilterEmpty));
         if (instances.Count == 0)
         {
             Toast("该目录下没有可用的游戏版本。", true);
         }
+    }
+
+    private void ApplyInstanceFilter()
+    {
+        var loaderKey = SelectedHomeLoader?.Key ?? "all";
+        var typeKey = SelectedHomeType?.Key ?? "all";
+        var search = InstanceSearch.Trim();
+        var previous = SelectedInstance;
+
+        FilteredInstances.Clear();
+        foreach (var instance in Instances)
+        {
+            if (!MatchesLoaderFilter(instance, loaderKey) || !MatchesTypeFilter(instance, typeKey))
+            {
+                continue;
+            }
+
+            if (search.Length > 0 &&
+                !instance.Id.Contains(search, StringComparison.OrdinalIgnoreCase) &&
+                !instance.Subtitle.Contains(search, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            FilteredInstances.Add(instance);
+        }
+
+        OnPropertyChanged(nameof(FilteredInstanceCount));
+        OnPropertyChanged(nameof(InstanceCountText));
+        OnPropertyChanged(nameof(IsHomeFilterEmpty));
+
+        var next = previous != null && FilteredInstances.Contains(previous)
+            ? previous
+            : FilteredInstances.FirstOrDefault();
+        if (next != null && !ReferenceEquals(SelectedInstance, next))
+        {
+            _suppressSelectionSave = true;
+            SelectedInstance = next;
+            _suppressSelectionSave = false;
+        }
+    }
+
+    private static bool MatchesLoaderFilter(GameInstance instance, string key)
+    {
+        var loader = instance.Loader;
+        var isNeoForge = loader.Contains("NeoForge", StringComparison.OrdinalIgnoreCase);
+        var isForge = loader.Contains("Forge", StringComparison.OrdinalIgnoreCase) && !isNeoForge;
+        return key switch
+        {
+            "vanilla" => loader.Equals("原版", StringComparison.OrdinalIgnoreCase) ||
+                         loader.Equals("Vanilla", StringComparison.OrdinalIgnoreCase),
+            "neoforge" => isNeoForge,
+            "forge" => isForge,
+            "fabric" => loader.Contains("Fabric", StringComparison.OrdinalIgnoreCase),
+            "quilt" => loader.Contains("Quilt", StringComparison.OrdinalIgnoreCase),
+            "optifine" => loader.Contains("OptiFine", StringComparison.OrdinalIgnoreCase),
+            _ => true
+        };
+    }
+
+    private static bool MatchesTypeFilter(GameInstance instance, string key)
+        => key switch
+        {
+            "release" => string.Equals(instance.Type, "release", StringComparison.OrdinalIgnoreCase),
+            "snapshot" => string.Equals(instance.Type, "snapshot", StringComparison.OrdinalIgnoreCase),
+            "old" => instance.Type.StartsWith("old_", StringComparison.OrdinalIgnoreCase),
+            _ => true
+        };
+
+    private void SelectHomeLoader(object? parameter)
+    {
+        if (parameter is DownloadFilterOption option && SelectSingleFilter(HomeLoaderFilters, option))
+        {
+            OnPropertyChanged(nameof(SelectedHomeLoader));
+            ApplyInstanceFilter();
+        }
+    }
+
+    private void SelectHomeType(object? parameter)
+    {
+        if (parameter is DownloadFilterOption option && SelectSingleFilter(HomeTypeFilters, option))
+        {
+            OnPropertyChanged(nameof(SelectedHomeType));
+            ApplyInstanceFilter();
+        }
+    }
+
+    private static bool SelectSingleFilter(IEnumerable<DownloadFilterOption> options, DownloadFilterOption selected)
+    {
+        var changed = false;
+        foreach (var option in options)
+        {
+            var active = ReferenceEquals(option, selected);
+            if (option.IsSelected != active)
+            {
+                option.IsSelected = active;
+                changed = true;
+            }
+        }
+
+        return changed;
     }
 
     public void OpenInstance(GameInstance instance, InstanceSection section = InstanceSection.Overview)

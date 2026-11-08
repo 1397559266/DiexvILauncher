@@ -85,7 +85,7 @@ $env:MS_CLIENT_ID = "你的 Azure Application (client) ID"
 ### 版本图标
 
 - 在版本概览的「快捷操作 → 更换图标」中选择 PNG，图标保存到 `%APPDATA%\ILauncher\icons\<版本>.png`。
-- 版本卡片、主页大卡、版本页侧栏、概览都会使用自定义图标；未设置时按加载器自动使用 **Fabric / Quilt / Forge / NeoForge / OptiFine** 官方徽标，原版使用方块图标。徽标来源见 `Assets/Loaders/README.md`。
+- 主页版本列表支持按 **加载器（原版/Forge/Fabric/NeoForge/Quilt/OptiFine）**、**正式版/快照/旧版** 和版本名筛选，数量会显示为“筛选结果 / 总数”。\n- 版本卡片、主页大卡、版本页侧栏、概览都会使用自定义图标；未设置时按加载器自动使用 **Fabric / Quilt / Forge / NeoForge / OptiFine** 官方徽标，原版使用方块图标。徽标来源见 `Assets/Loaders/README.md`。
 - 也支持版本目录里的 `icon.png` 作为图标。
 - 模组图标从 jar 内部读取（Fabric/Quilt/Forge/NeoForge 元数据），资源包读取 `pack.png`，存档读取 `icon.png`。
 
@@ -267,6 +267,7 @@ docs/screenshots/            README 截图
 - 模组安装不会自动解析并安装前置依赖；只安装主文件。
 - Forge/NeoForge 走官方安装器，不保证所有版本都能在无界面模式下成功。
 - 启动器自身更新、主题/语言切换等非 Minecraft 功能未实现。
+
 
 
 
