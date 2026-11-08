@@ -59,6 +59,18 @@ public partial class DownloadView : UserControl
         viewModel.OpenVersionPickerCommand.Execute(project);
     }
 
+    private void SearchResultsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (sender is not ListBox list || list.SelectedItem is not ModrinthProject project ||
+            DataContext is not DownloadViewModel viewModel)
+        {
+            return;
+        }
+
+        list.SelectedItem = null;
+        viewModel.OpenVersionPickerCommand.Execute(project);
+    }
+
     private static T? FindAncestor<T>(DependencyObject? current) where T : DependencyObject
     {
         while (current != null)

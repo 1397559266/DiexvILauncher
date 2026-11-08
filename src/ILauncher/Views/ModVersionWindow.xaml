@@ -113,31 +113,31 @@
                     <TextBlock Text="{Binding DependencyStatus}" FontSize="9" Foreground="{StaticResource BrushTextMuted}"
                                HorizontalAlignment="Right" VerticalAlignment="Center" />
                 </Grid>
-                <ScrollViewer Grid.Row="1" MaxHeight="150" Margin="0,7,0,0" VerticalScrollBarVisibility="Auto">
-                    <ItemsControl ItemsSource="{Binding Dependencies}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Grid Height="27">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="{Binding DisplayTitle}" FontSize="10"
-                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                    <Border Grid.Column="1" Background="#FFF2F7FD" CornerRadius="5" Padding="5,1"
-                                            Margin="8,0,0,0" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding TypeText}" FontSize="8.5"
-                                                   Foreground="{StaticResource BrushTextSecondary}" />
-                                    </Border>
-                                    <TextBlock Grid.Column="2" Text="{Binding StatusText}" FontSize="8.5"
-                                               Foreground="{StaticResource BrushTextMuted}" Margin="9,0,0,0"
-                                               VerticalAlignment="Center" />
-                                </Grid>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
+                <ListBox Grid.Row="1" Height="150" Margin="0,7,0,0"
+                         ItemsSource="{Binding Dependencies}" Style="{StaticResource CleanListBox}"
+                         ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Height="27">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding DisplayTitle}" FontSize="10"
+                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                <Border Grid.Column="1" Background="#FFF2F7FD" CornerRadius="5" Padding="5,1"
+                                        Margin="8,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding TypeText}" FontSize="8.5"
+                                               Foreground="{StaticResource BrushTextSecondary}" />
+                                </Border>
+                                <TextBlock Grid.Column="2" Text="{Binding StatusText}" FontSize="8.5"
+                                           Foreground="{StaticResource BrushTextMuted}" Margin="9,0,0,0"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
                 <Grid Grid.Row="2" Margin="0,8,0,0"
                       Visibility="{Binding HasMissingRequired, Converter={StaticResource BoolToVisibility}}">
                     <TextBlock Text="{Binding MissingRequiredCount, StringFormat=缺少 {0} 个必需前置}"
