@@ -319,7 +319,11 @@
                     </Grid.ColumnDefinitions>
                     <Grid Height="38">
                         <TextBox Style="{StaticResource InputTextBox}" Height="38" Padding="32,0,10,0"
-                                 Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}" />
+                                 Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}">
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Enter" Command="{Binding SearchCommand}" />
+                            </TextBox.InputBindings>
+                        </TextBox>
                         <controls:Icon Data="{StaticResource IconSearch}" Fill="#FF9AABBF" Width="14" Height="14"
                                        HorizontalAlignment="Left" Margin="11,0,0,0" IsHitTestVisible="False" />
                         <TextBlock Text="{Binding SearchPlaceholder}" FontSize="10.5" Foreground="{StaticResource BrushTextMuted}"
