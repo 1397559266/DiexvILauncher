@@ -10,25 +10,31 @@
         </Style>
     </UserControl.Resources>
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="24,18,24,22"
-                  HorizontalContentAlignment="Stretch">
-        <StackPanel>
-            <Grid Margin="0,0,0,16">
-                <StackPanel>
-                    <TextBlock Text="启动器设置" FontSize="20" FontWeight="Bold" />
-                    <TextBlock Text="扫描目录、Java 运行时、离线账户和默认启动参数。" FontSize="10.5"
-                               Foreground="{StaticResource BrushTextSecondary}" Margin="0,4,0,0" />
-                </StackPanel>
-                <Button Style="{StaticResource PrimaryButton}" Height="38" MinWidth="110" HorizontalAlignment="Right"
-                        VerticalAlignment="Center" Command="{Binding SaveCommand}" AutomationProperties.Name="保存设置">
-                    <StackPanel Orientation="Horizontal">
-                        <controls:Icon Data="{StaticResource IconSave}" Fill="#FFFFFFFF" Width="13" Height="13" />
-                        <TextBlock Text="保存设置" Margin="6,0,0,0" FontSize="11.5" />
-                    </StackPanel>
-                </Button>
-            </Grid>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
 
-            <!-- Game directory -->
+        <Grid Grid.Row="0" Margin="24,18,24,0">
+            <StackPanel>
+                <TextBlock Text="启动器设置" FontSize="20" FontWeight="Bold" />
+                <TextBlock Text="扫描目录、Java 运行时、离线账户和默认启动参数。" FontSize="10.5"
+                           Foreground="{StaticResource BrushTextSecondary}" Margin="0,4,0,0" />
+            </StackPanel>
+            <Button Style="{StaticResource PrimaryButton}" Height="38" MinWidth="110" HorizontalAlignment="Right"
+                    VerticalAlignment="Center" Command="{Binding SaveCommand}" AutomationProperties.Name="保存设置">
+                <StackPanel Orientation="Horizontal">
+                    <controls:Icon Data="{StaticResource IconSave}" Fill="#FFFFFFFF" Width="13" Height="13" />
+                    <TextBlock Text="保存设置" Margin="6,0,0,0" FontSize="11.5" />
+                </StackPanel>
+            </Button>
+        </Grid>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                      Padding="24,16,24,22" HorizontalContentAlignment="Stretch">
+            <StackPanel>
+                <!-- Game directory -->
             <Border Style="{StaticResource Card}" Padding="20,16">
                 <StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
@@ -98,7 +104,7 @@
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <Border Width="44" Height="44" CornerRadius="12" ClipToBounds="True">
+                        <Border Width="44" Height="44">
                             <controls:SkinHead SkinPath="{Binding SkinPath}" Width="44" Height="44" />
                         </Border>
                         <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
@@ -226,5 +232,6 @@
             </Grid>
         </StackPanel>
     </ScrollViewer>
+    </Grid>
 </UserControl>
 
