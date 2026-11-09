@@ -563,7 +563,8 @@ public sealed class SkinPreview : UserControl
         static Point3D Lerp(Point3D a, Point3D b, double amount)
             => new(a.X + (b.X - a.X) * amount, a.Y + (b.Y - a.Y) * amount, a.Z + (b.Z - a.Z) * amount);
 
-        void AddFace(Rect rect, Point3D p0, Point3D p1, Point3D p2, Point3D p3, Vector3D normal)
+        void AddFace(Rect rect, Point3D p0, Point3D p1, Point3D p2, Point3D p3, Vector3D normal,
+            bool flipU = false)
         {
             var positions = new Point3DCollection();
             var uvs = new PointCollection();
@@ -584,6 +585,8 @@ public sealed class SkinPreview : UserControl
                     var a1 = (x + 1 - rect.X) / rect.Width;
                     var b0 = (y - rect.Y) / rect.Height;
                     var b1 = (y + 1 - rect.Y) / rect.Height;
+                    var u0 = flipU ? 1 - a0 : a0;
+                    var u1 = flipU ? 1 - a1 : a1;
 
                     Point3D At(double a, double b)
                         => Lerp(Lerp(p3, p2, a), Lerp(p0, p1, a), b);
@@ -593,10 +596,10 @@ public sealed class SkinPreview : UserControl
                     positions.Add(At(a1, b1));
                     positions.Add(At(a1, b0));
                     positions.Add(At(a0, b0));
-                    uvs.Add(new Point(a0, b1));
-                    uvs.Add(new Point(a1, b1));
-                    uvs.Add(new Point(a1, b0));
-                    uvs.Add(new Point(a0, b0));
+                    uvs.Add(new Point(u0, b1));
+                    uvs.Add(new Point(u1, b1));
+                    uvs.Add(new Point(u1, b0));
+                    uvs.Add(new Point(u0, b0));
                     indices.Add(index);
                     indices.Add(index + 1);
                     indices.Add(index + 2);
@@ -643,13 +646,13 @@ public sealed class SkinPreview : UserControl
         if (uv.TryGetValue(Face.Right, out var right))
         {
             AddFace(right, new Point3D(x1, y0, z1), new Point3D(x1, y0, z0), new Point3D(x1, y1, z0),
-                new Point3D(x1, y1, z1), new Vector3D(1, 0, 0));
+                new Point3D(x1, y1, z1), new Vector3D(1, 0, 0), flipU: true);
         }
 
         if (uv.TryGetValue(Face.Left, out var left))
         {
             AddFace(left, new Point3D(x0, y0, z0), new Point3D(x0, y0, z1), new Point3D(x0, y1, z1),
-                new Point3D(x0, y1, z0), new Vector3D(-1, 0, 0));
+                new Point3D(x0, y1, z0), new Vector3D(-1, 0, 0), flipU: true);
         }
 
         if (uv.TryGetValue(Face.Top, out var top))
@@ -675,16 +678,22 @@ public sealed class SkinPreview : UserControl
         var z0 = center.Z - depth / 2;
         var z1 = center.Z + depth / 2;
 
-        void Quad(Point3D p0, Point3D p1, Point3D p2, Point3D p3, Vector3D normal, Rect rect)
+        void Quad(Point3D p0, Point3D p1, Point3D p2, Point3D p3, Vector3D normal, Rect rect,
+            bool flipU = false)
         {
+            // The skin net is right | front | left | back, so the right face
+            // shares its u=1 edge with the front face and the left face shares
+            // its u=0 edge with it. Side faces therefore need u mirrored,
+            // otherwise their front/back halves are swapped.
+            var uvs = flipU
+                ? new PointCollection { new(1, 1), new(0, 1), new(0, 0), new(1, 0) }
+                : new PointCollection { new(0, 1), new(1, 1), new(1, 0), new(0, 0) };
+
             var mesh = new MeshGeometry3D
             {
                 Positions = new Point3DCollection { p0, p1, p2, p3 },
                 Normals = new Vector3DCollection { normal, normal, normal, normal },
-                TextureCoordinates = new PointCollection
-                {
-                    new(0, 1), new(1, 1), new(1, 0), new(0, 0)
-                },
+                TextureCoordinates = uvs,
                 TriangleIndices = new Int32Collection { 0, 1, 2, 0, 2, 3 }
             };
 
@@ -714,13 +723,13 @@ public sealed class SkinPreview : UserControl
         if (uv.TryGetValue(Face.Right, out var right))
         {
             Quad(new Point3D(x1, y0, z1), new Point3D(x1, y0, z0), new Point3D(x1, y1, z0), new Point3D(x1, y1, z1),
-                new Vector3D(1, 0, 0), right);
+                new Vector3D(1, 0, 0), right, flipU: true);
         }
 
         if (uv.TryGetValue(Face.Left, out var left))
         {
             Quad(new Point3D(x0, y0, z0), new Point3D(x0, y0, z1), new Point3D(x0, y1, z1), new Point3D(x0, y1, z0),
-                new Vector3D(-1, 0, 0), left);
+                new Vector3D(-1, 0, 0), left, flipU: true);
         }
 
         if (uv.TryGetValue(Face.Top, out var top))
