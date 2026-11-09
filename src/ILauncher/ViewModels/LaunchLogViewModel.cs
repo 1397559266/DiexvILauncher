@@ -269,7 +269,9 @@ public sealed class LaunchLogViewModel : ObservableObject
 
     public string WarnCountText => $"{_warnCount:N0}";
 
-    public string LogPathDisplay => string.IsNullOrWhiteSpace(LogFilePath) ? "启动后自动创建日志文件" : LogFilePath;
+    public string LogPathDisplay => string.IsNullOrWhiteSpace(LogFilePath)
+        ? LanguageService.Translate("启动后自动创建日志文件")
+        : LogFilePath;
 
     public string CaptureStateText => IsRunning ? "实时捕获 stdout + stderr" : "日志已保存到本地";
 

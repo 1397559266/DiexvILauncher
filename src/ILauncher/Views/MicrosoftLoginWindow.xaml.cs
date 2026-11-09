@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Windows;
 using System.Windows.Navigation;
 using ILauncher.Core.Services;
+using ILauncher.Localization;
 
 namespace ILauncher.Views;
 
@@ -89,7 +90,7 @@ public partial class MicrosoftLoginWindow : Window
         var clientId = ClientIdBox.Text.Trim();
         if (string.IsNullOrWhiteSpace(clientId))
         {
-            MessageBox.Show("请填写 Azure 应用的 Application (client) ID。", "微软登录",
+            LocalizedDialog.Show("请填写 Azure 应用的 Application (client) ID。", "微软登录",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             ClientIdBox.Focus();
             return;
@@ -118,7 +119,7 @@ public partial class MicrosoftLoginWindow : Window
         }
         catch
         {
-            MessageBox.Show("无法打开浏览器，请手动访问 https://microsoft.com/link 并输入设备码。", "微软登录",
+            LocalizedDialog.Show("无法打开浏览器，请手动访问 https://microsoft.com/link 并输入设备码。", "微软登录",
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }

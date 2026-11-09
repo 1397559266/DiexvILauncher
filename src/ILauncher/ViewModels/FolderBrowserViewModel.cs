@@ -7,6 +7,7 @@ using System.Windows.Media;
 using ILauncher.Core;
 using ILauncher.Core.Models;
 using ILauncher.Core.Services;
+using ILauncher.Localization;
 using ILauncher.Models;
 using Microsoft.Win32;
 
@@ -254,12 +255,10 @@ public sealed class FolderBrowserViewModel : ObservableObject
 
     private void Install()
     {
-        var dialog = new OpenFileDialog
-        {
-            Title = Section == InstanceSection.Shaders ? "选择光影包" : "选择资源包",
-            Filter = "ZIP 压缩包 (*.zip)|*.zip",
-            Multiselect = false
-        };
+        var dialog = new OpenFileDialog { Multiselect = false };
+        LocalizedDialog.Configure(dialog,
+            Section == InstanceSection.Shaders ? "选择光影包" : "选择资源包",
+            "ZIP 压缩包 (*.zip)|*.zip");
 
         if (dialog.ShowDialog() != true)
         {
@@ -289,7 +288,7 @@ public sealed class FolderBrowserViewModel : ObservableObject
 
     private void DeleteEntry(FolderEntry entry)
     {
-        var result = MessageBox.Show($"确定要删除「{entry.Name}」吗？\n此操作不可撤销。", "删除确认",
+        var result = LocalizedDialog.Show($"确定要删除「{entry.Name}」吗？\n此操作不可撤销。", "删除确认",
             MessageBoxButton.OKCancel, MessageBoxImage.Warning);
         if (result != MessageBoxResult.OK)
         {

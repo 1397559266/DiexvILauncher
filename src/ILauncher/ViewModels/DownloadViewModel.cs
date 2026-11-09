@@ -1201,7 +1201,7 @@ public sealed class DownloadViewModel : ObservableObject
         }
 
         var instance = _contextInstance;
-        if (MessageBox.Show(
+        if (LocalizedDialog.Show(
                 $"将为 Minecraft {instance.MinecraftVersion} 运行 Forge 官方安装器。\n安装器会下载数百 MB 文件，继续吗？",
                 "安装 Forge", MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK)
         {
@@ -1225,7 +1225,7 @@ public sealed class DownloadViewModel : ObservableObject
         }
 
         var instance = _contextInstance;
-        if (MessageBox.Show(
+        if (LocalizedDialog.Show(
                 $"将为 Minecraft {instance.MinecraftVersion} 运行 NeoForge 官方安装器。\n安装器会下载数百 MB 文件，继续吗？",
                 "安装 NeoForge", MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK)
         {
@@ -1242,11 +1242,9 @@ public sealed class DownloadViewModel : ObservableObject
 
     private async Task ImportModpackAsync()
     {
-        var dialog = new OpenFileDialog
-        {
-            Title = "选择 Modrinth 整合包",
-            Filter = "Modrinth 整合包 (*.mrpack)|*.mrpack|ZIP 压缩包 (*.zip)|*.zip"
-        };
+        var dialog = new OpenFileDialog();
+        LocalizedDialog.Configure(dialog, "选择 Modrinth 整合包",
+            "Modrinth 整合包 (*.mrpack)|*.mrpack|ZIP 压缩包 (*.zip)|*.zip");
 
         if (dialog.ShowDialog() != true)
         {

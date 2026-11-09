@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using ILauncher.Localization;
 
 namespace ILauncher.Models;
 
@@ -21,6 +22,9 @@ public sealed class LogEntry
     public required LogLevelKind Kind { get; init; }
     public required string SearchText { get; init; }
     public bool IsLauncher { get; init; }
+
+    /// <summary>Launcher log lines follow the UI language; game output is untouched.</summary>
+    public string DisplayMessage => IsLauncher ? LanguageService.Translate(Message) : Message;
 
     public bool IsProblem => Kind is LogLevelKind.Error or LogLevelKind.Warn;
 }

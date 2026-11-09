@@ -7,6 +7,7 @@ using System.Windows.Threading;
 using ILauncher.Core;
 using ILauncher.Core.Models;
 using ILauncher.Core.Services;
+using ILauncher.Localization;
 using ILauncher.Models;
 using Microsoft.Win32;
 
@@ -132,8 +133,8 @@ public sealed class ModsViewModel : ObservableObject
         ModsView.Filter = FilterMod;
 
         FilterAll = new FilterItem { Title = "全部", Key = "all", IsSelected = true };
-        FilterEnabled = new FilterItem { Title = "启用", Key = "enabled" };
-        FilterDisabled = new FilterItem { Title = "禁用", Key = "disabled" };
+        FilterEnabled = new FilterItem { Title = "已启用", Key = "enabled" };
+        FilterDisabled = new FilterItem { Title = "已禁用", Key = "disabled" };
         Filters = new[] { FilterAll, FilterEnabled, FilterDisabled };
 
         _searchTimer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(160) };
@@ -667,12 +668,8 @@ public sealed class ModsViewModel : ObservableObject
             return;
         }
 
-        var dialog = new OpenFileDialog
-        {
-            Title = "选择要安装的 Mod",
-            Filter = "Minecraft Mod (*.jar)|*.jar",
-            Multiselect = true
-        };
+        var dialog = new OpenFileDialog { Multiselect = true };
+        LocalizedDialog.Configure(dialog, "选择要安装的 Mod", "Minecraft Mod (*.jar)|*.jar");
 
         if (dialog.ShowDialog() != true)
         {

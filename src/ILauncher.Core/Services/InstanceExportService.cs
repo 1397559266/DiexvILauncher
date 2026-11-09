@@ -6,6 +6,9 @@ namespace ILauncher.Core.Services;
 
 public static class InstanceExportService
 {
+    /// <summary>Keeps generated launcher files in the same language as the UI.</summary>
+    public static bool UseEnglish { get; set; }
+
     private static readonly string[] ExcludedDirectories =
     {
         "logs", "crash-reports", "screenshots", "natives", ".ilauncher", "cache"
@@ -34,7 +37,9 @@ public static class InstanceExportService
 
         builder.AppendLine();
         builder.AppendLine("echo.");
-        builder.AppendLine("echo 游戏已退出，按任意键关闭窗口。");
+        builder.AppendLine(UseEnglish
+            ? "echo Game exited. Press any key to close this window."
+            : "echo 游戏已退出，按任意键关闭窗口。");
         builder.AppendLine("pause > nul");
         File.WriteAllText(destination, builder.ToString(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
         return destination;

@@ -1,9 +1,13 @@
 using System.ComponentModel;
 using System.Globalization;
+using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Media;
@@ -20,6 +24,10 @@ public static class LanguageService
 
     private static readonly Dictionary<string, string> EnglishText = LoadEnglish();
     private static readonly Dictionary<string, string> ChineseText = BuildReverse(EnglishText);
+    private static readonly List<FormatRule> EnglishFormats = BuildFormats(EnglishText, reverse: false);
+    private static readonly List<FormatRule> ChineseFormats = BuildFormats(EnglishText, reverse: true);
+    private static readonly ConditionalWeakTable<TextBlock, string> DynamicTextAttached = new();
+    private static readonly ConditionalWeakTable<ItemsControl, string> HookedItemsControls = new();
     private static bool _initialized;
 
     public static string CurrentLanguage { get; private set; } = Chinese;
@@ -67,6 +75,7 @@ public static class LanguageService
         ModrinthProject.PreferChineseNames = CurrentLanguage != English;
         GameInstance.UseEnglish = CurrentLanguage == English;
         RemoteVersion.UseEnglish = CurrentLanguage == English;
+        InstanceExportService.UseEnglish = CurrentLanguage == English;
         Apply();
     }
 
@@ -96,31 +105,157 @@ public static class LanguageService
             return text ?? "";
         }
 
+        return TranslateCore(text, 0);
+    }
+
+    private static string TranslateCore(string text, int depth)
+    {
+        if (depth > 4)
+        {
+            return text;
+        }
+
         var dictionary = CurrentLanguage == English ? EnglishText : ChineseText;
         if (dictionary.TryGetValue(text, out var translated))
         {
             return translated;
         }
 
-        if (CurrentLanguage == English)
+        if (CurrentLanguage != English)
         {
-            return TranslatePattern(TranslatePrefixes(text));
+            return TryTranslateFormat(text, ChineseFormats, depth, out var chinese)
+                ? chinese
+                : TranslatePatternToChinese(text);
         }
 
-        return TranslatePatternToChinese(text);
-    }
+        // Everything below only makes sense for Chinese source text. English
+        // text (game output, mod names, player names, paths) must pass through
+        // untouched.
+        if (!ContainsChinese(text))
+        {
+            return text;
+        }
 
-    private static string TranslatePrefixes(string text)
-    {
+        if (TryTranslateFormat(text, EnglishFormats, depth, out var formatted))
+        {
+            return formatted;
+        }
+
         foreach (var (chinese, english) in ErrorPrefixes)
         {
-            if (text.StartsWith(chinese, StringComparison.Ordinal))
+            if (!text.StartsWith(chinese, StringComparison.Ordinal))
             {
-                return english + text[chinese.Length..];
+                continue;
+            }
+
+            var rest = text[chinese.Length..];
+            return english + (rest.Length == 0 ? "" : TranslateCore(rest, depth + 1));
+        }
+
+        return TranslatePattern(text);
+    }
+
+    private static bool ContainsChinese(string text)
+    {
+        foreach (var c in text)
+        {
+            if (c is >= '\u3400' and <= '\u9fff')
+            {
+                return true;
             }
         }
 
-        return text;
+        return false;
+    }
+
+    private readonly record struct FormatRule(Regex Pattern, string Template, int PlaceholderCount);
+
+    /// <summary>
+    /// Language entries may contain positional placeholders such as
+    /// <c>{0}</c>. They describe strings that are assembled in C# at runtime.
+    /// This turns each entry into an anchored matcher so interpolated messages
+    /// can be translated without hand-writing a regex for every one of them.
+    /// Pass <paramref name="reverse"/> to build the opposite direction.
+    /// </summary>
+    private static List<FormatRule> BuildFormats(Dictionary<string, string> source, bool reverse)
+    {
+        var rules = new List<(int LiteralLength, FormatRule Rule)>();
+        foreach (var (key, value) in source)
+        {
+            var patternSource = reverse ? value : key;
+            var template = reverse ? key : value;
+            var placeholders = Regex.Matches(patternSource, @"\{(\d+)\}", RegexOptions.CultureInvariant);
+            if (placeholders.Count == 0)
+            {
+                continue;
+            }
+
+            var pattern = new StringBuilder("^");
+            var last = 0;
+            var count = 0;
+            var skipped = false;
+            foreach (Match placeholder in placeholders)
+            {
+                pattern.Append(Regex.Escape(patternSource[last..placeholder.Index]));
+                pattern.Append("(.+?)");
+                last = placeholder.Index + placeholder.Length;
+                count++;
+                if (!template.Contains("{" + (count - 1) + "}", StringComparison.Ordinal))
+                {
+                    skipped = true;
+                    break;
+                }
+            }
+
+            if (skipped)
+            {
+                continue;
+            }
+
+            pattern.Append(Regex.Escape(patternSource[last..]));
+            pattern.Append('$');
+
+            var literalLength = patternSource.Length - count * 3;
+            rules.Add((literalLength, new FormatRule(
+                new Regex(pattern.ToString(),
+                    RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.Compiled),
+                template,
+                count)));
+        }
+
+        return rules
+            .OrderByDescending(item => item.LiteralLength)
+            .Select(item => item.Rule)
+            .ToList();
+    }
+
+    private static bool TryTranslateFormat(string text, IReadOnlyList<FormatRule> rules, int depth, out string result)
+    {
+        foreach (var rule in rules)
+        {
+            var match = rule.Pattern.Match(text);
+            if (!match.Success)
+            {
+                continue;
+            }
+
+            result = rule.Template;
+            for (var i = 1; i <= rule.PlaceholderCount; i++)
+            {
+                var capture = match.Groups[i].Value;
+                if (ContainsChinese(capture))
+                {
+                    capture = TranslateCore(capture, depth + 1);
+                }
+
+                result = result.Replace("{" + (i - 1) + "}", capture, StringComparison.Ordinal);
+            }
+
+            return true;
+        }
+
+        result = text;
+        return false;
     }
 
     private static readonly (string Chinese, string English)[] ErrorPrefixes =
@@ -360,11 +495,43 @@ public static class LanguageService
     private static void TranslateTree(DependencyObject root)
     {
         TranslateElement(root);
+
+        if (root is ItemsControl itemsControl)
+        {
+            HookItemsControl(itemsControl);
+        }
+
         var count = VisualTreeHelper.GetChildrenCount(root);
         for (var i = 0; i < count; i++)
         {
             TranslateTree(VisualTreeHelper.GetChild(root, i));
         }
+    }
+
+    /// <summary>
+    /// WPF only raises Loaded for elements that have an instance handler, so
+    /// class handlers alone never see rows created by a DataTemplate. List
+    /// containers are raised through the item container generator instead,
+    /// which also covers virtualized scrolling and async result pages.
+    /// </summary>
+    private static void HookItemsControl(ItemsControl itemsControl)
+    {
+        if (!HookedItemsControls.TryAdd(itemsControl, string.Empty))
+        {
+            return;
+        }
+
+        itemsControl.ItemContainerGenerator.StatusChanged += (_, _) =>
+        {
+            if (itemsControl.ItemContainerGenerator.Status != GeneratorStatus.ContainersGenerated)
+            {
+                return;
+            }
+
+            itemsControl.Dispatcher.BeginInvoke(
+                new Action(() => TranslateTree(itemsControl)),
+                DispatcherPriority.Loaded);
+        };
     }
 
     private static void TranslateElement(DependencyObject element)
@@ -375,19 +542,13 @@ public static class LanguageService
                 window.Title = Translate(window.Title);
                 break;
             case TextBlock textBlock:
+                AttachDynamicText(textBlock);
                 if (!IsBound(textBlock, TextBlock.TextProperty))
                 {
                     textBlock.Text = Translate(textBlock.Text);
                 }
 
-                foreach (var inline in textBlock.Inlines.OfType<Run>().ToList())
-                {
-                    if (!IsBound(inline, Run.TextProperty))
-                    {
-                        inline.Text = Translate(inline.Text);
-                    }
-                }
-
+                TranslateInlines(textBlock.Inlines);
                 break;
             case ContentControl contentControl when !IsBound(contentControl, ContentControl.ContentProperty):
                 if (contentControl.Content is string content)
@@ -410,10 +571,41 @@ public static class LanguageService
 
         if (element is DependencyObject dependencyObject)
         {
+            if (!IsBound(dependencyObject, AutomationProperties.NameProperty))
+            {
+                var automationName = AutomationProperties.GetName(dependencyObject);
+                if (!string.IsNullOrWhiteSpace(automationName))
+                {
+                    var localizedName = Translate(automationName);
+                    if (!string.Equals(automationName, localizedName, StringComparison.Ordinal))
+                    {
+                        AutomationProperties.SetName(dependencyObject, localizedName);
+                    }
+                }
+            }
+
             var toolTip = ToolTipService.GetToolTip(dependencyObject);
             if (toolTip is string toolTipText)
             {
                 ToolTipService.SetToolTip(dependencyObject, Translate(toolTipText));
+            }
+        }
+    }
+
+    private static void TranslateInlines(InlineCollection inlines)
+    {
+        // Setting Run.Text mutates the collection's change notifications, so
+        // iterate over a snapshot.
+        foreach (var inline in inlines.ToList())
+        {
+            switch (inline)
+            {
+                case Run run when !IsBound(run, Run.TextProperty):
+                    run.Text = Translate(run.Text);
+                    break;
+                case Span span:
+                    TranslateInlines(span.Inlines);
+                    break;
             }
         }
     }
@@ -425,16 +617,25 @@ public static class LanguageService
     {
         // C# view models produce dynamic strings (status, counts, errors). Keep
         // their binding alive and translate the effective value as it changes.
-        var descriptor = DependencyPropertyDescriptor.FromProperty(TextBlock.TextProperty, typeof(TextBlock));
-        descriptor?.AddValueChanged(textBlock, (_, _) =>
+        if (DynamicTextAttached.TryAdd(textBlock, string.Empty))
         {
-            var current = textBlock.Text;
-            var translated = Translate(current);
-            if (!string.Equals(current, translated, StringComparison.Ordinal))
-            {
-                textBlock.SetCurrentValue(TextBlock.TextProperty, translated);
-            }
-        });
+            var descriptor = DependencyPropertyDescriptor.FromProperty(TextBlock.TextProperty, typeof(TextBlock));
+            descriptor?.AddValueChanged(textBlock, (_, _) => TranslateTextBlock(textBlock));
+        }
+
+        // Bound text may already have resolved before Loaded. Translate it once
+        // here without breaking the binding.
+        TranslateTextBlock(textBlock);
+    }
+
+    private static void TranslateTextBlock(TextBlock textBlock)
+    {
+        var current = textBlock.Text;
+        var translated = Translate(current);
+        if (!string.Equals(current, translated, StringComparison.Ordinal))
+        {
+            textBlock.SetCurrentValue(TextBlock.TextProperty, translated);
+        }
     }
 
     private static Dictionary<string, string> LoadEnglish()

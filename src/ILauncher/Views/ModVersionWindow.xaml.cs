@@ -544,32 +544,32 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
     {
         if (IsLoading)
         {
-            MessageBox.Show("文件版本还在加载中，请稍候。", "安装模组", MessageBoxButton.OK, MessageBoxImage.Information);
+            LocalizedDialog.Show("文件版本还在加载中，请稍候。", "安装模组", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
         if (IsJarLoading)
         {
-            MessageBox.Show("前置模组还在检测中，请稍候。", "安装模组", MessageBoxButton.OK, MessageBoxImage.Information);
+            LocalizedDialog.Show("前置模组还在检测中，请稍候。", "安装模组", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
         if (HasJarError)
         {
-            MessageBox.Show("前置模组读取失败，请点击「重新检测前置」后重试。",
+            LocalizedDialog.Show("前置模组读取失败，请点击「重新检测前置」后重试。",
                 "安装模组", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
         if (SelectedVersion == null)
         {
-            MessageBox.Show("请选择一个文件版本。", "安装模组", MessageBoxButton.OK, MessageBoxImage.Information);
+            LocalizedDialog.Show("请选择一个文件版本。", "安装模组", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
         if (MissingRequiredCount > 0)
         {
-            MessageBox.Show($"还缺少 {MissingRequiredCount} 个必需前置，请先点击「一键安装缺失前置」。",
+            LocalizedDialog.Show($"还缺少 {MissingRequiredCount} 个必需前置，请先点击「一键安装缺失前置」。",
                 "缺少前置", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }

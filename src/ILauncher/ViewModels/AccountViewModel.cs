@@ -376,12 +376,8 @@ public sealed class AccountViewModel : ObservableObject
 
     private void ImportSkin()
     {
-        var dialog = new OpenFileDialog
-        {
-            Title = "选择 64×64 皮肤文件",
-            Filter = "Minecraft 皮肤 (*.png)|*.png",
-            Multiselect = false
-        };
+        var dialog = new OpenFileDialog { Multiselect = false };
+        LocalizedDialog.Configure(dialog, "选择 64×64 皮肤文件", "Minecraft 皮肤 (*.png)|*.png");
 
         if (dialog.ShowDialog() != true)
         {

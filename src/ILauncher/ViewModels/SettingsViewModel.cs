@@ -326,13 +326,9 @@ public sealed class SettingsViewModel : ObservableObject
 
     private async Task BrowseJavaAsync()
     {
-        var dialog = new OpenFileDialog
-        {
-            Title = "选择 java.exe",
-            Filter = "Java executable (java.exe)|java.exe|可执行文件 (*.exe)|*.exe|所有文件 (*.*)|*.*",
-            CheckFileExists = true,
-            Multiselect = false
-        };
+        var dialog = new OpenFileDialog { CheckFileExists = true, Multiselect = false };
+        LocalizedDialog.Configure(dialog, "选择 java.exe",
+            "Java executable (java.exe)|java.exe|可执行文件 (*.exe)|*.exe|所有文件 (*.*)|*.*");
 
         if (dialog.ShowDialog() != true)
         {
@@ -370,9 +366,9 @@ public sealed class SettingsViewModel : ObservableObject
     {
         var dialog = new OpenFolderDialog
         {
-            Title = "选择 .minecraft 目录",
             InitialDirectory = Directory.Exists(RootPath) ? RootPath : Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
         };
+        LocalizedDialog.Configure(dialog, "选择 .minecraft 目录");
 
         if (dialog.ShowDialog() == true)
         {

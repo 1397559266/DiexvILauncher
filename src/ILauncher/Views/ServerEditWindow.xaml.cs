@@ -1,5 +1,6 @@
 using System.Windows;
 using ILauncher.Core.Services;
+using ILauncher.Localization;
 
 namespace ILauncher.Views;
 
@@ -34,7 +35,7 @@ public partial class ServerEditWindow : Window
         var address = AddressBox.Text.Trim();
         if (string.IsNullOrWhiteSpace(address))
         {
-            MessageBox.Show("请输入服务器地址。", "服务器", MessageBoxButton.OK, MessageBoxImage.Information);
+            LocalizedDialog.Show("请输入服务器地址。", "服务器", MessageBoxButton.OK, MessageBoxImage.Information);
             AddressBox.Focus();
             return;
         }

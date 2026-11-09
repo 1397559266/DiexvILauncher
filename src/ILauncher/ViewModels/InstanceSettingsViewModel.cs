@@ -206,13 +206,9 @@ public sealed class InstanceSettingsViewModel : ObservableObject
 
     private async Task BrowseJavaAsync()
     {
-        var dialog = new OpenFileDialog
-        {
-            Title = "选择 java.exe",
-            Filter = "Java executable (java.exe)|java.exe|可执行文件 (*.exe)|*.exe|所有文件 (*.*)|*.*",
-            CheckFileExists = true,
-            Multiselect = false
-        };
+        var dialog = new OpenFileDialog { CheckFileExists = true, Multiselect = false };
+        LocalizedDialog.Configure(dialog, "选择 java.exe",
+            "Java executable (java.exe)|java.exe|可执行文件 (*.exe)|*.exe|所有文件 (*.*)|*.*");
 
         if (dialog.ShowDialog() != true)
         {

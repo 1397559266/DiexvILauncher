@@ -232,8 +232,8 @@
                                         <TextBlock Grid.Column="1" Text="{Binding Level}" FontFamily="{StaticResource FontMono}"
                                                    FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center"
                                                    Foreground="{Binding Kind, Converter={StaticResource LogLevelBrush}}" />
-                                        <TextBlock Grid.Column="2" Text="{Binding Message}" FontFamily="{StaticResource FontMono}"
-                                                   FontSize="11" VerticalAlignment="Center" ToolTip="{Binding Message}">
+                                        <TextBlock Grid.Column="2" Text="{Binding DisplayMessage}" FontFamily="{StaticResource FontMono}"
+                                                   FontSize="11" VerticalAlignment="Center" ToolTip="{Binding DisplayMessage}">
                                             <TextBlock.Style>
                                                 <Style TargetType="TextBlock">
                                                     <Setter Property="Foreground" Value="#FF334155" />

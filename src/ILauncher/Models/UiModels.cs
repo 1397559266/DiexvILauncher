@@ -141,7 +141,7 @@ public sealed class FilterItem : ObservableObject
         }
     }
 
-    public string DisplayTitle => $"{Title} {Count}";
+    public string DisplayTitle => $"{LanguageService.Translate(Title)} {Count}";
 }
 
 public sealed class ToastModel

@@ -4,6 +4,7 @@ using System.Windows;
 using ILauncher.Core;
 using ILauncher.Core.Models;
 using ILauncher.Core.Services;
+using ILauncher.Localization;
 using ILauncher.Views;
 
 namespace ILauncher.ViewModels;
@@ -131,7 +132,7 @@ public sealed class ServersViewModel : ObservableObject
 
     private void DeleteServer(ServerEntry server)
     {
-        if (MessageBox.Show($"确定要删除服务器「{server.Name}」吗？", "删除服务器",
+        if (LocalizedDialog.Show($"确定要删除服务器「{server.Name}」吗？", "删除服务器",
                 MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK)
         {
             return;

@@ -4,6 +4,7 @@ using System.Windows.Media;
 using ILauncher.Core;
 using ILauncher.Core.Models;
 using ILauncher.Core.Services;
+using ILauncher.Localization;
 using ILauncher.Services;
 using Microsoft.Win32;
 
@@ -99,7 +100,7 @@ public sealed class OverviewViewModel : ObservableObject
     public string JavaText
     {
         get => _javaText;
-        private set => SetProperty(ref _javaText, value);
+        private set => SetProperty(ref _javaText, LanguageService.Translate(value));
     }
 
     public string MemoryText
@@ -174,10 +175,9 @@ public sealed class OverviewViewModel : ObservableObject
     {
         var dialog = new SaveFileDialog
         {
-            Title = "导出启动脚本",
-            Filter = "批处理脚本 (*.bat)|*.bat",
-            FileName = $"{Instance.Id}-启动.bat".Replace(' ', '_')
+            FileName = LanguageService.Translate($"{Instance.Id}-启动.bat").Replace(' ', '_')
         };
+        LocalizedDialog.Configure(dialog, "导出启动脚本", "批处理脚本 (*.bat)|*.bat");
 
         if (dialog.ShowDialog() != true)
         {
@@ -218,10 +218,9 @@ public sealed class OverviewViewModel : ObservableObject
     {
         var dialog = new SaveFileDialog
         {
-            Title = "导出实例",
-            Filter = "ZIP 压缩包 (*.zip)|*.zip",
             FileName = $"{Instance.Id}-export.zip".Replace(' ', '_')
         };
+        LocalizedDialog.Configure(dialog, "导出实例", "ZIP 压缩包 (*.zip)|*.zip");
 
         if (dialog.ShowDialog() != true)
         {
@@ -246,11 +245,8 @@ public sealed class OverviewViewModel : ObservableObject
 
     private void ChangeIcon()
     {
-        var dialog = new OpenFileDialog
-        {
-            Title = "选择版本图标",
-            Filter = "PNG 图片 (*.png)|*.png"
-        };
+        var dialog = new OpenFileDialog();
+        LocalizedDialog.Configure(dialog, "选择版本图标", "PNG 图片 (*.png)|*.png");
 
         if (dialog.ShowDialog() != true)
         {

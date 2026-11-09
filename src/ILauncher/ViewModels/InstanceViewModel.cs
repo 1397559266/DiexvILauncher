@@ -1,9 +1,12 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 using ILauncher.Core;
 using ILauncher.Core.Models;
 using ILauncher.Core.Services;
+using ILauncher.Localization;
 using ILauncher.Models;
 
 namespace ILauncher.ViewModels;
@@ -118,7 +121,19 @@ public sealed class InstanceViewModel : ObservableObject
     public object? CurrentModule
     {
         get => _currentModule;
-        private set => SetProperty(ref _currentModule, value);
+        private set
+        {
+            if (SetProperty(ref _currentModule, value))
+            {
+                // The module view is created by a DataTemplate after this
+                // property changes, so give it a translation pass once it is
+                // in the visual tree.
+                Application.Current?.Dispatcher.BeginInvoke(new Action(LanguageService.Apply),
+                    DispatcherPriority.Loaded);
+                Application.Current?.Dispatcher.BeginInvoke(new Action(LanguageService.Apply),
+                    DispatcherPriority.ApplicationIdle);
+            }
+        }
     }
 
     public bool IsTestActive

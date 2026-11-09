@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media.Imaging;
 using ILauncher.Core.Services;
+using ILauncher.Localization;
 using ILauncher.Models;
 using ILauncher.Services;
 
@@ -448,10 +449,10 @@ public sealed class RelativeTimeConverter : IValueConverter
         var span = DateTime.Now - time;
         return span.TotalMinutes switch
         {
-            < 1 => "刚刚",
-            < 60 => $"{(int)span.TotalMinutes} 分钟前",
-            < 60 * 24 => $"{(int)span.TotalHours} 小时前",
-            < 60 * 24 * 30 => $"{(int)span.TotalDays} 天前",
+            < 1 => LanguageService.Translate("刚刚"),
+            < 60 => LanguageService.Translate($"{(int)span.TotalMinutes} 分钟前"),
+            < 60 * 24 => LanguageService.Translate($"{(int)span.TotalHours} 小时前"),
+            < 60 * 24 * 30 => LanguageService.Translate($"{(int)span.TotalDays} 天前"),
             _ => time.ToString("yyyy-MM-dd")
         };
     }
