@@ -427,7 +427,7 @@ public sealed class ModrinthService
                 Completed = completed,
                 Total = total
             });
-        }, cancellationToken);
+        }, cancellationToken, version.File.Sha1);
         progress?.Invoke(new DownloadProgress { Phase = "完成", Message = $"已安装 {project.Title}", Percent = 100 });
         return target;
     }

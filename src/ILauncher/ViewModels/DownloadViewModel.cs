@@ -2069,7 +2069,7 @@ public sealed class DownloadViewModel : ObservableObject
         var archivePath = Path.Combine(directory, $"{safeName}-{selected.VersionNumber}.mrpack");
         await RunDownloadAsync($"安装整合包 {project.DisplayTitle} {selected.VersionNumber}", async (report, token) =>
         {
-            await DownloadHelper.DownloadFileAsync(selected.File.Url, archivePath, null, token);
+            await DownloadHelper.DownloadFileAsync(selected.File.Url, archivePath, null, token, selected.File.Sha1);
             var id = await _modpacks.InstallAsync(archivePath, root, report, token);
             await _reloadInstances();
             _toast($"整合包已安装为 {id}。", false);

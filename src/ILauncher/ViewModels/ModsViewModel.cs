@@ -523,7 +523,7 @@ public sealed class ModsViewModel : ObservableObject
             try
             {
                 // Download first; only disable the old file once the new one is complete.
-                await DownloadHelper.DownloadFileAsync(file.Url, tempTarget, null, CancellationToken.None);
+                await DownloadHelper.DownloadFileAsync(file.Url, tempTarget, null, CancellationToken.None, file.Sha1);
 
                 if (File.Exists(oldPath) && oldPath.EndsWith(".jar", StringComparison.OrdinalIgnoreCase))
                 {

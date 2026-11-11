@@ -59,7 +59,7 @@ public sealed class QuiltService
         await File.WriteAllTextAsync(targetJson, json, cancellationToken);
 
         var metadata = VersionMetadata.Parse(targetJson);
-        var files = new List<(string Url, string Path)>();
+        var files = new List<(string Url, string Path, string? Sha1)>();
         foreach (var library in metadata.Libraries)
         {
             if (!Allowed(library.Rules) || library.Artifact?.Url is not { Length: > 0 } libraryUrl)
@@ -70,7 +70,8 @@ public sealed class QuiltService
             var path = library.RelativeArtifactPath;
             if (path != null)
             {
-                files.Add((libraryUrl, Path.Combine(rootDirectory, "libraries", path.Replace('/', Path.DirectorySeparatorChar))));
+                files.Add((libraryUrl, Path.Combine(rootDirectory, "libraries", path.Replace('/', Path.DirectorySeparatorChar)),
+                    library.Artifact.Sha1));
             }
         }
 
@@ -79,7 +80,7 @@ public sealed class QuiltService
         {
             try
             {
-                await DownloadHelper.DownloadFileAsync(file.Url, file.Path, null, cancellationToken);
+                await DownloadHelper.DownloadFileAsync(file.Url, file.Path, null, cancellationToken, file.Sha1);
             }
             catch
             {

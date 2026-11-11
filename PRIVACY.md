@@ -1,6 +1,6 @@
 # DiexvMinecraftLauncher Privacy Policy
 
-Last updated: 2026-11-09
+Last updated: 2026-11-11
 
 DiexvMinecraftLauncher is a free, non-commercial, source-available Minecraft:
 Java Edition launcher for Windows. The repository is publicly viewable under an
@@ -11,7 +11,7 @@ handles when you use Microsoft account login.
 
 - **Microsoft account login.** When you choose to sign in with Microsoft, the
   launcher uses the OAuth 2.0 device-code flow with the scopes
-  `XboxLive.signin` and `XboxLive.offline_access`. Microsoft and Xbox Live
+  `XboxLive.signin` and `offline_access`. Microsoft and Xbox Live
   return an access token, a refresh token, your Minecraft profile name, UUID,
   and skin URL.
 - **Local game data.** The launcher reads and writes files in the Minecraft
@@ -24,9 +24,16 @@ handles when you use Microsoft account login.
 ## Where data is stored
 
 All account tokens and settings are stored **only on your own computer**.
-Refresh tokens are protected with Windows DPAPI for the current Windows user.
-The launcher has no backend server and does not upload tokens, profile data,
-game files, or settings to the developer.
+Access and refresh tokens are protected with Windows DPAPI for the current
+Windows user. The launcher has no backend server and does not upload tokens,
+profile data, game files, or settings to the developer.
+
+Two local exceptions are worth knowing about:
+
+- The optional **Export launch script** feature writes the current Minecraft
+  access token into the generated `.bat` file. Treat that file as a secret.
+- Launch logs record the Java command line, but token arguments
+  (`--accessToken`, `--authSession`) are redacted before being written.
 
 ## What we do not do
 

@@ -66,7 +66,7 @@ public sealed class FabricService
         await File.WriteAllTextAsync(targetJson, json, cancellationToken);
 
         var metadata = VersionMetadata.Parse(targetJson);
-        var files = new List<(string Url, string Path, string Name)>();
+        var files = new List<(string Url, string Path, string Name, string? Sha1)>();
         foreach (var library in metadata.Libraries)
         {
             if (!Allowed(library.Rules) || library.Artifact?.Url is not { Length: > 0 } libraryUrl)
@@ -81,7 +81,7 @@ public sealed class FabricService
             }
 
             files.Add((libraryUrl, Path.Combine(rootDirectory, "libraries", path.Replace('/', Path.DirectorySeparatorChar)),
-                library.Name));
+                library.Name, library.Artifact.Sha1));
         }
 
         var completed = 0;
@@ -89,7 +89,7 @@ public sealed class FabricService
         {
             try
             {
-                await DownloadHelper.DownloadFileAsync(file.Url, file.Path, null, cancellationToken);
+                await DownloadHelper.DownloadFileAsync(file.Url, file.Path, null, cancellationToken, file.Sha1);
             }
             catch
             {

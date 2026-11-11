@@ -15,7 +15,7 @@
 | 模块 | 功能 |
 | --- | --- |
 | 皮肤 | 从本机客户端 jar 提取的 9 个 Mojang 默认皮肤、导入 64×64 皮肤、多图层（帽子/外套/袖子/裤子）渲染、Steve/Alex 模型切换、像素化 3D 旋转/缩放预览、披风显示、皮肤库、头像同步到标题栏和主页 |
-| 正版登录 | 微软设备码登录（Xbox Live → XSTS → Minecraft Services），公开构建内置已提交审核的 Client ID；也可尝试导入官方启动器本地令牌；登录后可正版启动 |
+| 正版登录 | 微软设备码登录（Xbox Live → XSTS → Minecraft Services），公开构建内置已提交审核的 Client ID；登录后可正版启动 |
 | 正版皮肤 | 按玩家名或 UUID 查询 Mojang 档案，下载皮肤/披风并加入本地皮肤库 |
 | 图标 | 版本本地 PNG 图标、整合包内图标；Fabric/Quilt/Forge/NeoForge/OptiFine 加载器徽标；模组 jar 内图标、资源包 `pack.png`、存档 `icon.png`、服务器图标 |
 | 下载 | Mojang 官方版本列表（版本类型下拉筛选 + 版本号搜索）、原版安装、Fabric/Quilt、Forge/NeoForge 官方安装器、`.mrpack` 导入 |
@@ -280,18 +280,18 @@ docs/screenshots/            README 截图
 - 导出：生成真实 Java/ClassPath/游戏参数的 `.bat`；实例 ZIP 排除日志/截图。
 - 崩溃分析：OutOfMemory、Java 版本过低、Mixin 失败等规则命中。
 - Java：Adoptium API 解析（Java 21 包信息）；下载流程实现并显示字节进度，测试环境下载较慢。
-- 微软登录：设备码请求、错误提示和登录入口已验证；完整正版登录需要用户配置自己的 Azure 应用 ID。
+- 微软登录：设备码请求、浏览器跳转、错误提示已验证；完整登录仍受 Minecraft Services 白名单限制（见上方 403 说明）。
 - Release 发布版启动验证。
 
 ## 已知限制（与 PCL2 相比仍缺少的部分）
 
-- **微软登录需要自备 Azure 应用 ID**：没有内置公共 OAuth 应用，首次使用需按窗口内说明注册；访问令牌使用 Windows DPAPI 加密保存在本地，过期后需要重新登录。
+- **微软登录依赖内置 Client ID 通过 Minecraft Services 审核**：审核通过前 `login_with_xbox` 会返回 403；访问令牌与刷新令牌使用 Windows DPAPI 加密保存在本地，过期后自动续期。
 - **没有实现 OptiFine / LiteLoader 自动安装**：仍需使用它们的官方安装器。
 - **CurseForge 未接入**：内容下载使用 Modrinth；整合包只支持 Modrinth `.mrpack`。
 - 没有资源包加载顺序编辑、世界/数据包在线下载。
 - 模组安装不会自动解析并安装前置依赖；只安装主文件。
 - Forge/NeoForge 走官方安装器，不保证所有版本都能在无界面模式下成功。
-- 启动器自身更新、主题/语言切换等非 Minecraft 功能未实现。
+- 启动器自身更新与主题切换尚未实现（界面语言已支持中文/英文切换）。
 
 
 

@@ -30,12 +30,18 @@ public static class DownloadHelper
     }
 
     public static async Task DownloadFileAsync(string url, string destination,
-        Action<long, long>? progress, CancellationToken cancellationToken)
+        Action<long, long>? progress, CancellationToken cancellationToken,
+        string? expectedSha1 = null, string? expectedSha256 = null)
     {
         if (File.Exists(destination) && new FileInfo(destination).Length > 0)
         {
-            progress?.Invoke(1, 1);
-            return;
+            if (await MatchesAsync(destination, expectedSha1, expectedSha256, cancellationToken))
+            {
+                progress?.Invoke(1, 1);
+                return;
+            }
+
+            TryDelete(destination);
         }
 
         Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
@@ -63,23 +69,64 @@ public static class DownloadHelper
                 }
             }
 
+            if (!await MatchesAsync(temp, expectedSha1, expectedSha256, cancellationToken))
+            {
+                throw new InvalidOperationException(
+                    $"下载文件校验失败：{Path.GetFileName(destination)}（镜像或网络返回的内容与官方哈希不一致）。");
+            }
+
             File.Move(temp, destination, overwrite: true);
         }
         catch
         {
-            try
+            TryDelete(temp);
+            throw;
+        }
+    }
+
+    /// <summary>True when the file matches the expected digest, or when no digest was supplied.</summary>
+    private static async Task<bool> MatchesAsync(string path, string? sha1, string? sha256,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(sha1) && string.IsNullOrWhiteSpace(sha256))
+        {
+            return true;
+        }
+
+        try
+        {
+            await using var stream = File.OpenRead(path);
+            if (!string.IsNullOrWhiteSpace(sha1))
             {
-                if (File.Exists(temp))
-                {
-                    File.Delete(temp);
-                }
-            }
-            catch
-            {
-                // ignored
+                var actual = await System.Security.Cryptography.SHA1.HashDataAsync(stream, cancellationToken);
+                return string.Equals(Convert.ToHexString(actual), sha1.Trim(), StringComparison.OrdinalIgnoreCase);
             }
 
+            var actual256 = await System.Security.Cryptography.SHA256.HashDataAsync(stream, cancellationToken);
+            return string.Equals(Convert.ToHexString(actual256), sha256!.Trim(), StringComparison.OrdinalIgnoreCase);
+        }
+        catch (OperationCanceledException)
+        {
             throw;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static void TryDelete(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+        catch
+        {
+            // ignored
         }
     }
 

@@ -827,21 +827,31 @@ public sealed partial class LaunchService
     {
         var builder = new StringBuilder();
         builder.Append('"').Append(javaPath).Append('"');
+        var maskNext = false;
         foreach (var argument in arguments)
         {
             builder.Append(' ');
-            if (argument.Contains(' ') || argument.Contains('"'))
+            var value = maskNext ? "***" : argument;
+            maskNext = IsSecretArgument(argument);
+            if (value.Contains(' ') || value.Contains('"'))
             {
-                builder.Append('"').Append(argument.Replace("\"", "\\\"")).Append('"');
+                builder.Append('"').Append(value.Replace("\"", "\\\"")).Append('"');
             }
             else
             {
-                builder.Append(argument);
+                builder.Append(value);
             }
         }
 
         return builder.ToString();
     }
+
+    /// <summary>Arguments whose following value must never reach the on-disk log.</summary>
+    private static bool IsSecretArgument(string name) =>
+        name.Equals("--accessToken", StringComparison.OrdinalIgnoreCase)
+        || name.Equals("--authSession", StringComparison.OrdinalIgnoreCase)
+        || name.Equals("--session", StringComparison.OrdinalIgnoreCase)
+        || name.Equals("--clientSecret", StringComparison.OrdinalIgnoreCase);
 
     private static string OfflineUuid(string playerName)
     {

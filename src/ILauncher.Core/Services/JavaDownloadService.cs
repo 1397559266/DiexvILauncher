@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace ILauncher.Core.Services;
 
-public sealed record JavaPackage(int Major, string Version, string Url, string FileName, long Size);
+public sealed record JavaPackage(int Major, string Version, string Url, string FileName, long Size, string? Sha256);
 
 public sealed class JavaDownloadService
 {
@@ -34,7 +34,8 @@ public sealed class JavaDownloadService
         }
 
         return new JavaPackage(major, version, link.GetString() ?? "", name.GetString() ?? "",
-            package.TryGetProperty("size", out var size) && size.TryGetInt64(out var sizeValue) ? sizeValue : 0);
+            package.TryGetProperty("size", out var size) && size.TryGetInt64(out var sizeValue) ? sizeValue : 0,
+            package.TryGetProperty("checksum", out var checksum) ? checksum.GetString() : null);
     }
 
     public async Task<string> InstallAsync(int major, Action<DownloadProgress>? progress,
@@ -72,7 +73,7 @@ public sealed class JavaDownloadService
                 Completed = completed,
                 Total = total
             });
-        }, cancellationToken);
+        }, cancellationToken, expectedSha256: package.Sha256);
 
         progress?.Invoke(new DownloadProgress { Phase = $"Java {major}", Message = "解压中…", Percent = 85 });
         var temp = Path.Combine(root, "extract-" + Guid.NewGuid().ToString("N"));

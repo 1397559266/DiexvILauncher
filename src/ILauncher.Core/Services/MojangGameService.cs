@@ -80,10 +80,10 @@ public sealed class MojangGameService
         {
             progress?.Invoke(new DownloadProgress { Phase = "客户端", Message = "下载客户端 jar…", Percent = 2 });
             await DownloadFileWithFallbackAsync(DownloadSourceConfig.ClientJar(version.Id, clientUrl), clientUrl,
-                clientJarPath, cancellationToken);
+                clientJarPath, cancellationToken, metadata.Client.Sha1);
         }
 
-        var files = new List<(string Url, string Path, string Name)>();
+        var files = new List<(string Url, string Path, string Name, string? Sha1)>();
         foreach (var library in metadata.Libraries)
         {
             if (!Allowed(library.Rules))
@@ -98,7 +98,7 @@ public sealed class MojangGameService
             }
 
             files.Add((DownloadSourceConfig.Library(url), Path.Combine(rootDirectory, "libraries", path.Replace('/', Path.DirectorySeparatorChar)),
-                library.Name));
+                library.Name, library.Artifact.Sha1));
         }
 
         var assetsRoot = Path.Combine(rootDirectory, "assets");
@@ -128,7 +128,7 @@ public sealed class MojangGameService
                             }
 
                             var target = Path.Combine(assetsRoot, "objects", hash[..2], hash);
-                            files.Add((DownloadSourceConfig.AssetObject(hash), target, property.Name));
+                            files.Add((DownloadSourceConfig.AssetObject(hash), target, property.Name, hash));
                         }
                     }
                 }
@@ -141,7 +141,7 @@ public sealed class MojangGameService
 
         if (metadata.Logging is { FileId: { Length: > 0 } logId, FileUrl: { Length: > 0 } logUrl })
         {
-            files.Add((logUrl, Path.Combine(assetsRoot, "log_configs", logId), logId));
+            files.Add((logUrl, Path.Combine(assetsRoot, "log_configs", logId), logId, metadata.Logging.FileSha1));
         }
 
         await DownloadFilesAsync(files, progress, cancellationToken);
@@ -149,19 +149,19 @@ public sealed class MojangGameService
     }
 
     private static async Task DownloadFileWithFallbackAsync(string primaryUrl, string fallbackUrl,
-        string destination, CancellationToken cancellationToken)
+        string destination, CancellationToken cancellationToken, string? sha1 = null)
     {
         try
         {
-            await DownloadHelper.DownloadFileAsync(primaryUrl, destination, null, cancellationToken);
+            await DownloadHelper.DownloadFileAsync(primaryUrl, destination, null, cancellationToken, sha1);
         }
         catch when (!string.Equals(primaryUrl, fallbackUrl, StringComparison.OrdinalIgnoreCase))
         {
-            await DownloadHelper.DownloadFileAsync(fallbackUrl, destination, null, cancellationToken);
+            await DownloadHelper.DownloadFileAsync(fallbackUrl, destination, null, cancellationToken, sha1);
         }
     }
 
-    private static async Task DownloadFilesAsync(List<(string Url, string Path, string Name)> files,
+    private static async Task DownloadFilesAsync(List<(string Url, string Path, string Name, string? Sha1)> files,
         Action<DownloadProgress>? progress, CancellationToken cancellationToken)
     {
         var pending = files
@@ -176,7 +176,7 @@ public sealed class MojangGameService
             await throttle.WaitAsync(cancellationToken);
             try
             {
-                await DownloadHelper.DownloadFileAsync(file.Url, file.Path, null, cancellationToken);
+                await DownloadHelper.DownloadFileAsync(file.Url, file.Path, null, cancellationToken, file.Sha1);
             }
             catch (Exception)
             {

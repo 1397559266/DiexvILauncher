@@ -110,7 +110,7 @@ public sealed class ModpackService
 
             CopyPackIcon(temp, instanceDirectory);
 
-            var files = new List<(string Path, string Url)>();
+            var files = new List<(string Path, string Url, string? Sha1)>();
             if (root.TryGetProperty("files", out var fileArray))
             {
                 foreach (var file in fileArray.EnumerateArray())
@@ -124,9 +124,12 @@ public sealed class ModpackService
                     }
 
                     var url = downloads.EnumerateArray().Select(item => item.GetString()).FirstOrDefault(item => !string.IsNullOrWhiteSpace(item));
+                    var sha1 = file.TryGetProperty("hashes", out var hashes) && hashes.TryGetProperty("sha1", out var sha1Value)
+                        ? sha1Value.GetString()
+                        : null;
                     if (!string.IsNullOrWhiteSpace(url))
                     {
-                        files.Add((path!, url!));
+                        files.Add((path!, url!, sha1));
                     }
                 }
             }
@@ -136,15 +139,16 @@ public sealed class ModpackService
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var relative = file.Path.Replace('/', Path.DirectorySeparatorChar);
-                var target = Path.GetFullPath(Path.Combine(instanceDirectory, relative));
-                if (!target.StartsWith(Path.GetFullPath(instanceDirectory), StringComparison.OrdinalIgnoreCase))
+                var instanceRoot = Path.GetFullPath(instanceDirectory);
+                var target = Path.GetFullPath(Path.Combine(instanceRoot, relative));
+                if (!target.StartsWith(instanceRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
                 }
 
                 try
                 {
-                    await DownloadHelper.DownloadFileAsync(file.Url, target, null, cancellationToken);
+                    await DownloadHelper.DownloadFileAsync(file.Url, target, null, cancellationToken, file.Sha1);
                 }
                 catch
                 {
