@@ -178,8 +178,17 @@
                                 </StackPanel>
                             </Button>
                         </Grid>
-                        <TextBlock Text="{Binding ProfileStatus}" FontSize="9.5" Foreground="{StaticResource BrushTextSecondary}"
-                                   TextWrapping="Wrap" Margin="2,8,0,0" LineHeight="16" />
+                        <Grid Margin="2,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <controls:Spinner Width="12" Height="12" Margin="0,2,7,0" VerticalAlignment="Top"
+                                              Visibility="{Binding IsLookingUp, Converter={StaticResource BoolToVisibility}}" />
+                            <TextBlock Grid.Column="1" Text="{Binding ProfileStatus}" FontSize="9.5"
+                                       Foreground="{StaticResource BrushTextSecondary}"
+                                       TextWrapping="Wrap" LineHeight="16" />
+                        </Grid>
                     </StackPanel>
                 </Border>
 

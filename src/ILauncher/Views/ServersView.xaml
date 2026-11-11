@@ -61,6 +61,7 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Border Width="300" Height="104" Margin="4" Padding="12" CornerRadius="11"
+                                        controls:ListAnimator.IsEnabled="True"
                                         Background="#FFFBFDFF" BorderBrush="{StaticResource BrushBorder}" BorderThickness="1">
                                     <Grid>
                                         <Grid.ColumnDefinitions>

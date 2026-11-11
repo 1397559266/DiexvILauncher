@@ -28,6 +28,7 @@ public sealed class MainViewModel : ObservableObject
     private string _rootPath = "";
     private string _selectedJavaText = "检测中…";
     private bool _isBusy;
+    private string _busyMessage = "正在扫描游戏版本…";
     private bool _isHome = true;
     private bool _isSettingsPage;
     private bool _isAccountPage;
@@ -424,6 +425,12 @@ public sealed class MainViewModel : ObservableObject
         private set => SetProperty(ref _isBusy, value);
     }
 
+    public string BusyMessage
+    {
+        get => _busyMessage;
+        private set => SetProperty(ref _busyMessage, value);
+    }
+
     public bool IsGameRunning => LaunchLog.IsRunning;
 
     public bool ShowGameChip => LaunchLog.IsRunning;
@@ -466,6 +473,7 @@ public sealed class MainViewModel : ObservableObject
 
     public async Task InitializeAsync()
     {
+        BusyMessage = "正在扫描游戏版本…";
         IsBusy = true;
         try
         {
@@ -497,6 +505,7 @@ public sealed class MainViewModel : ObservableObject
 
     public async Task ReloadInstancesAsync(bool showToast = false)
     {
+        BusyMessage = "正在刷新版本列表…";
         IsBusy = true;
         try
         {

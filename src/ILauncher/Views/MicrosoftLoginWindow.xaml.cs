@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Navigation;
 using ILauncher.Core.Services;
 using ILauncher.Localization;
@@ -53,6 +54,8 @@ public partial class MicrosoftLoginWindow : Window
     {
         _cts?.Cancel();
         _cts = new CancellationTokenSource();
+        LoginSpinner.Visibility = Visibility.Visible;
+        StatusText.SetResourceReference(TextBlock.ForegroundProperty, "BrushAccent");
         try
         {
             var clientId = _settings.Settings.MicrosoftClientId.Trim();
@@ -77,11 +80,17 @@ public partial class MicrosoftLoginWindow : Window
         }
         catch (OperationCanceledException)
         {
+            LoginSpinner.Visibility = Visibility.Collapsed;
+            StatusText.SetResourceReference(TextBlock.ForegroundProperty, "BrushAccent");
             StatusText.Text = "登录已取消。";
         }
         catch (Exception ex)
         {
-            StatusText.Text = "登录失败：" + ex.Message;
+            LoginSpinner.Visibility = Visibility.Collapsed;
+            StatusText.SetResourceReference(TextBlock.ForegroundProperty, "BrushDanger");
+            StatusText.Text = ex.Message.Contains("失败", StringComparison.Ordinal)
+                ? ex.Message
+                : "登录失败：" + ex.Message;
         }
     }
 

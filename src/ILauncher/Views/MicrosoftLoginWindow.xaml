@@ -1,6 +1,7 @@
 <Window x:Class="ILauncher.Views.MicrosoftLoginWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:ILauncher.Controls"
         Title="微软正版登录"
         Width="540" Height="430"
         WindowStartupLocation="CenterOwner"
@@ -62,8 +63,15 @@
                     <Button Style="{StaticResource LinkButton}" Content="更换应用 ID"
                             Click="ChangeClientId_Click" AutomationProperties.Name="更换应用 ID" />
                 </StackPanel>
-                <TextBlock x:Name="StatusText" FontSize="10" Foreground="{StaticResource BrushAccent}"
-                           TextWrapping="Wrap" Margin="0,14,0,0" Text="正在准备登录…" />
+                <Grid Margin="0,14,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <controls:Spinner x:Name="LoginSpinner" Width="12" Height="12" Margin="0,2,7,0" VerticalAlignment="Top" />
+                    <TextBlock x:Name="StatusText" Grid.Column="1" FontSize="10" Foreground="{StaticResource BrushAccent}"
+                               TextWrapping="Wrap" Text="正在准备登录…" />
+                </Grid>
             </StackPanel>
         </Grid>
 

@@ -49,16 +49,25 @@
                 </StackPanel>
 
                 <!-- Root navigation -->
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="34,0,0,0">
-                    <Button Style="{StaticResource HeaderTabButton}" Content="主页" Tag="{Binding IsHomeOrInstance}"
-                            Command="{Binding GoHomeCommand}" AutomationProperties.Name="主页" />
-                    <Button Style="{StaticResource HeaderTabButton}" Content="下载" Tag="{Binding IsDownloadPage}"
-                            Command="{Binding GoDownloadCommand}" Margin="4,0,0,0" AutomationProperties.Name="下载" />
-                    <Button Style="{StaticResource HeaderTabButton}" Content="账户" Tag="{Binding IsAccountPage}"
-                            Command="{Binding GoAccountCommand}" Margin="4,0,0,0" AutomationProperties.Name="账户" />
-                    <Button Style="{StaticResource HeaderTabButton}" Content="设置" Tag="{Binding IsSettingsPage}"
-                            Command="{Binding GoSettingsCommand}" Margin="4,0,0,0" AutomationProperties.Name="设置" />
-                </StackPanel>
+                <Grid Grid.Column="1" x:Name="NavHost" Margin="34,0,0,0"
+                      VerticalAlignment="Center" HorizontalAlignment="Left">
+                    <Border x:Name="NavIndicator" Height="34" CornerRadius="8" Background="#33FFFFFF" Opacity="0"
+                            Width="0" HorizontalAlignment="Left" VerticalAlignment="Center" IsHitTestVisible="False">
+                        <Border.RenderTransform>
+                            <TranslateTransform x:Name="NavIndicatorShift" />
+                        </Border.RenderTransform>
+                    </Border>
+                    <StackPanel x:Name="NavTabs" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Style="{StaticResource HeaderTabButton}" Content="主页" Tag="{Binding IsHomeOrInstance}"
+                                Command="{Binding GoHomeCommand}" AutomationProperties.Name="主页" />
+                        <Button Style="{StaticResource HeaderTabButton}" Content="下载" Tag="{Binding IsDownloadPage}"
+                                Command="{Binding GoDownloadCommand}" Margin="4,0,0,0" AutomationProperties.Name="下载" />
+                        <Button Style="{StaticResource HeaderTabButton}" Content="账户" Tag="{Binding IsAccountPage}"
+                                Command="{Binding GoAccountCommand}" Margin="4,0,0,0" AutomationProperties.Name="账户" />
+                        <Button Style="{StaticResource HeaderTabButton}" Content="设置" Tag="{Binding IsSettingsPage}"
+                                Command="{Binding GoSettingsCommand}" Margin="4,0,0,0" AutomationProperties.Name="设置" />
+                    </StackPanel>
+                </Grid>
 
                 <!-- Right actions -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
@@ -98,30 +107,44 @@
         </Border>
 
         <!-- ═══════════ Content ═══════════ -->
-        <ContentControl Grid.Row="1" Content="{Binding CurrentPage}" />
+        <controls:TransitioningContentControl Grid.Row="1" Content="{Binding CurrentPage}" />
 
         <!-- Busy overlay -->
-        <Border Grid.Row="1" Background="#66F2F6FC" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}">
+        <Border Grid.Row="1" Background="#66F2F6FC">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Setter Property="Opacity" Value="0" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsBusy}" Value="True">
+                            <Setter Property="Visibility" Value="Visible" />
+                            <DataTrigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1"
+                                                         Duration="0:0:0.18" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </DataTrigger.EnterActions>
+                            <DataTrigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" From="1" To="0"
+                                                         Duration="0:0:0.12" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </DataTrigger.ExitActions>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
             <Border Style="{StaticResource CardShadow}" HorizontalAlignment="Center" VerticalAlignment="Center"
                     Padding="24,18" CornerRadius="14">
                 <StackPanel Orientation="Horizontal">
-                    <controls:Icon Data="{StaticResource IconRefresh}" Fill="{StaticResource BrushAccent}" Width="18" Height="18"
-                                   RenderTransformOrigin="0.5,0.5">
-                        <controls:Icon.RenderTransform>
-                            <RotateTransform x:Name="BusyRotate" />
-                        </controls:Icon.RenderTransform>
-                        <controls:Icon.Triggers>
-                            <EventTrigger RoutedEvent="Loaded">
-                                <BeginStoryboard>
-                                    <Storyboard RepeatBehavior="Forever">
-                                        <DoubleAnimation Storyboard.TargetName="BusyRotate" Storyboard.TargetProperty="Angle"
-                                                         From="0" To="360" Duration="0:0:1.1" />
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </EventTrigger>
-                        </controls:Icon.Triggers>
-                    </controls:Icon>
-                    <TextBlock Text="正在扫描游戏版本…" Margin="10,0,0,0" VerticalAlignment="Center" FontSize="13" />
+                    <controls:Spinner Width="20" Height="20" VerticalAlignment="Center"
+                                      HeadBrush="{StaticResource BrushAccent}"
+                                      TrackBrush="{StaticResource BrushAccentSoft2}" />
+                    <TextBlock Text="{Binding BusyMessage}" Margin="11,0,0,0" VerticalAlignment="Center" FontSize="13" />
                 </StackPanel>
             </Border>
         </Border>
@@ -130,7 +153,32 @@
         <Border Grid.Row="1" Background="{StaticResource BrushText}" CornerRadius="10" Padding="14,10"
                 HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,26"
                 Visibility="{Binding ToastVisible, Converter={StaticResource BoolToVisibility}}"
-                Panel.ZIndex="50">
+                Panel.ZIndex="50" RenderTransformOrigin="0.5,1">
+            <Border.RenderTransform>
+                <TranslateTransform />
+            </Border.RenderTransform>
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding ToastVisible}" Value="True">
+                            <DataTrigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1"
+                                                         Duration="0:0:0.16" />
+                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                                         From="14" To="0" Duration="0:0:0.24">
+                                            <DoubleAnimation.EasingFunction>
+                                                <CubicEase EasingMode="EaseOut" />
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </DataTrigger.EnterActions>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
             <Border.Effect>
                 <DropShadowEffect Color="#FF0C1E36" BlurRadius="18" ShadowDepth="4" Opacity="0.28" />
             </Border.Effect>

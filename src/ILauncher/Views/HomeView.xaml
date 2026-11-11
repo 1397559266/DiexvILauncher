@@ -24,6 +24,7 @@
             <Setter Property="Height" Value="98" />
             <Setter Property="Margin" Value="0,0,10,10" />
             <Setter Property="Padding" Value="0" />
+            <Setter Property="controls:ListAnimator.IsEnabled" Value="True" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="AutomationProperties.Name" Value="{Binding Id}" />
