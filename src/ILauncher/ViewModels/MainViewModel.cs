@@ -417,7 +417,7 @@ public sealed class MainViewModel : ObservableObject
 
     public string MemoryText => $"{SettingsService.Settings.MemoryMb:N0} MB";
 
-    public string VersionText => "v1.1.0";
+    public string VersionText => "v1.2.0";
 
     public bool IsBusy
     {

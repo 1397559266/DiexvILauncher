@@ -285,6 +285,11 @@ public sealed class LaunchLogViewModel : ObservableObject
             return;
         }
 
+        if (!EnsureAccountAllowed())
+        {
+            return;
+        }
+
         Instance = instance;
         IsTestMode = testMode;
         _serverAddress = serverAddress;
@@ -310,6 +315,40 @@ public sealed class LaunchLogViewModel : ObservableObject
 
         _cts = new CancellationTokenSource();
         _ = RunAsync(instance, testMode, serverAddress);
+    }
+
+    /// <summary>
+    /// 离线账户没有正版凭据，只能进单人游戏和离线服务器。首次启动前明确告知用户，
+    /// 之后不再重复打扰；正版账户必须已经通过游戏所有权校验。
+    /// </summary>
+    private bool EnsureAccountAllowed()
+    {
+        var isMicrosoft = string.Equals(_settings.Settings.AccountType, "微软账户", StringComparison.Ordinal) &&
+                          (!string.IsNullOrWhiteSpace(_settings.Settings.MicrosoftAccessToken) ||
+                           !string.IsNullOrWhiteSpace(_settings.Settings.MicrosoftRefreshTokenProtected));
+        if (isMicrosoft)
+        {
+            return true;
+        }
+
+        if (_settings.Settings.OfflineLaunchAcknowledged)
+        {
+            return true;
+        }
+
+        var result = LocalizedDialog.Show(
+            "当前是离线账户：没有正版凭据，只能进入单人游戏和离线（offline-mode）服务器，正版服务器会拒绝连接。\n\n" +
+            "需要联机正版服务器时，请先在「账户」页完成微软正版登录。\n\n" +
+            "确认以离线账户继续启动？",
+            "离线账户启动", MessageBoxButton.OKCancel, MessageBoxImage.Warning);
+        if (result != MessageBoxResult.OK)
+        {
+            return false;
+        }
+
+        _settings.Settings.OfflineLaunchAcknowledged = true;
+        _settings.Save();
+        return true;
     }
 
     private async Task RunAsync(GameInstance instance, bool testMode, string? serverAddress)
@@ -447,6 +486,7 @@ public sealed class LaunchLogViewModel : ObservableObject
             _settings.Settings.MicrosoftRefreshTokenProtected = TokenProtection.Protect(account.RefreshToken);
             _settings.Settings.ProfileUuid = account.Uuid;
             _settings.Settings.PlayerName = account.Name;
+            _settings.Settings.MicrosoftOwnsGame = true;
             _settings.Save();
         }
         catch (Exception ex) when (!string.IsNullOrWhiteSpace(_settings.Settings.MicrosoftAccessToken))

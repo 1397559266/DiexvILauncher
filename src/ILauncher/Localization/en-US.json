@@ -778,5 +778,19 @@
   "版本类型筛选": "Version type filter",
   "目标游戏版本": "Target game version",
   "共 {0} 个前置 · 缺少 {1} 个必需 · {2} 个无法解析": "{0} prerequisites · {1} required missing · {2} unresolved",
-  "Minecraft 登录失败：403。你的 Azure 应用还没有通过 Minecraft Services 的应用注册审核（Invalid app registration）。请在 https://help.minecraft.net/hc/en-us/articles/16254801392141 提交 Application (client) ID 审核，通过后再登录。": "Minecraft sign-in failed: 403. Your Azure app has not passed the Minecraft Services app registration review (Invalid app registration). Submit the Application (client) ID for review at https://help.minecraft.net/hc/en-us/articles/16254801392141, then sign in again."
+  "Minecraft 登录失败：403。你的 Azure 应用还没有通过 Minecraft Services 的应用注册审核（Invalid app registration）。请在 https://help.minecraft.net/hc/en-us/articles/16254801392141 提交 Application (client) ID 审核，通过后再登录。": "Minecraft sign-in failed: 403. Your Azure app has not passed the Minecraft Services app registration review (Invalid app registration). Submit the Application (client) ID for review at https://help.minecraft.net/hc/en-us/articles/16254801392141, then sign in again.",
+  "正在浏览器里完成 Microsoft 登录。": "Complete the Microsoft sign-in in your browser.",
+  "浏览器里如果已经登录过微软账户，通常只需点一次“继续”就会自动跳回启动器；不放心的话可以先用系统浏览器确认地址是 login.microsoftonline.com。": "If you are already signed in to a Microsoft account in the browser, one click on Continue brings you straight back to the launcher. Check that the address is login.microsoftonline.com if you want to be sure.",
+  "重定向 URI": "Redirect URI",
+  "复制": "Copy",
+  "如果浏览器提示 AADSTS50011（重定向 URI 不匹配），说明 Azure 应用还没登记这个地址：把它加进去后点“重试”即可。": "If the browser reports AADSTS50011 (redirect URI mismatch), the Azure app has not registered this address yet: add it, then click Retry.",
+  "重新打开浏览器": "Open Browser Again",
+  "使用其他账户": "Use Another Account",
+  "改用设备码登录": "Use Device Code Instead",
+  "改用浏览器登录": "Use Browser Instead",
+  "重试": "Retry",
+  "2. 在“身份验证”中启用“允许公共客户端流”，再添加平台“移动和桌面应用程序”，把下面的重定向 URI 加进去。": "2. Under Authentication, enable Allow public client flows, add the Mobile and desktop applications platform and register the redirect URI below.",
+  "3. 复制“应用程序(客户端) ID”填到下面。回调端口由启动器自动选择，按 http://localhost 登记即可，无需跟着端口改。": "3. Copy the Application (client) ID below. The launcher picks the callback port automatically, so registering http://localhost is enough.",
+  "离线账户启动": "Launch with Offline Account",
+  "当前是离线账户：没有正版凭据，只能进入单人游戏和离线（offline-mode）服务器，正版服务器会拒绝连接。\n\n需要联机正版服务器时，请先在「账户」页完成微软正版登录。\n\n确认以离线账户继续启动？": "You are using an offline account. It has no authenticated session, so only single-player and offline-mode servers will work; online-mode servers will refuse the connection.\n\nSign in with Microsoft on the Account page to join online-mode servers.\n\nLaunch with the offline account anyway?"
 }

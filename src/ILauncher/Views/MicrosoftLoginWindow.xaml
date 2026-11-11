@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:ILauncher.Controls"
         Title="微软正版登录"
-        Width="540" Height="430"
+        Width="560" Height="520"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         Background="{StaticResource BrushBackground}"
@@ -22,57 +22,110 @@
         </StackPanel>
 
         <Grid Grid.Row="1" Margin="0,18,0,0">
-            <StackPanel x:Name="SetupPanel" Visibility="Collapsed">
-                <Border Background="#FFFFF8E8" BorderBrush="#FFF0D79A" BorderThickness="1" CornerRadius="10" Padding="12">
-                    <TextBlock TextWrapping="Wrap" FontSize="10.5" LineHeight="17" Foreground="#FF7A5A1A"
-                               Text="公开构建默认使用已提交审核的 Client ID，普通玩家无需填写。只有测试自己的 Azure 应用时才需要更换；请勿使用 PCL2、HMCL 等项目的 Client ID。" />
-                </Border>
-                <TextBlock Margin="0,14,0,0" FontSize="10.5" Foreground="{StaticResource BrushTextSecondary}">
-                    <Run Text="1. 打开" />
-                    <Hyperlink RequestNavigate="OpenAzure_Click" NavigateUri="https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade">Azure 应用注册</Hyperlink>
-                    <Run Text="，新建注册，账户类型选择“个人 Microsoft 账户”或“任何组织目录中的账户和个人 Microsoft 账户”。" />
-                </TextBlock>
-                <TextBlock Margin="0,6,0,0" FontSize="10.5" Foreground="{StaticResource BrushTextSecondary}" TextWrapping="Wrap"
-                           Text="2. 在“身份验证”中启用“允许公共客户端流”，保存后复制“应用程序(客户端) ID”。" />
-                <TextBlock Margin="0,6,0,0" FontSize="10.5" Foreground="{StaticResource BrushTextSecondary}" TextWrapping="Wrap">
-                    <Run Text="3. 如果提示“在目录外部创建应用程序已弃用”，先注册" />
-                    <Hyperlink RequestNavigate="OpenAzure_Click" NavigateUri="https://azure.microsoft.com/free/">Azure 免费账户</Hyperlink>
-                    <Run Text="生成默认目录；学生可走 Azure for Students，通常无需信用卡。" />
-                </TextBlock>
-                <TextBlock Text="Application (client) ID" FontSize="10.5" Foreground="{StaticResource BrushTextSecondary}" Margin="0,14,0,5" />
-                <TextBox x:Name="ClientIdBox" Style="{StaticResource InputTextBox}" Height="36"
-                         AutomationProperties.Name="微软客户端 ID" />
-                <TextBlock Text="应用 ID 会保存在本地设置中，不会上传到启动器服务器。" FontSize="9"
-                           Foreground="{StaticResource BrushTextMuted}" Margin="2,5,0,0" />
-            </StackPanel>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel>
+                    <StackPanel x:Name="SetupPanel" Visibility="Collapsed">
+                        <Border Background="#FFFFF8E8" BorderBrush="#FFF0D79A" BorderThickness="1" CornerRadius="10" Padding="12">
+                            <TextBlock TextWrapping="Wrap" FontSize="10.5" LineHeight="17" Foreground="#FF7A5A1A"
+                                       Text="公开构建默认使用已提交审核的 Client ID，普通玩家无需填写。只有测试自己的 Azure 应用时才需要更换；请勿使用 PCL2、HMCL 等项目的 Client ID。" />
+                        </Border>
+                        <TextBlock Margin="0,14,0,0" FontSize="10.5" Foreground="{StaticResource BrushTextSecondary}">
+                            <Run Text="1. 打开" />
+                            <Hyperlink RequestNavigate="OpenAzure_Click" NavigateUri="https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade">Azure 应用注册</Hyperlink>
+                            <Run Text="，新建注册，账户类型选择“个人 Microsoft 账户”或“任何组织目录中的账户和个人 Microsoft 账户”。" />
+                        </TextBlock>
+                        <TextBlock Margin="0,6,0,0" FontSize="10.5" Foreground="{StaticResource BrushTextSecondary}" TextWrapping="Wrap"
+                                   Text="2. 在“身份验证”中启用“允许公共客户端流”，再添加平台“移动和桌面应用程序”，把下面的重定向 URI 加进去。" />
+                        <Border Background="#FFF5F7FA" BorderBrush="{StaticResource BrushBorder}" BorderThickness="1"
+                                CornerRadius="8" Padding="10,7" Margin="0,6,0,0">
+                            <TextBlock x:Name="SetupRedirectText" FontFamily="{StaticResource FontMono}" FontSize="10"
+                                       Foreground="{StaticResource BrushAccent}" TextWrapping="Wrap" />
+                        </Border>
+                        <TextBlock Margin="0,6,0,0" FontSize="10.5" Foreground="{StaticResource BrushTextSecondary}" TextWrapping="Wrap"
+                                   Text="3. 复制“应用程序(客户端) ID”填到下面。回调端口由启动器自动选择，按 http://localhost 登记即可，无需跟着端口改。" />
+                        <TextBlock Text="Application (client) ID" FontSize="10.5" Foreground="{StaticResource BrushTextSecondary}" Margin="0,14,0,5" />
+                        <TextBox x:Name="ClientIdBox" Style="{StaticResource InputTextBox}" Height="36"
+                                 AutomationProperties.Name="微软客户端 ID" />
+                        <TextBlock Text="应用 ID 会保存在本地设置中，不会上传到启动器服务器。" FontSize="9"
+                                   Foreground="{StaticResource BrushTextMuted}" Margin="2,5,0,0" />
+                    </StackPanel>
 
-            <StackPanel x:Name="LoginPanel" Visibility="Collapsed">
-                <TextBlock Text="在浏览器中输入以下代码：" FontSize="11" Foreground="{StaticResource BrushTextSecondary}" />
-                <Border Background="#FFF2F8FF" BorderBrush="{StaticResource BrushBorder}" BorderThickness="1"
-                        CornerRadius="12" Padding="18,12" Margin="0,8,0,0">
-                    <TextBlock x:Name="CodeText" FontFamily="{StaticResource FontMono}" FontSize="30"
-                               FontWeight="Bold" Foreground="{StaticResource BrushAccent}" HorizontalAlignment="Center" />
-                </Border>
-                <TextBlock x:Name="MessageText" FontSize="10" Foreground="{StaticResource BrushTextSecondary}"
-                           TextWrapping="Wrap" Margin="0,10,0,0" />
-                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                    <Button x:Name="VerifyButton" Style="{StaticResource LinkButton}" Content="打开微软登录页面"
-                            Click="OpenVerify_Click" AutomationProperties.Name="打开微软登录页面" />
-                    <TextBlock Text="·" FontSize="10" Foreground="{StaticResource BrushTextMuted}"
-                               VerticalAlignment="Center" Margin="4,0" />
-                    <Button Style="{StaticResource LinkButton}" Content="更换应用 ID"
-                            Click="ChangeClientId_Click" AutomationProperties.Name="更换应用 ID" />
+                    <StackPanel x:Name="LoginPanel" Visibility="Collapsed">
+                        <StackPanel x:Name="BrowserPanel">
+                            <TextBlock Text="正在浏览器里完成 Microsoft 登录。" FontSize="11"
+                                       Foreground="{StaticResource BrushTextSecondary}" />
+                            <TextBlock Margin="0,5,0,0" FontSize="10" LineHeight="16" TextWrapping="Wrap"
+                                       Foreground="{StaticResource BrushTextMuted}"
+                                       Text="浏览器里如果已经登录过微软账户，通常只需点一次“继续”就会自动跳回启动器；不放心的话可以先用系统浏览器确认地址是 login.microsoftonline.com。" />
+
+                            <TextBlock Text="重定向 URI" FontSize="10" Foreground="{StaticResource BrushTextSecondary}" Margin="0,14,0,5" />
+                            <Border Background="#FFF5F7FA" BorderBrush="{StaticResource BrushBorder}" BorderThickness="1"
+                                    CornerRadius="8" Padding="10,8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock x:Name="RedirectText" FontFamily="{StaticResource FontMono}" FontSize="10"
+                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                               Foreground="{StaticResource BrushAccent}" />
+                                    <Button x:Name="CopyRedirectButton" Grid.Column="1" Style="{StaticResource LinkButton}"
+                                            Content="复制" Click="CopyRedirect_Click" Margin="8,0,0,0"
+                                            AutomationProperties.Name="复制重定向 URI" />
+                                </Grid>
+                            </Border>
+                            <TextBlock Margin="0,6,0,0" FontSize="9.5" LineHeight="15" TextWrapping="Wrap"
+                                       Foreground="{StaticResource BrushTextMuted}"
+                                       Text="如果浏览器提示 AADSTS50011（重定向 URI 不匹配），说明 Azure 应用还没登记这个地址：把它加进去后点“重试”即可。" />
+
+                            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                <Button x:Name="BrowserActionButton" Style="{StaticResource LinkButton}" Content="重新打开浏览器"
+                                        Click="BrowserAction_Click" AutomationProperties.Name="重新打开浏览器" />
+                                <TextBlock Text="·" FontSize="10" Foreground="{StaticResource BrushTextMuted}"
+                                           VerticalAlignment="Center" Margin="4,0" />
+                                <Button Style="{StaticResource LinkButton}" Content="使用其他账户"
+                                        Click="SwitchAccount_Click" AutomationProperties.Name="使用其他账户" />
+                                <TextBlock Text="·" FontSize="10" Foreground="{StaticResource BrushTextMuted}"
+                                           VerticalAlignment="Center" Margin="4,0" />
+                                <Button Style="{StaticResource LinkButton}" Content="改用设备码登录"
+                                        Click="UseDeviceCode_Click" AutomationProperties.Name="改用设备码登录" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <StackPanel x:Name="DevicePanel" Visibility="Collapsed">
+                            <TextBlock Text="在浏览器中输入以下代码：" FontSize="11" Foreground="{StaticResource BrushTextSecondary}" />
+                            <Border Background="#FFF2F8FF" BorderBrush="{StaticResource BrushBorder}" BorderThickness="1"
+                                    CornerRadius="12" Padding="18,12" Margin="0,8,0,0">
+                                <TextBlock x:Name="CodeText" FontFamily="{StaticResource FontMono}" FontSize="30"
+                                           FontWeight="Bold" Foreground="{StaticResource BrushAccent}" HorizontalAlignment="Center" />
+                            </Border>
+                            <TextBlock x:Name="MessageText" FontSize="10" Foreground="{StaticResource BrushTextSecondary}"
+                                       TextWrapping="Wrap" Margin="0,10,0,0" />
+                            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                <Button x:Name="VerifyButton" Style="{StaticResource LinkButton}" Content="打开微软登录页面"
+                                        Click="OpenVerify_Click" AutomationProperties.Name="打开微软登录页面" />
+                                <TextBlock Text="·" FontSize="10" Foreground="{StaticResource BrushTextMuted}"
+                                           VerticalAlignment="Center" Margin="4,0" />
+                                <Button Style="{StaticResource LinkButton}" Content="改用浏览器登录"
+                                        Click="UseBrowser_Click" AutomationProperties.Name="改用浏览器登录" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <Grid Margin="0,14,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <controls:Spinner x:Name="LoginSpinner" Width="12" Height="12" Margin="0,2,7,0" VerticalAlignment="Top" />
+                            <TextBlock x:Name="StatusText" Grid.Column="1" FontSize="10" Foreground="{StaticResource BrushAccent}"
+                                       TextWrapping="Wrap" Text="正在准备登录…" />
+                            <Button Grid.Column="2" Style="{StaticResource LinkButton}" Content="更换应用 ID"
+                                    Click="ChangeClientId_Click" Margin="8,0,0,0" AutomationProperties.Name="更换应用 ID" />
+                        </Grid>
+                    </StackPanel>
                 </StackPanel>
-                <Grid Margin="0,14,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <controls:Spinner x:Name="LoginSpinner" Width="12" Height="12" Margin="0,2,7,0" VerticalAlignment="Top" />
-                    <TextBlock x:Name="StatusText" Grid.Column="1" FontSize="10" Foreground="{StaticResource BrushAccent}"
-                               TextWrapping="Wrap" Text="正在准备登录…" />
-                </Grid>
-            </StackPanel>
+            </ScrollViewer>
         </Grid>
 
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">

@@ -13,6 +13,22 @@ public sealed class LauncherSettings
     public string ProfileUuid { get; set; } = "";
     public string AccountType { get; set; } = "离线账户";
     public string MicrosoftClientId { get; set; } = "";
+
+    /// <summary>browser：授权码 + PKCE 回环回调；device：设备码。</summary>
+    public string MicrosoftAuthMode { get; set; } = "browser";
+
+    /// <summary>回环回调端口，必须与 Azure 应用注册中的重定向 URI 一致。</summary>
+    public int MicrosoftRedirectPort { get; set; } = MicrosoftAuthService.DefaultRedirectPort;
+
+    /// <summary>上次登录成功时记住的微软账户名，用于 login_hint 免选账号。</summary>
+    public string MicrosoftLoginHint { get; set; } = "";
+
+    /// <summary>最近一次正版登录是否通过了游戏所有权（entitlements）校验。</summary>
+    public bool MicrosoftOwnsGame { get; set; }
+
+    /// <summary>是否已经向用户说明过“离线账户只能本地单人/离线服务器”。</summary>
+    public bool OfflineLaunchAcknowledged { get; set; }
+
     public string MicrosoftAccessTokenProtected { get; set; } = "";
 
     [System.Text.Json.Serialization.JsonIgnore]

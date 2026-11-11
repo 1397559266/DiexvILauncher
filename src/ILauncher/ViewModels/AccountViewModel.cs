@@ -259,6 +259,12 @@ public sealed class AccountViewModel : ObservableObject
         _settings.Settings.MicrosoftAccessTokenProtected = Protect(account.AccessToken);
         _settings.Settings.MicrosoftRefreshTokenProtected = Protect(account.RefreshToken);
         _settings.Settings.ProfileUuid = account.Uuid;
+        _settings.Settings.MicrosoftOwnsGame = true;
+        if (!string.IsNullOrWhiteSpace(account.LoginHint))
+        {
+            _settings.Settings.MicrosoftLoginHint = account.LoginHint;
+        }
+
         _settings.Save();
 
         if (!string.IsNullOrWhiteSpace(account.SkinUrl))
@@ -295,6 +301,7 @@ public sealed class AccountViewModel : ObservableObject
         _settings.Settings.MicrosoftAccessToken = "";
         _settings.Settings.MicrosoftRefreshToken = "";
         _settings.Settings.MicrosoftUuid = "";
+        _settings.Settings.MicrosoftOwnsGame = false;
         _settings.Settings.MicrosoftAccessTokenProtected = "";
         _settings.Settings.MicrosoftRefreshTokenProtected = "";
         _settings.Settings.ProfileUuid = "";
