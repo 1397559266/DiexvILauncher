@@ -161,8 +161,8 @@ https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode
 3. 按下面的模板填写（英文更稳）：
 
    ```text
-   Application name: ILauncher / DiexvMinecraftLauncher
-   Application (client) ID: <粘贴 GUID>
+   Application name: DiexvILauncher
+   Application (client) ID: 0a8ceb52-1d47-4675-87f0-d69ad5f38739
    Project / website: https://github.com/1397559266/DiexvMinecraftLauncher
    Download: https://github.com/1397559266/DiexvMinecraftLauncher/releases/latest
    Privacy policy: https://github.com/1397559266/DiexvMinecraftLauncher/blob/main/PRIVACY.md

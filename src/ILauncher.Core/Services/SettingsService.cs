@@ -67,7 +67,10 @@ public sealed class SettingsService
 {
     // Public Azure client ID. This is not a secret; it is the application ID
     // submitted for the Minecraft API review. MS_CLIENT_ID can override it.
-    public const string BundledMicrosoftClientId = "24255f36-74b9-48be-83b0-6b738d829b39";
+    public const string BundledMicrosoftClientId = "0a8ceb52-1d47-4675-87f0-d69ad5f38739";
+
+    /// <summary>1.2 及更早版本内置的、已弃用的应用 ID，升级时自动迁移掉。</summary>
+    private const string LegacyBundledMicrosoftClientId = "24255f36-74b9-48be-83b0-6b738d829b39";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -94,8 +97,17 @@ public sealed class SettingsService
         if (!string.IsNullOrWhiteSpace(clientId))
         {
             Settings.MicrosoftClientId = clientId.Trim();
+            return;
         }
-        else if (string.IsNullOrWhiteSpace(Settings.MicrosoftClientId))
+
+        // 旧版本会把当时的内置 ID 写进 settings.json；那个应用已经弃用，随升级迁移到新 ID。
+        if (string.Equals(Settings.MicrosoftClientId, LegacyBundledMicrosoftClientId,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            Settings.MicrosoftClientId = BundledMicrosoftClientId;
+        }
+
+        if (string.IsNullOrWhiteSpace(Settings.MicrosoftClientId))
         {
             Settings.MicrosoftClientId = BundledMicrosoftClientId;
         }

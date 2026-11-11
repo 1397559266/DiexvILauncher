@@ -1,4 +1,4 @@
-# ILauncher 1.2
+# ILauncher 1.3
 
 DiexvMinecraftLauncher 是一个独立的 **Minecraft: Java Edition** 第三方启动器，使用 **WPF / .NET 8** 编写，面向 Windows 10/11 x64。功能覆盖版本安装与启动、模组与整合包管理、资源包/光影/存档/服务器管理、皮肤预览，以及微软正版登录。
 
