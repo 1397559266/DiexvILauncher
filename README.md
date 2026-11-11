@@ -1,5 +1,7 @@
 # ILauncher 1.3
 
+简体中文 | [English](README.en.md)
+
 DiexvMinecraftLauncher 是一个独立的 **Minecraft: Java Edition** 第三方启动器，使用 **WPF / .NET 8** 编写，面向 Windows 10/11 x64。功能覆盖版本安装与启动、模组与整合包管理、资源包/光影/存档/服务器管理、皮肤预览，以及微软正版登录。
 
 **下载**：[最新 Release](https://github.com/1397559266/DiexvMinecraftLauncher/releases/latest) —— Windows x64 自包含压缩包，解压后运行 `DiexvMinecraftLauncher.exe` 即可，无需另装 .NET 运行时。
@@ -155,6 +157,7 @@ $env:MS_CLIENT_ID = "你的 Azure Application (client) ID"
 - **界面**：自绘无边框窗口与自定义控件（`Controls/`），主题、图标集中在 `Themes/`；未使用任何第三方启动器的代码、图标或美术资源。
 - **启动链**：Microsoft OAuth（授权码 + PKCE）→ Xbox Live → XSTS → Minecraft Services → 校验 `entitlements/mcstore` → 启动 Java 进程；令牌用 DPAPI 保存。
 - **离线模式**：不伪造正版身份，只用于单人游戏与离线服务器，首次启动会明确提示边界。
+
 ## 构建 / 运行
 
 环境：Windows 10/11 x64、[.NET 8 SDK](https://dotnet.microsoft.com/)、对应版本的 Java（运行游戏需要）。
