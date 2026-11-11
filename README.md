@@ -1,10 +1,10 @@
-# ILauncher 1.3
+# DiexvILauncher 1.3.1
 
 简体中文 | [English](README.en.md)
 
-DiexvMinecraftLauncher 是一个独立的 **Minecraft: Java Edition** 第三方启动器，使用 **WPF / .NET 8** 编写，面向 Windows 10/11 x64。功能覆盖版本安装与启动、模组与整合包管理、资源包/光影/存档/服务器管理、皮肤预览，以及微软正版登录。
+DiexvILauncher 是一个独立的 **Minecraft: Java Edition** 第三方启动器，使用 **WPF / .NET 8** 编写，面向 Windows 10/11 x64。功能覆盖版本安装与启动、模组与整合包管理、资源包/光影/存档/服务器管理、皮肤预览，以及微软正版登录。
 
-**下载**：[最新 Release](https://github.com/1397559266/DiexvMinecraftLauncher/releases/latest) —— Windows x64 自包含压缩包，解压后运行 `DiexvMinecraftLauncher.exe` 即可，无需另装 .NET 运行时。
+**下载**：[最新 Release](https://github.com/1397559266/DiexvILauncher/releases/latest) —— Windows x64 自包含压缩包，解压后运行 `DiexvILauncher.exe` 即可，无需另装 .NET 运行时。
 
 - **账号**：微软正版登录（OAuth 2.0 授权码 + PKCE，走系统浏览器，不接触密码）或离线账户（仅限单人游戏与离线服务器）。
 - **游戏文件**：全部从 Mojang 官方源或 BMCLAPI 镜像下载；仓库不包含、也不分发任何 Minecraft 游戏文件或官方纹理。
@@ -45,7 +45,7 @@ DiexvMinecraftLauncher 是一个独立的 **Minecraft: Java Edition** 第三方�
 
 ```powershell
 $env:MS_CLIENT_ID = "你的 Azure Application (client) ID"
-.\DiexvMinecraftLauncher.exe
+.\DiexvILauncher.exe
 ```
 
 也可以使用 `ILAUNCHER_MS_CLIENT_ID`。这个 ID 必须是你自己注册的 Azure 应用，不能借用其他启动器的 ID；修改内置 ID 后需要重新提交 Minecraft API 的 AppID Review。Azure 应用注册、重定向 URI 与审核提交的完整步骤见 [docs/azure-app-setup.md](docs/azure-app-setup.md)。
@@ -176,13 +176,13 @@ dotnet publish src/ILauncher/ILauncher.csproj -c Release -r win-x64 `
   -p:PublishSingleFile=true `
   -p:IncludeNativeLibrariesForSelfExtract=true `
   -p:EnableCompressionInSingleFile=true `
-  -o dist/DiexvMinecraftLauncher
+  -o dist/DiexvILauncher
 ```
 
 运行：
 
 ```powershell
-.\dist\DiexvMinecraftLauncher\DiexvMinecraftLauncher.exe
+.\dist\DiexvILauncher\DiexvILauncher.exe
 ```
 
 也可以 `dotnet run --project src/ILauncher/ILauncher.csproj`。

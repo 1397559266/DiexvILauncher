@@ -1,10 +1,10 @@
-# ILauncher 1.3
+# DiexvILauncher 1.3.1
 
 English | [简体中文](README.md)
 
-DiexvMinecraftLauncher is an independent third-party launcher for **Minecraft: Java Edition**, written in **WPF / .NET 8** for Windows 10/11 x64. It covers installing and launching game versions, mod and modpack management, resource packs / shaders / worlds / servers, skin preview, and Microsoft account sign-in.
+DiexvILauncher is an independent third-party launcher for **Minecraft: Java Edition**, written in **WPF / .NET 8** for Windows 10/11 x64. It covers installing and launching game versions, mod and modpack management, resource packs / shaders / worlds / servers, skin preview, and Microsoft account sign-in.
 
-**Download**: [latest release](https://github.com/1397559266/DiexvMinecraftLauncher/releases/latest) — a self-contained Windows x64 zip; unzip and run `DiexvMinecraftLauncher.exe`, no .NET runtime installation required.
+**Download**: [latest release](https://github.com/1397559266/DiexvILauncher/releases/latest) — a self-contained Windows x64 zip; unzip and run `DiexvILauncher.exe`, no .NET runtime installation required.
 
 - **Accounts**: Microsoft sign-in (OAuth 2.0 authorization code + PKCE in the system browser; the launcher never sees your password), or an offline account limited to single-player and offline-mode servers.
 - **Game files**: everything is downloaded from Mojang's own servers or the BMCLAPI mirror. This repository contains and distributes no Minecraft game files or official textures.
@@ -45,7 +45,7 @@ Release builds ship an Application (client) ID registered for the Minecraft API 
 
 ```powershell
 $env:MS_CLIENT_ID = "your Azure Application (client) ID"
-.\DiexvMinecraftLauncher.exe
+.\DiexvILauncher.exe
 ```
 
 `ILAUNCHER_MS_CLIENT_ID` works as well. The ID must belong to an Azure app you registered yourself — do not borrow another launcher's ID. Changing the bundled ID requires a new Minecraft API AppID review. The full walkthrough (app registration, redirect URIs, review submission) is in [docs/azure-app-setup.md](docs/azure-app-setup.md).
@@ -170,13 +170,13 @@ dotnet publish src/ILauncher/ILauncher.csproj -c Release -r win-x64 `
   -p:PublishSingleFile=true `
   -p:IncludeNativeLibrariesForSelfExtract=true `
   -p:EnableCompressionInSingleFile=true `
-  -o dist/DiexvMinecraftLauncher
+  -o dist/DiexvILauncher
 ```
 
 Run:
 
 ```powershell
-.\dist\DiexvMinecraftLauncher\DiexvMinecraftLauncher.exe
+.\dist\DiexvILauncher\DiexvILauncher.exe
 ```
 
 Alternatively `dotnet run --project src/ILauncher/ILauncher.csproj`.

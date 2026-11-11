@@ -208,7 +208,7 @@
   "其他信息": "Other Information",
   "启用 / 禁用此模组": "Enable / disable this mod",
   "启用 / 禁用会在下次启动游戏时生效": "Enable / disable takes effect on the next game launch",
-  "请在设置中选择正确的 .minecraft 目录，Diexv 会自动扫描其中的全部版本。": "Select the correct .minecraft folder in Settings; Diexv will scan all versions inside it.",
+  "请在设置中选择正确的 .minecraft 目录，DiexvILauncher 会自动扫描其中的全部版本。": "Select the correct .minecraft folder in Settings; DiexvILauncher will scan all versions inside it.",
   "日志目录": "Log Directory",
   "筛选模组加载器": "Filter mod loaders",
   "筛选正式版、快照或旧版": "Filter releases, snapshots, or legacy versions",

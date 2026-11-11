@@ -207,7 +207,7 @@ public sealed class SettingsViewModel : ObservableObject
         private set => SetProperty(ref _javaSummary, value);
     }
 
-    public string VersionText => "Diexv 1.1.0";
+    public string VersionText => "DiexvILauncher 1.3.1";
 
     public ICommand SaveCommand { get; }
     public ICommand BrowseRootCommand { get; }

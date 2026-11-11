@@ -119,7 +119,7 @@ https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode
 
    ```powershell
    $env:MS_CLIENT_ID = "你的 Application (client) ID"
-   .\DiexvMinecraftLauncher.exe
+   .\DiexvILauncher.exe
    ```
 
    也支持 `ILAUNCHER_MS_CLIENT_ID`。环境变量优先级最高。
@@ -163,9 +163,9 @@ https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode
    ```text
    Application name: DiexvILauncher
    Application (client) ID: 0a8ceb52-1d47-4675-87f0-d69ad5f38739
-   Project / website: https://github.com/1397559266/DiexvMinecraftLauncher
-   Download: https://github.com/1397559266/DiexvMinecraftLauncher/releases/latest
-   Privacy policy: https://github.com/1397559266/DiexvMinecraftLauncher/blob/main/PRIVACY.md
+   Project / website: https://github.com/1397559266/DiexvILauncher
+   Download: https://github.com/1397559266/DiexvILauncher/releases/latest
+   Privacy policy: https://github.com/1397559266/DiexvILauncher/blob/main/PRIVACY.md
 
    Description:
    An independent, free, non-commercial Minecraft: Java Edition launcher for Windows

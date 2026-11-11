@@ -464,7 +464,7 @@
                         <controls:Icon Data="{StaticResource IconFolderOpen}" Fill="{StaticResource BrushAccent}" Width="28" Height="28" />
                     </Border>
                     <TextBlock Text="还没有找到游戏版本" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,16,0,0" />
-                    <TextBlock Text="请在设置中选择正确的 .minecraft 目录，Diexv 会自动扫描其中的全部版本。"
+                    <TextBlock Text="请在设置中选择正确的 .minecraft 目录，DiexvILauncher 会自动扫描其中的全部版本。"
                                FontSize="11.5" Foreground="{StaticResource BrushTextSecondary}" HorizontalAlignment="Center"
                                TextAlignment="Center" MaxWidth="380" TextWrapping="Wrap" Margin="0,8,0,0" />
                     <Button Style="{StaticResource PrimaryButton}" Content="打开设置" HorizontalAlignment="Center" Margin="0,18,0,0"

@@ -1,8 +1,8 @@
-# DiexvMinecraftLauncher Privacy Policy
+# DiexvILauncher Privacy Policy
 
 Last updated: 2026-11-11
 
-DiexvMinecraftLauncher is a free, non-commercial, source-available Minecraft:
+DiexvILauncher is a free, non-commercial, source-available Minecraft:
 Java Edition launcher for Windows. The repository is publicly viewable under an
 All Rights Reserved license. This policy explains what data the launcher
 handles when you use Microsoft account login.
@@ -66,6 +66,6 @@ and tokens.
 ## Contact
 
 Project repository:
-https://github.com/1397559266/DiexvMinecraftLauncher
+https://github.com/1397559266/DiexvILauncher
 
 For privacy questions, open an issue in the repository.
