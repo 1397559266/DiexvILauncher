@@ -24,6 +24,28 @@ public sealed class ModItemViewModel : ObservableObject
     public required ModInfo Model { get; init; }
 
     public string Name => Model.DisplayName;
+
+    private string? _chineseName;
+
+    /// <summary>MC百科匹配到的中文名，存在时优先显示。</summary>
+    public string? ChineseName
+    {
+        get => _chineseName;
+        set
+        {
+            if (SetProperty(ref _chineseName, value))
+            {
+                OnPropertyChanged(nameof(DisplayTitle));
+                OnPropertyChanged(nameof(HasChineseName));
+            }
+        }
+    }
+
+    public bool HasChineseName => !string.IsNullOrWhiteSpace(_chineseName);
+
+    public string? McmodUrl { get; set; }
+
+    public string DisplayTitle => string.IsNullOrWhiteSpace(_chineseName) ? Name : _chineseName;
     public string Version => Model.Version;
     public string FileName => Model.FileName;
     public string SizeText => Model.SizeText;
@@ -146,6 +168,8 @@ public sealed class ModsViewModel : ObservableObject
     private int _enabledCount;
     private int _disabledCount;
     private readonly ModUpdateService _updates = new();
+    private readonly McmodService _mcmod = new();
+    private bool _chineseNamesStarted;
     private readonly Dictionary<string, ModUpdateState> _updateStates = new(StringComparer.OrdinalIgnoreCase);
     private bool _hasUpdates;
     private bool _updateCheckStarted;
@@ -374,6 +398,7 @@ public sealed class ModsViewModel : ObservableObject
             OnPropertyChanged(nameof(IsEmpty));
             OnPropertyChanged(nameof(SummaryText));
             _ = AutoCheckUpdatesAsync();
+            _ = EnrichChineseNamesAsync();
         }
         catch (Exception ex)
         {
@@ -474,6 +499,7 @@ public sealed class ModsViewModel : ObservableObject
         }
 
         return mod.Name.Contains(_searchLower, StringComparison.OrdinalIgnoreCase)
+               || (mod.ChineseName?.Contains(_searchLower, StringComparison.OrdinalIgnoreCase) ?? false)
                || mod.FileName.Contains(_searchLower, StringComparison.OrdinalIgnoreCase)
                || mod.ModId.Contains(_searchLower, StringComparison.OrdinalIgnoreCase)
                || mod.Version.Contains(_searchLower, StringComparison.OrdinalIgnoreCase);
@@ -585,6 +611,42 @@ public sealed class ModsViewModel : ObservableObject
         RecalculateCounts();
         ModsView.Refresh();
         return available;
+    }
+
+    /// <summary>用 MC百科补全模组中文名；MC百科限流，按顺序慢慢查，结果有本地缓存。</summary>
+    private async Task EnrichChineseNamesAsync()
+    {
+        if (_chineseNamesStarted || LanguageService.CurrentLanguage == LanguageService.English)
+        {
+            return;
+        }
+
+        _chineseNamesStarted = true;
+        foreach (var item in Mods.ToList())
+        {
+            try
+            {
+                var info = await _mcmod.LookupAsync(item.Name);
+                if (info == null || string.IsNullOrWhiteSpace(info.Name) ||
+                    string.Equals(info.Name, item.Name, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                // 只有真的是中文名才覆盖，避免把英文名替换成另一个英文名。
+                if (!info.Name.Any(c => c >= 0x4E00 && c <= 0x9FFF))
+                {
+                    continue;
+                }
+
+                item.ChineseName = info.Name;
+                item.McmodUrl = info.Url;
+            }
+            catch
+            {
+                // 单个查询失败不影响其余模组。
+            }
+        }
     }
 
     private async Task AutoCheckUpdatesAsync()

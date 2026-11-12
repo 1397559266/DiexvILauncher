@@ -113,6 +113,149 @@ public sealed class CurseForgeService
         return versions.OrderByDescending(v => v.DatePublished).ToList();
     }
 
+    /// <summary>
+    /// CurseForge 指纹：去掉 0x09/0x0A/0x0D/0x20 后做 MurmurHash2（seed 1），取 uint32。
+    /// 这与 PCL 等启动器使用的算法一致，注意不要做 &amp; 0x7FFFFFFF 之类的掩码。
+    /// </summary>
+    public static uint? ComputeFingerprint(string path)
+    {
+        try
+        {
+            var bytes = File.ReadAllBytes(path);
+            var buffer = new byte[bytes.Length];
+            var length = 0;
+            foreach (var b in bytes)
+            {
+                if (b is 9 or 10 or 13 or 32)
+                {
+                    continue;
+                }
+
+                buffer[length++] = b;
+            }
+
+            return MurmurHash2(buffer.AsSpan(0, length));
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static uint MurmurHash2(ReadOnlySpan<byte> data)
+    {
+        const uint m = 0x5BD1E995;
+        var h = (uint)(1 ^ data.Length);
+        var i = 0;
+        var loopTo = data.Length - 4;
+        for (; i <= loopTo; i += 4)
+        {
+            var k = (uint)(data[i] | data[i + 1] << 8 | data[i + 2] << 16 | data[i + 3] << 24);
+            k *= m;
+            k ^= k >> 24;
+            k *= m;
+            h *= m;
+            h ^= k;
+        }
+
+        switch (data.Length - i)
+        {
+            case 3:
+                h ^= (uint)(data[i] | data[i + 1] << 8);
+                h ^= (uint)data[i + 2] << 16;
+                h *= m;
+                break;
+            case 2:
+                h ^= (uint)(data[i] | data[i + 1] << 8);
+                h *= m;
+                break;
+            case 1:
+                h ^= data[i];
+                h *= m;
+                break;
+        }
+
+        h ^= h >> 13;
+        h *= m;
+        h ^= h >> 15;
+        return h;
+    }
+
+    /// <summary>按指纹批量查询 CurseForge 文件，返回匹配到的 modId / fileId / 文件 SHA-1。</summary>
+    public async Task<List<(long ModId, long FileId, string Sha1)>> GetFingerprintMatchesAsync(
+        IReadOnlyList<uint> fingerprints, CancellationToken cancellationToken = default)
+    {
+        var result = new List<(long ModId, long FileId, string Sha1)>();
+        foreach (var chunk in fingerprints.Chunk(100))
+        {
+            var body = "{\"fingerprints\":[" + string.Join(',', chunk) + "]}";
+            using var content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
+            using var response = await DownloadHelper.HttpClient
+                .PostAsync($"{BaseUrl}/fingerprints/432", content, cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                continue;
+            }
+
+            var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            using var document = JsonDocument.Parse(json);
+            if (!document.RootElement.TryGetProperty("data", out var data) ||
+                !data.TryGetProperty("exactMatches", out var matches) ||
+                matches.ValueKind != JsonValueKind.Array)
+            {
+                continue;
+            }
+
+            foreach (var match in matches.EnumerateArray())
+            {
+                var modId = match.TryGetProperty("id", out var idElement) && idElement.TryGetInt64(out var parsedModId)
+                    ? parsedModId
+                    : 0;
+                if (modId <= 0 || !match.TryGetProperty("file", out var file) ||
+                    !file.TryGetProperty("id", out var fileIdElement) ||
+                    !fileIdElement.TryGetInt64(out var fileId))
+                {
+                    continue;
+                }
+
+                string? sha1 = null;
+                if (file.TryGetProperty("hashes", out var hashes) && hashes.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var hash in hashes.EnumerateArray())
+                    {
+                        if (hash.TryGetProperty("algo", out var algo) && algo.TryGetInt32(out var algoValue) &&
+                            algoValue == 1 && hash.TryGetProperty("value", out var valueElement))
+                        {
+                            sha1 = valueElement.GetString();
+                        }
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(sha1))
+                {
+                    continue;
+                }
+
+                result.Add((modId, fileId, sha1!));
+            }
+        }
+
+        return result;
+    }
+
+
+    /// <summary>读取单个 CurseForge 项目（用于取图标与名称）。</summary>
+    public async Task<ModrinthProject?> GetModAsync(long modId, CancellationToken cancellationToken = default)
+    {
+        using var document = await GetJsonAsync($"{BaseUrl}/mods/{modId}", cancellationToken).ConfigureAwait(false);
+        if (document == null || !document.RootElement.TryGetProperty("data", out var data))
+        {
+            return null;
+        }
+
+        return MapProject(data);
+    }
+
     private static ModrinthProject? MapProject(JsonElement element)
     {
         if (element.ValueKind != JsonValueKind.Object)
