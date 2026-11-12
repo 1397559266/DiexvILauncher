@@ -366,6 +366,37 @@
         </Setter>
     </Style>
 
+    <Style x:Key="ChipButton" TargetType="Button">
+        <Setter Property="Background" Value="#FFF7FAFE" />
+        <Setter Property="Foreground" Value="#FF3B6FA8" />
+        <Setter Property="FontSize" Value="8.5" />
+        <Setter Property="Padding" Value="9,2" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                            BorderBrush="#FFE1EAF6" BorderThickness="1" CornerRadius="6"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="#FFEAF2FF" />
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="#FFC7DAF2" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="#FFD9E7FA" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.45" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="TitleBarButton" TargetType="Button">
         <Setter Property="Width" Value="44" />
         <Setter Property="Height" Value="30" />
