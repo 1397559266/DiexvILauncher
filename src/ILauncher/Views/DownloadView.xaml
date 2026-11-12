@@ -306,7 +306,7 @@
                             <controls:Icon Data="{StaticResource IconInfo}" Fill="{StaticResource BrushAccent}" Width="15" Height="15" />
                             <TextBlock Text="下载说明" FontSize="12.5" FontWeight="SemiBold" Margin="7,0,0,0" />
                         </StackPanel>
-                        <TextBlock Text="游戏文件来自 Mojang 官方源；模组由 Modrinth 与 CurseForge（MCIM 镜像）同时检索并合并去重，可在「下载源」里锁定其中一个来源。每项结果另附 MC百科中文名/条目链接。"
+                        <TextBlock Text="游戏文件来自 Mojang 官方源；模组由 Modrinth 与 CurseForge（MCIM 镜像）同时检索并合并去重，可在「下载平台」里锁定其中一个来源。每项结果另附 MC百科中文名/条目链接。"
                                    FontSize="9.2" Foreground="{StaticResource BrushTextSecondary}" TextWrapping="Wrap" LineHeight="16" />
                     </StackPanel>
                 </Border>
@@ -391,13 +391,13 @@
 
                     <StackPanel Orientation="Horizontal" Margin="0,0,14,0" VerticalAlignment="Center"
                                 Visibility="{Binding IsModsTab, Converter={StaticResource BoolToVisibility}}">
-                        <TextBlock Text="下载源" FontSize="9.5" Foreground="{StaticResource BrushTextMuted}"
-                                   VerticalAlignment="Center" Margin="0,0,6,0" />
-                        <ComboBox Style="{StaticResource FilterCombo}" Width="132"
+                        <TextBlock Text="下载平台" FontSize="9.5" Foreground="{StaticResource BrushAccent}"
+                                   FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <ComboBox Style="{StaticResource FilterCombo}" Width="140"
                                   ItemsSource="{Binding DownloadSourceFilters}"
                                   SelectedItem="{Binding SelectedDownloadSource, Mode=TwoWay}"
-                                  ToolTip="自动会同时列出 Modrinth 与 CurseForge；也可以锁定只用一个来源"
-                                  AutomationProperties.Name="下载源筛选" />
+                                  ToolTip="自动会同时列出 Modrinth 与 CurseForge；也可以锁定只从一个平台下载"
+                                  AutomationProperties.Name="下载平台筛选" />
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" Margin="0,0,14,0" VerticalAlignment="Center">
