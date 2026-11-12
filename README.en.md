@@ -78,7 +78,7 @@ $env:MS_CLIENT_ID = "your Azure Application (client) ID"
 - **Modpacks**: Modrinth `.mrpack` import resolves the Minecraft and loader versions from the pack, installs them, downloads the files and copies `overrides`.
 - **Modrinth content**: mods, resource packs and shaders with filters (game version range, loader, category; resolution for packs, style for shaders), 20 results per page and pagination. Results also carry Chinese names from MC百科 and a CurseForge search link.
 - **MC百科**: Chinese names and entry links are matched through the public search page and cached locally.
-- **CurseForge**: search and download through the MCIM mirror (`mod.mcimirror.top`), **no CurseForge API key required**. Results are merged with Modrinth and de-duplicated by slug: a mod present on both sites appears once, tagged `Modrinth + CurseForge`, `CurseForge` or `Modrinth`. The install dialog lists files from both sources with a source tag, preselects the newest file, and lets you choose the other source manually.
+- **CurseForge**: search and download through the MCIM mirror (`mod.mcimirror.top`), **no CurseForge API key required**. Results are merged with Modrinth and de-duplicated by slug: a mod present on both sites appears once, tagged `Modrinth + CurseForge`, `CurseForge` or `Modrinth`. The install dialog lists files from both sources with a source tag, preselects the newest file, and lets you choose the other source manually. The search bar also has a **download source** switch: **Auto (both) / Modrinth only / CurseForge only**, and switching re-runs the search immediately.
 - **Progress**: the download panel shows phase, file name and percentage, and can be cancelled.
 
 ![Modrinth search](docs/screenshots/download-mods.png)

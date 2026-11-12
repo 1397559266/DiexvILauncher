@@ -36,6 +36,11 @@ public sealed record ModrinthProject(
     public string? CurseForgeProjectUrl => HasCurseForge && !string.IsNullOrWhiteSpace(Slug)
         ? $"https://www.curseforge.com/minecraft/mc-mods/{Slug}"
         : null;
+
+    /// <summary>行内 CurseForge 按钮的目标：有项目页就直达，否则退回搜索页。</summary>
+    public string CurseForgeLink => CurseForgeProjectUrl ?? CurseForgeUrl;
+
+    public bool HasBothSources => HasModrinth && HasCurseForge;
     public string DisplayTitle => !PreferChineseNames || string.IsNullOrWhiteSpace(ChineseName)
         ? Title
         : ChineseName;

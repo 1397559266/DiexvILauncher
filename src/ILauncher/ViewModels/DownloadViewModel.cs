@@ -71,15 +71,25 @@ public sealed class DownloadViewModel : ObservableObject
     private async Task<IReadOnlyList<ModrinthVersion>> LoadMergedVersionsAsync(ModrinthProject project,
         string gameVersion, string? loader)
     {
+        var preference = SelectedDownloadSource?.Key ?? "auto";
+        var allowModrinth = project.HasModrinth && preference != "curseforge";
+        var allowCurseForge = project.CurseForgeModId is > 0 && preference != "modrinth";
+        if (!allowModrinth && !allowCurseForge)
+        {
+            // 用户锁定的来源上没有这个项目时，退回实际存在的来源，避免弹窗空空如也。
+            allowModrinth = project.HasModrinth;
+            allowCurseForge = project.CurseForgeModId is > 0;
+        }
+
         var tasks = new List<Task<IReadOnlyList<ModrinthVersion>>>();
-        if (project.HasModrinth)
+        if (allowModrinth)
         {
             tasks.Add(LoadModrinthVersionsSafeAsync(project, gameVersion, loader));
         }
 
-        if (project.CurseForgeModId is > 0)
+        if (allowCurseForge)
         {
-            tasks.Add(LoadCurseForgeFilesSafeAsync(project.CurseForgeModId.Value, gameVersion, loader));
+            tasks.Add(LoadCurseForgeFilesSafeAsync(project.CurseForgeModId!.Value, gameVersion, loader));
         }
 
         if (tasks.Count == 0)
@@ -145,6 +155,7 @@ public sealed class DownloadViewModel : ObservableObject
     private DownloadFilterOption? _selectedGameType;
     private DownloadFilterOption? _selectedLoader;
     private DownloadFilterOption? _selectedSort;
+    private DownloadFilterOption? _selectedDownloadSource;
     private DownloadFilterOption? _selectedVersionScope;
     private DownloadFilterOption? _selectedSearchGameVersion;
     private DownloadFilterOption? _selectedCategory;
@@ -218,6 +229,13 @@ public sealed class DownloadViewModel : ObservableObject
             new() { Key = "updated", Title = "最近更新" },
             new() { Key = "newest", Title = "最新发布" }
         };
+        DownloadSourceFilters = new ObservableCollection<DownloadFilterOption>
+        {
+            new() { Key = "auto", Title = "自动（双源）", IsSelected = true },
+            new() { Key = "modrinth", Title = "仅 Modrinth" },
+            new() { Key = "curseforge", Title = "仅 CurseForge" }
+        };
+        _selectedDownloadSource = DownloadSourceFilters[0];
         VersionScopeFilters = new ObservableCollection<DownloadFilterOption>
         {
             new() { Key = "current", Title = "当前版本", IsSelected = true },
@@ -326,6 +344,7 @@ public sealed class DownloadViewModel : ObservableObject
     public ObservableCollection<DownloadFilterOption> GameTypeFilters { get; }
     public ObservableCollection<DownloadFilterOption> LoaderFilters { get; }
     public ObservableCollection<DownloadFilterOption> SortFilters { get; }
+    public ObservableCollection<DownloadFilterOption> DownloadSourceFilters { get; }
     public ObservableCollection<DownloadFilterOption> VersionScopeFilters { get; }
     public ObservableCollection<DownloadFilterOption> SearchGameVersionFilters { get; }
     public ObservableCollection<DownloadFilterOption> CategoryFilters { get; }
@@ -535,6 +554,24 @@ public sealed class DownloadViewModel : ObservableObject
             }
 
             SelectSingle(SortFilters, value);
+            if (CurrentTab != DownloadTab.Game)
+            {
+                _ = SearchAsync();
+            }
+        }
+    }
+
+    public DownloadFilterOption? SelectedDownloadSource
+    {
+        get => _selectedDownloadSource;
+        set
+        {
+            if (!SetProperty(ref _selectedDownloadSource, value) || value == null)
+            {
+                return;
+            }
+
+            SelectSingle(DownloadSourceFilters, value);
             if (CurrentTab != DownloadTab.Game)
             {
                 _ = SearchAsync();
@@ -1387,7 +1424,7 @@ public sealed class DownloadViewModel : ObservableObject
             };
             var category = SelectedCategory?.Key is null or "all" ? null : SelectedCategory.Key;
             var sortIndex = SelectedSort?.Key ?? "relevance";
-            var cacheKey = $"{CurrentTab}|{ProjectType}|{_effectiveSearchQuery}|{gameVersion}|{loader}|{category}|{sortIndex}|{_searchOffset}";
+            var cacheKey = $"{CurrentTab}|{ProjectType}|{_effectiveSearchQuery}|{gameVersion}|{loader}|{category}|{sortIndex}|{SelectedDownloadSource?.Key}|{_searchOffset}";
             if (!resetPage && _searchCache.TryGetValue(cacheKey, out var cachedPage))
             {
                 ReplaceSearchResults(cachedPage.Projects);
@@ -1405,34 +1442,56 @@ public sealed class DownloadViewModel : ObservableObject
                 return;
             }
 
-            var modrinthTask = _modrinth.SearchAsync(_effectiveSearchQuery, ProjectType,
-                gameVersion, loader, category, sortIndex, _searchOffset, SearchPageSize);
-            var curseForgeTask = CurrentTab == DownloadTab.Mods
-                ? SearchCurseForgeSafeAsync(gameVersion, loader)
-                : null;
+            var preference = SelectedDownloadSource?.Key ?? "auto";
+            var wantModrinth = preference != "curseforge";
+            var wantCurseForge = CurrentTab == DownloadTab.Mods && preference != "modrinth";
 
-            var result = await modrinthTask;
-            var hits = result.Hits;
-            var total = result.TotalHits;
-            if (curseForgeTask != null)
+            IReadOnlyList<ModrinthProject> hits;
+            int total;
+            int offset;
+            if (wantModrinth)
             {
-                var curseForge = await curseForgeTask;
-                if (curseForge.Items.Count > 0)
+                var modrinthTask = _modrinth.SearchAsync(_effectiveSearchQuery, ProjectType,
+                    gameVersion, loader, category, sortIndex, _searchOffset, SearchPageSize);
+                var curseForgeTask = wantCurseForge ? SearchCurseForgeSafeAsync(gameVersion, loader) : null;
+
+                var result = await modrinthTask;
+                hits = result.Hits;
+                total = result.TotalHits;
+                offset = result.Offset;
+                if (curseForgeTask != null)
                 {
-                    hits = ModCatalog.Merge(result.Hits, curseForge.Items);
-                    total = Math.Max(total, curseForge.Total);
+                    var curseForge = await curseForgeTask;
+                    if (curseForge.Items.Count > 0)
+                    {
+                        hits = ModCatalog.Merge(result.Hits, curseForge.Items);
+                        total = Math.Max(total, curseForge.Total);
+                    }
                 }
             }
+            else
+            {
+                var curseForge = await SearchCurseForgeSafeAsync(gameVersion, loader);
+                hits = curseForge.Items;
+                total = curseForge.Total;
+                offset = _searchOffset;
+            }
 
-            _searchOffset = result.Offset;
+            _searchOffset = offset;
             _searchTotal = total;
             ReplaceSearchResults(hits);
-            RememberSearchPage(cacheKey, hits, result.Offset, total);
+            RememberSearchPage(cacheKey, hits, offset, total);
             NotifySearchPageChanged();
+            var sourceText = preference switch
+            {
+                "curseforge" => "CurseForge",
+                "modrinth" => "Modrinth",
+                _ => "Modrinth + CurseForge"
+            };
             SearchStatus = hits.Count == 0
                 ? "没有找到匹配的项目，试试换一个关键词。"
                 : CurrentTab == DownloadTab.Mods
-                    ? $"找到 {total} 个项目（Modrinth + CurseForge）· 正在匹配 MC百科…"
+                    ? $"找到 {total} 个项目（{sourceText}）· 正在匹配 MC百科…"
                     : $"找到 {total} 个项目";
             if (CurrentTab == DownloadTab.Mods && hits.Count > 0)
             {
