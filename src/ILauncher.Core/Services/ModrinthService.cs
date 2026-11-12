@@ -17,6 +17,25 @@ public sealed record ModrinthProject(
 
     public string? ChineseName { get; init; }
     public string? McmodUrl { get; init; }
+
+    /// <summary>合并条目时指向 CurseForge 的 mod id；为空表示只有 Modrinth 有。</summary>
+    public long? CurseForgeModId { get; init; }
+
+    /// <summary>该条目在 Modrinth 上是否存在。</summary>
+    public bool HasModrinth { get; init; } = true;
+
+    public bool HasCurseForge => CurseForgeModId is > 0;
+
+    /// <summary>结果行的来源标记。</summary>
+    public string SourceBadge => HasModrinth && HasCurseForge
+        ? "Modrinth + CurseForge"
+        : HasCurseForge
+            ? "CurseForge"
+            : "Modrinth";
+
+    public string? CurseForgeProjectUrl => HasCurseForge && !string.IsNullOrWhiteSpace(Slug)
+        ? $"https://www.curseforge.com/minecraft/mc-mods/{Slug}"
+        : null;
     public string DisplayTitle => !PreferChineseNames || string.IsNullOrWhiteSpace(ChineseName)
         ? Title
         : ChineseName;
@@ -102,7 +121,8 @@ public sealed record ModrinthVersion(
     IReadOnlyList<string> GameVersions,
     IReadOnlyList<string> Loaders,
     ModrinthFile? File,
-    IReadOnlyList<ModrinthDependency> Dependencies)
+    IReadOnlyList<ModrinthDependency> Dependencies,
+    string Source = "Modrinth")
 {
     public string GameVersionsText => string.Join(", ", GameVersions.Take(6));
     public string LoadersText => string.Join(", ", Loaders);

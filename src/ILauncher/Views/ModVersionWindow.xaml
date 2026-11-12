@@ -85,6 +85,11 @@
                                                 <TextBlock Text="{Binding ReleaseTypeText}" FontSize="8.5"
                                                            Foreground="{StaticResource BrushTextSecondary}" />
                                             </Border>
+                                            <Border Background="#FFF3F8FF" CornerRadius="5" Padding="5,1" Margin="6,0,0,0"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Source}" FontSize="8.5"
+                                                           Foreground="#FF3B6FA8" />
+                                            </Border>
                                         </StackPanel>
                                         <TextBlock Text="{Binding Name}" FontSize="10" Foreground="{StaticResource BrushTextSecondary}"
                                                    TextTrimming="CharacterEllipsis" Margin="0,3,0,0" />

@@ -452,6 +452,11 @@
                                                     <TextBlock Text="{Binding DownloadsText}" FontSize="8.5"
                                                                Foreground="{StaticResource BrushTextMuted}" />
                                                 </Border>
+                                                <Border Background="#FFF3F8FF" CornerRadius="5" Padding="5,1" Margin="6,0,0,0"
+                                                        VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding SourceBadge}" FontSize="8.5"
+                                                               Foreground="#FF3B6FA8" />
+                                                </Border>
                                             </StackPanel>
                                             <TextBlock Text="{Binding Description}" FontSize="9.5" Foreground="{StaticResource BrushTextSecondary}"
                                                        TextTrimming="CharacterEllipsis" Margin="0,3,0,0" />

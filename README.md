@@ -1,4 +1,4 @@
-# DiexvILauncher 1.3.1
+# DiexvILauncher 1.4
 
 简体中文 | [English](README.en.md)
 
@@ -78,7 +78,7 @@ $env:MS_CLIENT_ID = "你的 Azure Application (client) ID"
 - **整合包**：支持 Modrinth `.mrpack` 导入，读取依赖中的 Minecraft/加载器版本，安装加载器、下载文件并复制 `overrides`；同时读取包内 `icon.png`/`pack.png` 作为版本本地图标。
 - **Modrinth 内容**：模组、资源包、光影搜索与安装。筛选使用带标题的下拉菜单：**版本范围**（当前/全部）、**加载器**（当前/全部/Fabric/Forge/NeoForge/Quilt）、**类型**（优化/科技/魔法/冒险/装饰/辅助/前置库；资源包按 16×/32×/64×/128×/256×；光影按写实/奇幻/卡通/半写实/原版风）。每页 20 个结果，底部提供上一页/下一页和总页数。结果附带 **MC百科** 中文名与链接，以及 **CurseForge** 搜索链接。
 - **MC百科**：通过公开搜索页匹配模组中文名与条目链接；即使没有中文名，只要匹配到条目也会显示 MC百科链接。结果缓存到设置目录。每项结果也附带 **CurseForge** 搜索链接。
-- **CurseForge**：当前提供的是按项目标题搜索的网页链接，不是 CurseForge API 安装源；正式接入需要 CurseForge API Key。
+- **CurseForge**：通过 MCIM 镜像（`mod.mcimirror.top`）检索并下载，**不需要 CurseForge API Key**。搜索结果会与 Modrinth 合并去重：同名模组只出现一次，行内标注 `Modrinth + CurseForge`、`CurseForge` 或 `Modrinth`；打开安装界面后两个来源的版本都会列出并带来源标签，默认选中最新文件，也可以手动挑另一边的版本。
 - **进度与取消**：下载面板实时显示阶段、文件名、百分比，支持取消。
 
 ![Modrinth 搜索](docs/screenshots/download-mods.png)
@@ -262,7 +262,7 @@ docs/screenshots/            README 截图
 - **微软登录依赖 Client ID 通过 Minecraft Services 审核**：未通过时 `login_with_xbox` 返回 403；令牌使用 Windows DPAPI 加密保存在本地，过期后自动续期。
 - **离线账户不能联机正版服务器**：这是设计边界，首次以离线账户启动时会明确提示。
 - **没有实现 OptiFine / LiteLoader 自动安装**：仍需使用它们的官方安装器。
-- **CurseForge 未接入**：内容下载使用 Modrinth；整合包只支持 Modrinth `.mrpack`。
+- **CurseForge 整合包/资源包未接入**：模组检索与下载已通过 MCIM 镜像支持；整合包仍只支持 Modrinth `.mrpack`，CurseForge 的资源包与光影暂未接入。
 - 没有资源包加载顺序编辑、世界/数据包在线下载。
 - 模组安装不会自动解析并安装前置依赖；只安装主文件。
 - Forge/NeoForge 走官方安装器，不保证所有版本都能在无界面模式下成功。

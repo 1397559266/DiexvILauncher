@@ -11,8 +11,8 @@
     <RootNamespace>ILauncher</RootNamespace>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version>1.3.1</Version>
-    <FileVersion>1.3.1.0</FileVersion>
+    <Version>1.4.0</Version>
+    <FileVersion>1.4.0.0</FileVersion>
     <AssemblyTitle>DiexvILauncher</AssemblyTitle>
     <Product>DiexvILauncher</Product>
     <Description>DiexvILauncher — 带有独立启动日志面板的 Minecraft: Java Edition 启动器</Description>

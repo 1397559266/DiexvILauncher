@@ -52,6 +52,72 @@ public sealed class DownloadViewModel : ObservableObject
     private readonly FabricService _fabric;
     private readonly QuiltService _quilt;
     private readonly ModrinthService _modrinth;
+    private readonly CurseForgeService _curseForge = new();
+
+    private async Task<(IReadOnlyList<ModrinthProject> Items, int Total)> SearchCurseForgeSafeAsync(
+        string? gameVersion, string? loader)
+    {
+        try
+        {
+            return await _curseForge.SearchAsync(_effectiveSearchQuery, gameVersion,
+                loader is null or "all" ? null : loader, _searchOffset, SearchPageSize);
+        }
+        catch
+        {
+            return ([], 0);
+        }
+    }
+
+    private async Task<IReadOnlyList<ModrinthVersion>> LoadMergedVersionsAsync(ModrinthProject project,
+        string gameVersion, string? loader)
+    {
+        var tasks = new List<Task<IReadOnlyList<ModrinthVersion>>>();
+        if (project.HasModrinth)
+        {
+            tasks.Add(LoadModrinthVersionsSafeAsync(project, gameVersion, loader));
+        }
+
+        if (project.CurseForgeModId is > 0)
+        {
+            tasks.Add(LoadCurseForgeFilesSafeAsync(project.CurseForgeModId.Value, gameVersion, loader));
+        }
+
+        if (tasks.Count == 0)
+        {
+            return [];
+        }
+
+        var results = await Task.WhenAll(tasks);
+        return results.SelectMany(static list => list)
+            .OrderByDescending(static version => version.DatePublished)
+            .ToList();
+    }
+
+    private async Task<IReadOnlyList<ModrinthVersion>> LoadModrinthVersionsSafeAsync(ModrinthProject project,
+        string gameVersion, string? loader)
+    {
+        try
+        {
+            return await _modrinth.GetVersionsAsync(project.Id, gameVersion, loader);
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    private async Task<IReadOnlyList<ModrinthVersion>> LoadCurseForgeFilesSafeAsync(long modId,
+        string gameVersion, string? loader)
+    {
+        try
+        {
+            return await _curseForge.GetFilesAsync(modId, gameVersion, loader);
+        }
+        catch
+        {
+            return [];
+        }
+    }
     private readonly McmodService _mcmod = new();
     private readonly ModLoaderInstallerService _installers;
     private readonly ModpackService _modpacks;
@@ -1339,21 +1405,38 @@ public sealed class DownloadViewModel : ObservableObject
                 return;
             }
 
-            var result = await _modrinth.SearchAsync(_effectiveSearchQuery, ProjectType,
+            var modrinthTask = _modrinth.SearchAsync(_effectiveSearchQuery, ProjectType,
                 gameVersion, loader, category, sortIndex, _searchOffset, SearchPageSize);
+            var curseForgeTask = CurrentTab == DownloadTab.Mods
+                ? SearchCurseForgeSafeAsync(gameVersion, loader)
+                : null;
+
+            var result = await modrinthTask;
+            var hits = result.Hits;
+            var total = result.TotalHits;
+            if (curseForgeTask != null)
+            {
+                var curseForge = await curseForgeTask;
+                if (curseForge.Items.Count > 0)
+                {
+                    hits = ModCatalog.Merge(result.Hits, curseForge.Items);
+                    total = Math.Max(total, curseForge.Total);
+                }
+            }
+
             _searchOffset = result.Offset;
-            _searchTotal = result.TotalHits;
-            ReplaceSearchResults(result.Hits);
-            RememberSearchPage(cacheKey, result.Hits, result.Offset, result.TotalHits);
+            _searchTotal = total;
+            ReplaceSearchResults(hits);
+            RememberSearchPage(cacheKey, hits, result.Offset, total);
             NotifySearchPageChanged();
-            SearchStatus = result.Hits.Count == 0
+            SearchStatus = hits.Count == 0
                 ? "没有找到匹配的项目，试试换一个关键词。"
                 : CurrentTab == DownloadTab.Mods
-                    ? $"找到 {result.TotalHits} 个项目 · 正在匹配 MC百科…"
-                    : $"找到 {result.TotalHits} 个项目";
-            if (CurrentTab == DownloadTab.Mods && result.Hits.Count > 0)
+                    ? $"找到 {total} 个项目（Modrinth + CurseForge）· 正在匹配 MC百科…"
+                    : $"找到 {total} 个项目";
+            if (CurrentTab == DownloadTab.Mods && hits.Count > 0)
             {
-                _ = EnrichMcmodAsync(result.Hits, searchVersion, cacheKey);
+                _ = EnrichMcmodAsync(hits, searchVersion, cacheKey);
             }
         }
         catch (Exception ex)
@@ -1548,6 +1631,11 @@ public sealed class DownloadViewModel : ObservableObject
     private async Task<IReadOnlyList<ModDependencyItem>> AnalyzeDependenciesAsync(ModrinthVersion version,
         string gameVersion, string? loader, CancellationToken cancellationToken)
     {
+        if (!string.Equals(version.Source, "Modrinth", StringComparison.OrdinalIgnoreCase))
+        {
+            return Array.Empty<ModDependencyItem>();
+        }
+
         var instance = ResolveInstallInstance(gameVersion, loader);
         if (instance == null)
         {
@@ -1617,6 +1705,11 @@ public sealed class DownloadViewModel : ObservableObject
     private async Task<DependencyLoadResult> AnalyzeJarDependenciesAsync(ModrinthVersion version,
         string gameVersion, string? loader, CancellationToken cancellationToken)
     {
+        if (!string.Equals(version.Source, "Modrinth", StringComparison.OrdinalIgnoreCase))
+        {
+            return new DependencyLoadResult(Array.Empty<ModDependencyItem>(), false, "CurseForge 文件不走 Modrinth 前置解析");
+        }
+
         var instance = ResolveInstallInstance(gameVersion, loader);
         if (instance == null || version.File == null)
         {
@@ -2126,8 +2219,8 @@ public sealed class DownloadViewModel : ObservableObject
         try
         {
             window = new ModVersionWindow(project, defaultVersion, gameVersions, defaultLoaderTitle, loaders,
-                async (version, selectedLoader) => (IReadOnlyList<ModrinthVersion>)await _modrinth.GetVersionsAsync(
-                    project.Id, version, NormalizeLoader(selectedLoader)),
+                async (version, selectedLoader) => await LoadMergedVersionsAsync(
+                    project, version, NormalizeLoader(selectedLoader)),
                 (version, gameVersion, selectedLoader) => AnalyzeDependenciesAsync(
                     version, gameVersion, NormalizeLoader(selectedLoader), CancellationToken.None),
                 (version, gameVersion, selectedLoader) => AnalyzeJarDependenciesAsync(
@@ -2202,6 +2295,12 @@ public sealed class DownloadViewModel : ObservableObject
         if (_contextInstance == null)
         {
             _toast("请先选择一个游戏版本。", true);
+            return;
+        }
+
+        if (!project.HasModrinth)
+        {
+            await OpenVersionPickerAsync(project);
             return;
         }
 

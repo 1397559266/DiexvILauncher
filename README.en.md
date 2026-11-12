@@ -1,4 +1,4 @@
-# DiexvILauncher 1.3.1
+# DiexvILauncher 1.4
 
 English | [简体中文](README.md)
 
@@ -78,7 +78,7 @@ $env:MS_CLIENT_ID = "your Azure Application (client) ID"
 - **Modpacks**: Modrinth `.mrpack` import resolves the Minecraft and loader versions from the pack, installs them, downloads the files and copies `overrides`.
 - **Modrinth content**: mods, resource packs and shaders with filters (game version range, loader, category; resolution for packs, style for shaders), 20 results per page and pagination. Results also carry Chinese names from MC百科 and a CurseForge search link.
 - **MC百科**: Chinese names and entry links are matched through the public search page and cached locally.
-- **CurseForge**: currently a web search link only; a real integration needs a CurseForge API key.
+- **CurseForge**: search and download through the MCIM mirror (`mod.mcimirror.top`), **no CurseForge API key required**. Results are merged with Modrinth and de-duplicated by slug: a mod present on both sites appears once, tagged `Modrinth + CurseForge`, `CurseForge` or `Modrinth`. The install dialog lists files from both sources with a source tag, preselects the newest file, and lets you choose the other source manually.
 - **Progress**: the download panel shows phase, file name and percentage, and can be cancelled.
 
 ![Modrinth search](docs/screenshots/download-mods.png)
@@ -253,7 +253,7 @@ docs/screenshots/            README screenshots
 - **Microsoft sign-in depends on the client ID passing the Minecraft Services review**: until then `login_with_xbox` returns 403. Tokens are encrypted with Windows DPAPI and refreshed automatically.
 - **Offline accounts cannot join online-mode servers** — that is a designed boundary, stated in the one-time notice.
 - OptiFine and LiteLoader are not installed automatically; their own installers are still required.
-- CurseForge is not integrated; content comes from Modrinth, and modpacks are limited to `.mrpack`.
+- CurseForge modpacks and resource packs are not integrated; mod search and downloads work through the MCIM mirror; modpacks remain Modrinth `.mrpack` only.
 - No resource pack ordering editor, no online world/datapack download.
 - Installing a mod does not automatically resolve and install its dependencies; only the main file is installed.
 - Forge/NeoForge use their official installers, so headless installation is not guaranteed for every version.
