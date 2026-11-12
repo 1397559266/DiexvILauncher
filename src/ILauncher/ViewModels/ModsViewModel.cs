@@ -146,6 +146,7 @@ public sealed class ModsViewModel : ObservableObject
     private int _enabledCount;
     private int _disabledCount;
     private readonly ModUpdateService _updates = new();
+    private readonly Dictionary<string, ModUpdateState> _updateStates = new(StringComparer.OrdinalIgnoreCase);
     private bool _hasUpdates;
     private bool _updateCheckStarted;
     private Task _loadTask = Task.CompletedTask;
@@ -556,7 +557,7 @@ public sealed class ModsViewModel : ObservableObject
         }
 
         var result = await _updates.CheckAsync(
-            candidates.Select(c => (c.Sha1, c.Item.Name, c.Item.Version)).ToList(),
+            candidates.Select(c => (c.Sha1, c.Item.Model.FilePath, c.Item.Name, c.Item.Version)).ToList(),
             _instance.MinecraftVersion, loader);
 
         var available = 0;
@@ -567,6 +568,7 @@ public sealed class ModsViewModel : ObservableObject
                 continue;
             }
 
+            _updateStates[sha1] = state;
             item.RemoteIconUrl = state.IconUrl;
             item.CachedLatestVersionId = state.LatestVersionId;
             if (!state.UpdateAvailable || !item.Enabled)
@@ -684,6 +686,7 @@ public sealed class ModsViewModel : ObservableObject
                 continue;
             }
 
+            _updateStates[sha1] = state;
             item.RemoteIconUrl = state.IconUrl;
             item.CachedLatestVersionId = state.LatestVersionId;
             if (!state.UpdateAvailable || !item.Enabled)
@@ -702,7 +705,25 @@ public sealed class ModsViewModel : ObservableObject
             return;
         }
 
-        if (item.LatestVersionInfo?.File == null && !string.IsNullOrWhiteSpace(item.CachedLatestVersionId))
+        if (item.LatestVersionInfo?.File == null && _updateStates.TryGetValue(item.CachedSha1, out var cached) &&
+            !string.IsNullOrWhiteSpace(cached.LatestDownloadUrl))
+        {
+            item.LatestVersionInfo = new ModrinthVersion(
+                cached.LatestVersionId,
+                cached.ProjectId,
+                cached.LatestVersionNumber,
+                cached.LatestVersionNumber,
+                "release",
+                cached.CheckedAt,
+                [],
+                [],
+                new ModrinthFile(cached.LatestDownloadUrl, cached.LatestFileName ?? "mod.jar", 0, true,
+                    cached.LatestSha1),
+                []);
+            item.LatestVersion = cached.LatestVersionNumber;
+        }
+        else if (item.LatestVersionInfo?.File == null && !string.IsNullOrWhiteSpace(item.CachedLatestVersionId) &&
+                 !item.CachedLatestVersionId.StartsWith("cf-", StringComparison.Ordinal))
         {
             try
             {

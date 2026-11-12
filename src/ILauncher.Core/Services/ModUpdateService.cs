@@ -29,7 +29,7 @@ public sealed class ModUpdateService
     private readonly CurseForgeService _curseForge = new();
 
     public async Task<Dictionary<string, ModUpdateState>> CheckAsync(
-        IReadOnlyList<(string Sha1, string Name, string Version)> mods,
+        IReadOnlyList<(string Sha1, string Path, string Name, string Version)> mods,
         string? gameVersion, string? loader, CancellationToken cancellationToken = default)
     {
         var result = new Dictionary<string, ModUpdateState>(StringComparer.OrdinalIgnoreCase);
@@ -74,30 +74,63 @@ public sealed class ModUpdateService
                 updateAvailable);
         }
 
-        // Modrinth 上没有的模组，尝试用 CurseForge 镜像按名称补一个图标。
-        var missing = mods.Where(m => !result.ContainsKey(m.Sha1)).Take(40).ToList();
-        foreach (var mod in missing)
+        // Modrinth 没识别出来的模组，用 CurseForge 镜像按名称精确匹配后查文件列表。
+        var missing = mods.Where(m => !result.ContainsKey(m.Sha1)).Take(60).ToList();
+        using var gate = new SemaphoreSlim(4);
+        var curseTasks = missing.Select(async mod =>
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
                 var (items, _) = await _curseForge.SearchAsync(mod.Name, null, null, 0, 5, cancellationToken)
                     .ConfigureAwait(false);
                 var match = items.FirstOrDefault(item =>
                     string.Equals(item.Title.Trim(), mod.Name.Trim(), StringComparison.OrdinalIgnoreCase));
-                if (match == null || string.IsNullOrWhiteSpace(match.IconUrl))
+                if (match?.CurseForgeModId is not > 0)
                 {
-                    continue;
+                    return;
                 }
 
-                result[mod.Sha1] = new ModUpdateState(mod.Sha1, "", mod.Name, match.IconUrl, "", mod.Version,
-                    null, null, null, DateTime.Now, false);
+                var files = await _curseForge.GetFilesAsync(match.CurseForgeModId.Value, gameVersion, loader,
+                    cancellationToken).ConfigureAwait(false);
+                var latest = files.FirstOrDefault(file => file.File != null);
+
+                var updated = false;
+                var localTime = File.GetLastWriteTime(mod.Path);
+                if (latest?.File != null)
+                {
+                    var sameFile = string.Equals(latest.File.FileName, Path.GetFileName(mod.Path),
+                        StringComparison.OrdinalIgnoreCase);
+                    updated = !sameFile && latest.DatePublished > localTime;
+                }
+
+                lock (result)
+                {
+                    result[mod.Sha1] = new ModUpdateState(
+                        mod.Sha1,
+                        $"cf:{match.CurseForgeModId.Value}",
+                        match.Title,
+                        match.IconUrl,
+                        latest?.Id ?? "",
+                        updated ? latest!.VersionNumber : mod.Version,
+                        latest?.File?.FileName,
+                        latest?.File?.Url,
+                        latest?.File?.Sha1,
+                        DateTime.Now,
+                        updated);
+                }
             }
             catch
             {
-                // 图标补全失败不影响更新检查结果。
+                // 单个模组的 CurseForge 兜底失败不影响其它结果。
             }
-        }
+            finally
+            {
+                gate.Release();
+            }
+        });
+
+        await Task.WhenAll(curseTasks).ConfigureAwait(false);
 
         return result;
     }
