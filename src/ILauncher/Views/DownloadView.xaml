@@ -74,13 +74,8 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- Header -->
-        <Grid Margin="0,0,0,13">
-            <StackPanel>
-                <TextBlock Text="下载" FontSize="21" FontWeight="Bold" />
-                <TextBlock Text="{Binding TabDescription}" FontSize="10.5" Foreground="{StaticResource BrushTextSecondary}"
-                           Margin="0,4,0,0" />
-            </StackPanel>
+        <!-- Header: 下载类型切换 -->
+        <Grid Margin="0,0,0,0">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                 <Border Background="#FFF7FBFF" BorderBrush="{StaticResource BrushBorder}" BorderThickness="1"
                         CornerRadius="8" Padding="10,5" VerticalAlignment="Center">
@@ -89,7 +84,7 @@
             </StackPanel>
         </Grid>
 
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,14">
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16">
             <Button Style="{StaticResource DownloadTabButton}" Tag="{Binding IsGameTab}"
                     Command="{Binding SetTabCommand}" CommandParameter="Game" AutomationProperties.Name="游戏版本">
                 <StackPanel Orientation="Horizontal">
