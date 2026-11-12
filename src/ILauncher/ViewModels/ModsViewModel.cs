@@ -32,6 +32,31 @@ public sealed class ModItemViewModel : ObservableObject
     public byte[]? IconData => Model.IconData;
     public string Initial => string.IsNullOrWhiteSpace(Name) ? "?" : Name[..1].ToUpperInvariant();
 
+    private string? _remoteIconUrl;
+
+    /// <summary>Modrinth / CurseForge 上的项目图标，优先于 jar 内图标显示。</summary>
+    public string? RemoteIconUrl
+    {
+        get => _remoteIconUrl;
+        set
+        {
+            if (SetProperty(ref _remoteIconUrl, value))
+            {
+                OnPropertyChanged(nameof(HasRemoteIcon));
+                OnPropertyChanged(nameof(HasLocalIcon));
+            }
+        }
+    }
+
+    public bool HasRemoteIcon => !string.IsNullOrWhiteSpace(_remoteIconUrl);
+    public bool HasLocalIcon => !HasRemoteIcon;
+
+    /// <summary>该文件在最近一次检查时的 SHA-1，用于命中更新缓存。</summary>
+    public string CachedSha1 { get; set; } = "";
+
+    /// <summary>缓存里记录的最新版本 id，用于按需补拉版本详情。</summary>
+    public string CachedLatestVersionId { get; set; } = "";
+
     public bool UpdateAvailable
     {
         get => _updateAvailable;
@@ -120,6 +145,9 @@ public sealed class ModsViewModel : ObservableObject
     private string _linkInstallStatus = "";
     private int _enabledCount;
     private int _disabledCount;
+    private readonly ModUpdateService _updates = new();
+    private bool _hasUpdates;
+    private bool _updateCheckStarted;
     private Task _loadTask = Task.CompletedTask;
 
     public ModsViewModel(ModService modService, ModrinthService modrinth, Action<string, bool> toast, Action? modsChanged = null)
@@ -135,7 +163,8 @@ public sealed class ModsViewModel : ObservableObject
         FilterAll = new FilterItem { Title = "全部", Key = "all", IsSelected = true };
         FilterEnabled = new FilterItem { Title = "已启用", Key = "enabled" };
         FilterDisabled = new FilterItem { Title = "已禁用", Key = "disabled" };
-        Filters = new[] { FilterAll, FilterEnabled, FilterDisabled };
+        FilterUpdates = new FilterItem { Title = "可更新", Key = "updates" };
+        Filters = new ObservableCollection<FilterItem> { FilterAll, FilterEnabled, FilterDisabled };
 
         _searchTimer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(160) };
         _searchTimer.Tick += (_, _) =>
@@ -175,7 +204,15 @@ public sealed class ModsViewModel : ObservableObject
     public FilterItem FilterAll { get; }
     public FilterItem FilterEnabled { get; }
     public FilterItem FilterDisabled { get; }
-    public IEnumerable<FilterItem> Filters { get; }
+    public FilterItem FilterUpdates { get; }
+    public ObservableCollection<FilterItem> Filters { get; }
+
+    /// <summary>只有检测到可更新模组时，筛选栏里才出现「可更新」。</summary>
+    public bool HasUpdates
+    {
+        get => _hasUpdates;
+        private set => SetProperty(ref _hasUpdates, value);
+    }
 
     public AsyncRelayCommand RefreshCommand { get; }
     public AsyncRelayCommand ToggleCommand { get; }
@@ -330,9 +367,12 @@ public sealed class ModsViewModel : ObservableObject
             }
 
             RecalculateCounts();
+            ApplyCachedUpdates();
+            RecalculateCounts();
             ModsView.Refresh();
             OnPropertyChanged(nameof(IsEmpty));
             OnPropertyChanged(nameof(SummaryText));
+            _ = AutoCheckUpdatesAsync();
         }
         catch (Exception ex)
         {
@@ -380,6 +420,28 @@ public sealed class ModsViewModel : ObservableObject
         FilterAll.Count = Mods.Count;
         FilterEnabled.Count = EnabledCount;
         FilterDisabled.Count = DisabledCount;
+
+        var updates = Mods.Count(m => m.UpdateAvailable);
+        FilterUpdates.Count = updates;
+        HasUpdates = updates > 0;
+        if (updates > 0)
+        {
+            if (!Filters.Contains(FilterUpdates))
+            {
+                Filters.Add(FilterUpdates);
+            }
+        }
+        else
+        {
+            Filters.Remove(FilterUpdates);
+            if (_activeFilter == "updates")
+            {
+                _activeFilter = "all";
+                FilterAll.IsSelected = true;
+                FilterUpdates.IsSelected = false;
+            }
+        }
+
         OnPropertyChanged(nameof(SummaryText));
     }
 
@@ -396,6 +458,11 @@ public sealed class ModsViewModel : ObservableObject
         }
 
         if (_activeFilter == "disabled" && mod.Enabled)
+        {
+            return false;
+        }
+
+        if (_activeFilter == "updates" && !mod.UpdateAvailable)
         {
             return false;
         }
@@ -435,59 +502,9 @@ public sealed class ModsViewModel : ObservableObject
         }
 
         IsCheckingUpdates = true;
-        var available = 0;
         try
         {
-            var loader = LoaderKey(_instance.Loader);
-            foreach (var item in Mods.Where(mod => mod.Enabled))
-            {
-                item.UpdateAvailable = false;
-                item.LatestVersionInfo = null;
-                item.LatestVersion = "";
-                try
-                {
-                    var path = item.Model.FilePath;
-                    if (!File.Exists(path))
-                    {
-                        continue;
-                    }
-
-                    var sha1 = await Task.Run(() =>
-                    {
-                        using var stream = File.OpenRead(path);
-                        return Convert.ToHexString(SHA1.HashData(stream)).ToLowerInvariant();
-                    });
-
-                    var current = await _modrinth.GetVersionByHashAsync(sha1);
-                    if (current == null)
-                    {
-                        continue;
-                    }
-
-                    var versions = await _modrinth.GetVersionsAsync(current.ProjectId, _instance.MinecraftVersion, loader);
-                    var latest = versions.FirstOrDefault(version => version.File != null);
-                    if (latest?.File == null)
-                    {
-                        continue;
-                    }
-
-                    if (string.Equals(latest.File.Sha1, sha1, StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(latest.VersionNumber, item.Version, StringComparison.OrdinalIgnoreCase))
-                    {
-                        continue;
-                    }
-
-                    item.LatestVersion = latest.VersionNumber;
-                    item.LatestVersionInfo = latest;
-                    item.UpdateAvailable = true;
-                    available++;
-                }
-                catch
-                {
-                    // Individual mod update checks are best-effort.
-                }
-            }
-
+            var available = await RunUpdateCheckAsync();
             _toast(available == 0
                 ? "已检查完成，没有发现可更新模组。"
                 : $"发现 {available} 个可更新模组，点击行内「更新」按钮升级。", false);
@@ -499,10 +516,208 @@ public sealed class ModsViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// 批量识别本地模组并查询最新版本：一次哈希接口 + 一次项目接口 + 每个项目一次版本查询，
+    /// 顺便把 Modrinth / CurseForge 的项目图标取回来。
+    /// </summary>
+    private async Task<int> RunUpdateCheckAsync()
+    {
+        if (_instance == null)
+        {
+            return 0;
+        }
+
+        var loader = LoaderKey(_instance.Loader);
+        var candidates = new List<(ModItemViewModel Item, string Sha1)>();
+        foreach (var item in Mods)
+        {
+            var path = item.Model.FilePath;
+            if (!File.Exists(path))
+            {
+                continue;
+            }
+
+            item.UpdateAvailable = false;
+            item.LatestVersion = "";
+            item.LatestVersionInfo = null;
+
+            var sha1 = await Task.Run(() =>
+            {
+                using var stream = File.OpenRead(path);
+                return Convert.ToHexString(SHA1.HashData(stream)).ToLowerInvariant();
+            });
+            item.CachedSha1 = sha1;
+            candidates.Add((item, sha1));
+        }
+
+        if (candidates.Count == 0)
+        {
+            return 0;
+        }
+
+        var result = await _updates.CheckAsync(
+            candidates.Select(c => (c.Sha1, c.Item.Name, c.Item.Version)).ToList(),
+            _instance.MinecraftVersion, loader);
+
+        var available = 0;
+        foreach (var (item, sha1) in candidates)
+        {
+            if (!result.TryGetValue(sha1, out var state))
+            {
+                continue;
+            }
+
+            item.RemoteIconUrl = state.IconUrl;
+            item.CachedLatestVersionId = state.LatestVersionId;
+            if (!state.UpdateAvailable || !item.Enabled)
+            {
+                continue;
+            }
+
+            item.LatestVersion = state.LatestVersionNumber;
+            item.UpdateAvailable = true;
+            available++;
+        }
+
+        SaveUpdateCache(result);
+        RecalculateCounts();
+        ModsView.Refresh();
+        return available;
+    }
+
+    private async Task AutoCheckUpdatesAsync()
+    {
+        if (_updateCheckStarted || _instance == null)
+        {
+            return;
+        }
+
+        _updateCheckStarted = true;
+        var cache = LoadUpdateCache();
+        if (cache.Count > 0 && (DateTime.Now - cache.Values.Max(v => v.CheckedAt)).TotalHours < 6)
+        {
+            return;
+        }
+
+        IsCheckingUpdates = true;
+        try
+        {
+            await RunUpdateCheckAsync();
+        }
+        catch
+        {
+            // 自动检查失败时不打扰用户。
+        }
+        finally
+        {
+            IsCheckingUpdates = false;
+        }
+    }
+
+    private static string UpdateCachePath => Path.Combine(AppPaths.CacheDirectory, "mod-updates.json");
+
+    private static Dictionary<string, ModUpdateState> LoadUpdateCache()
+    {
+        try
+        {
+            if (!File.Exists(UpdateCachePath))
+            {
+                return new Dictionary<string, ModUpdateState>(StringComparer.OrdinalIgnoreCase);
+            }
+
+            var json = File.ReadAllText(UpdateCachePath);
+            var data = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, ModUpdateState>>(json);
+            return data == null
+                ? new Dictionary<string, ModUpdateState>(StringComparer.OrdinalIgnoreCase)
+                : new Dictionary<string, ModUpdateState>(data, StringComparer.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return new Dictionary<string, ModUpdateState>(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    private static void SaveUpdateCache(IReadOnlyDictionary<string, ModUpdateState> entries)
+    {
+        try
+        {
+            AppPaths.EnsureCreated();
+            var json = System.Text.Json.JsonSerializer.Serialize(entries,
+                new System.Text.Json.JsonSerializerOptions { WriteIndented = false });
+            File.WriteAllText(UpdateCachePath, json);
+        }
+        catch
+        {
+            // 缓存写入失败不影响本次检查结果。
+        }
+    }
+
+    /// <summary>进入模组管理时先把缓存里的“可更新”和远程图标贴上去，界面不需要等网络。</summary>
+    private void ApplyCachedUpdates()
+    {
+        var cache = LoadUpdateCache();
+        foreach (var item in Mods)
+        {
+            var path = item.Model.FilePath;
+            if (!File.Exists(path))
+            {
+                continue;
+            }
+
+            var sha1 = item.CachedSha1;
+            if (string.IsNullOrEmpty(sha1))
+            {
+                try
+                {
+                    using var stream = File.OpenRead(path);
+                    sha1 = Convert.ToHexString(SHA1.HashData(stream)).ToLowerInvariant();
+                    item.CachedSha1 = sha1;
+                }
+                catch
+                {
+                    continue;
+                }
+            }
+
+            if (!cache.TryGetValue(sha1, out var state))
+            {
+                continue;
+            }
+
+            item.RemoteIconUrl = state.IconUrl;
+            item.CachedLatestVersionId = state.LatestVersionId;
+            if (!state.UpdateAvailable || !item.Enabled)
+            {
+                continue;
+            }
+
+            item.LatestVersion = state.LatestVersionNumber;
+            item.UpdateAvailable = true;
+        }
+    }
     private async Task UpdateModAsync(ModItemViewModel item)
     {
-        if (_instance == null || item.LatestVersionInfo?.File == null)
+        if (_instance == null)
         {
+            return;
+        }
+
+        if (item.LatestVersionInfo?.File == null && !string.IsNullOrWhiteSpace(item.CachedLatestVersionId))
+        {
+            try
+            {
+                item.LatestVersionInfo = await _modrinth.GetVersionAsync(item.CachedLatestVersionId);
+                item.LatestVersion = item.LatestVersionInfo?.VersionNumber ?? item.LatestVersion;
+            }
+            catch
+            {
+                // 补拉失败就交给下面统一提示。
+            }
+        }
+
+        if (item.LatestVersionInfo?.File == null)
+        {
+            _toast("没有拿到最新版本的文件信息，请点「检查更新」后重试。", true);
             return;
         }
 

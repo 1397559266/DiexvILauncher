@@ -543,7 +543,9 @@ public static class LanguageService
                 break;
             case TextBlock textBlock:
                 AttachDynamicText(textBlock);
-                if (!IsBound(textBlock, TextBlock.TextProperty))
+                // 只翻译在 XAML 里写字面量的 TextBlock；模板里通过 TemplateBinding
+                // 绑定 Content 的文本一旦被赋值就会把绑定顶掉，导致计数之类的动态内容不再刷新。
+                if (!IsBound(textBlock, TextBlock.TextProperty) && IsLocallySet(textBlock, TextBlock.TextProperty))
                 {
                     textBlock.Text = Translate(textBlock.Text);
                 }
@@ -612,6 +614,9 @@ public static class LanguageService
 
     private static bool IsBound(DependencyObject target, DependencyProperty property)
         => BindingOperations.GetBindingExpressionBase(target, property) != null;
+
+    private static bool IsLocallySet(DependencyObject target, DependencyProperty property)
+        => DependencyPropertyHelper.GetValueSource(target, property).BaseValueSource == BaseValueSource.Local;
 
     private static void AttachDynamicText(TextBlock textBlock)
     {

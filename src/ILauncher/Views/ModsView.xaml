@@ -199,8 +199,12 @@
                                     <Border Width="38" Height="38" CornerRadius="9" Background="#FFF2F8FF" VerticalAlignment="Center">
                                         <Grid>
                                             <controls:Icon Data="{StaticResource IconPuzzle}" Fill="#FFB3CBE8" Width="18" Height="18" />
+                                            <Image Source="{Binding RemoteIconUrl, Converter={StaticResource RemoteIcon}}" Stretch="Uniform"
+                                                   RenderOptions.BitmapScalingMode="HighQuality"
+                                                   Visibility="{Binding HasRemoteIcon, Converter={StaticResource BoolToVisibility}}" />
                                             <Image Source="{Binding IconData, Converter={StaticResource ModIcon}}" Stretch="Uniform"
-                                                   RenderOptions.BitmapScalingMode="HighQuality" />
+                                                   RenderOptions.BitmapScalingMode="HighQuality"
+                                                   Visibility="{Binding HasLocalIcon, Converter={StaticResource BoolToVisibility}}" />
                                         </Grid>
                                     </Border>
 

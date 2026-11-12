@@ -107,6 +107,8 @@ $env:MS_CLIENT_ID = "你的 Azure Application (client) ID"
 - 读取 `mods/*.jar` 与 `*.jar.disabled`，当前实测 124 个模组、2 个启用。
 - 从 `fabric.mod.json`、`quilt.mod.json`、`META-INF/mods.toml`、`MANIFEST.MF` 读取显示名、版本、模组 ID 和图标。
 - 启用/禁用通过重命名 `.jar` ↔ `.jar.disabled` 完成，下次启动生效。
+- 进入模组管理会自动检查更新：用文件 SHA-1 批量识别 Modrinth 项目，再按当前 MC 版本/加载器查最新文件；结果缓存到 `%APPDATA%\ILauncher\cache\mod-updates.json`，6 小时内不重复请求。检测到可更新模组时，筛选栏才会出现「可更新 N」。
+- 模组图标优先使用该项目在 Modrinth / CurseForge 上的图标，两边都取不到时才回退到 jar 内图标。
 - 搜索、全部/启用/禁用筛选、从文件安装、从链接安装、打开目录、刷新。
 - 模组下载页有两个游戏版本选择：**游戏版本**用于选择安装目标（本机已安装版本），**搜索版本**用于按任意正式版筛选 Modrinth；支持按相关度、下载量、最近更新和最新发布排序。
 - 新增「整合包」在线搜索页，可直接选择版本并安装 Modrinth 整合包；新增项目「详情」窗口，查看介绍、截图和链接。
