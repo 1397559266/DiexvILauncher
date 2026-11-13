@@ -277,11 +277,63 @@
                         </ListBox.ItemTemplate>
                     </ListBox>
 
-                    <!-- 多选操作栏 -->
+                    <!-- 多选操作栏：靠透明度+位移做进出场动画，保持自身可动画 -->
                     <Border VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,16"
                             Background="#F7FFFFFF" BorderBrush="{StaticResource BrushBorder}" BorderThickness="1"
-                            CornerRadius="12" Padding="14,9" Panel.ZIndex="10"
-                            Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibility}}">
+                            CornerRadius="12" Padding="14,9" Panel.ZIndex="10" Opacity="0"
+                            RenderTransformOrigin="0.5,1">
+                        <Border.RenderTransform>
+                            <TranslateTransform Y="28" />
+                        </Border.RenderTransform>
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="IsHitTestVisible" Value="False" />
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasSelection}" Value="True">
+                                        <Setter Property="IsHitTestVisible" Value="True" />
+                                        <DataTrigger.EnterActions>
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <ObjectAnimationUsingKeyFrames Storyboard.TargetProperty="Visibility">
+                                                        <DiscreteObjectKeyFrame KeyTime="0:0:0" Value="{x:Static Visibility.Visible}" />
+                                                    </ObjectAnimationUsingKeyFrames>
+                                                    <DoubleAnimation Storyboard.TargetProperty="Opacity" To="1"
+                                                                     Duration="0:0:0.14" />
+
+                                                    <DoubleAnimation
+                                                        Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                                        To="0" Duration="0:0:0.22">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseOut" />
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </DataTrigger.EnterActions>
+                                        <DataTrigger.ExitActions>
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <ObjectAnimationUsingKeyFrames Storyboard.TargetProperty="Visibility">
+                                                        <DiscreteObjectKeyFrame KeyTime="0:0:0.18" Value="{x:Static Visibility.Collapsed}" />
+                                                    </ObjectAnimationUsingKeyFrames>
+                                                    <DoubleAnimation Storyboard.TargetProperty="Opacity" To="0"
+                                                                     Duration="0:0:0.12" />
+
+                                                    <DoubleAnimation
+                                                        Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                                        To="28" Duration="0:0:0.16">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseIn" />
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </DataTrigger.ExitActions>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="{Binding SelectionText}" FontSize="10.5" VerticalAlignment="Center"
                                        MaxWidth="320" TextTrimming="CharacterEllipsis"
