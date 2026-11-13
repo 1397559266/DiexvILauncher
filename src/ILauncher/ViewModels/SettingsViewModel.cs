@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
 using ILauncher.Core;
+using ILauncher.Core.Models;
 using ILauncher.Core.Services;
 using ILauncher.Services;
 using ILauncher.Localization;
@@ -20,6 +21,7 @@ public sealed class SettingsViewModel : ObservableObject
     private string _playerName;
     private int _memoryMb;
     private bool _autoMemory;
+    private readonly Func<GameInstance?>? _currentInstance;
     private string _extraJvmArgs = "";
     private int _width;
     private int _height;
@@ -36,11 +38,13 @@ public sealed class SettingsViewModel : ObservableObject
         SettingsService settings,
         JavaService javaService,
         Action<string, bool> toast,
-        Action? saved = null)
+        Action? saved = null,
+        Func<GameInstance?>? currentInstance = null)
     {
         _settings = settings;
         _javaService = javaService;
         _toast = toast;
+        _currentInstance = currentInstance;
         _saved = saved;
 
         _rootPath = settings.Settings.MinecraftRoot;
@@ -201,12 +205,33 @@ public sealed class SettingsViewModel : ObservableObject
             _settings.Save();
             OnPropertyChanged(nameof(IsManualMemory));
             OnPropertyChanged(nameof(MemoryText));
+            OnPropertyChanged(nameof(AutoMemoryDetail));
         }
     }
 
     public bool IsManualMemory => !IsAutoMemory;
 
     public string MemoryText => IsAutoMemory ? "自动分配" : $"{MemoryMb:N0} MB";
+
+    /// <summary>自动模式的明细：当前版本估算值、可用内存、模组数量。</summary>
+    public string AutoMemoryDetail
+    {
+        get
+        {
+            if (!IsAutoMemory)
+            {
+                return $"手动模式：当前 {MemoryMb:N0} MB";
+            }
+
+            var instance = _currentInstance?.Invoke();
+            var modded = instance != null && !string.Equals(instance.Loader, "原版", StringComparison.Ordinal);
+            var optiFine = instance != null && (instance.Loader + instance.LoaderVersion + instance.Id)
+                .Contains("OptiFine", StringComparison.OrdinalIgnoreCase);
+            var suggestion = MemoryAllocator.Suggest(instance?.ModCount ?? 0, modded, optiFine);
+            var mods = instance == null ? "" : $" · {instance.ModCount} 个模组";
+            return $"当前版本约 {suggestion.Gigabytes:0.0} GB · 可用内存 {suggestion.AvailableGigabytes:0.0} GB{mods}";
+        }
+    }
 
     /// <summary>全局额外 JVM 参数，留空表示不追加。</summary>
     public string ExtraJvmArgs

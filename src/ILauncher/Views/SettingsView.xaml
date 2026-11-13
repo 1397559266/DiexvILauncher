@@ -227,9 +227,11 @@
                             <TextBlock Text="自动分配内存" FontSize="10.5" Margin="8,0,0,0" VerticalAlignment="Center"
                                        Foreground="{StaticResource BrushTextSecondary}" />
                         </StackPanel>
-                        <TextBlock Text="按可用物理内存与版本模组数量计算" FontSize="9" VerticalAlignment="Center"
+                        <TextBlock Text="PCL 同款算法" FontSize="9" VerticalAlignment="Center"
                                    HorizontalAlignment="Right" Foreground="{StaticResource BrushTextMuted}" />
                     </Grid>
+                    <TextBlock Text="{Binding AutoMemoryDetail}" FontSize="9" Margin="2,5,0,0"
+                               Foreground="{StaticResource BrushTextMuted}" TextWrapping="Wrap" />
 
                     <TextBlock Text="额外 JVM 参数" Style="{StaticResource Label}" Margin="0,12,0,4" />
                     <TextBox Style="{StaticResource InputTextBox}" Height="34"

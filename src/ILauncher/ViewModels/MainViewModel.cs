@@ -664,7 +664,7 @@ public sealed class MainViewModel : ObservableObject
 
     private void GoSettings()
     {
-        _settingsPage ??= new SettingsViewModel(SettingsService, JavaService, Toast, async () =>
+        _settingsPage ??= new SettingsViewModel(SettingsService, JavaService, Toast, currentInstance: () => SelectedInstance, saved: async () =>
         {
             await ReloadInstancesAsync();
             OnPropertyChanged(nameof(PlayerName));
