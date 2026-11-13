@@ -132,9 +132,14 @@ public sealed class RemoteIconConverter : IValueConverter
             return null;
         }
 
+        // 默认按 96px 解码（图标）；详情页的大图用 ConverterParameter 指定更宽的尺寸，
+        // 否则 96px 的位图会被拉伸到 200px 以上，看起来就是模糊的。
+        var decodeWidth = parameter is string text && int.TryParse(text, out var parsed) && parsed > 0 ? parsed : 96;
+        var cacheKey = decodeWidth == 96 ? url : $"{url}|{decodeWidth}";
+
         lock (Gate)
         {
-            if (Cache.TryGetValue(url, out var cached))
+            if (Cache.TryGetValue(cacheKey, out var cached))
             {
                 return cached;
             }
@@ -149,13 +154,13 @@ public sealed class RemoteIconConverter : IValueConverter
                 var diskImage = new BitmapImage();
                 diskImage.BeginInit();
                 diskImage.CacheOption = BitmapCacheOption.OnLoad;
-                diskImage.DecodePixelWidth = 96;
+                diskImage.DecodePixelWidth = decodeWidth;
                 diskImage.StreamSource = stream;
                 diskImage.EndInit();
                 diskImage.Freeze();
                 lock (Gate)
                 {
-                    Cache[url] = diskImage;
+                    Cache[cacheKey] = diskImage;
                 }
 
                 return diskImage;
@@ -173,11 +178,11 @@ public sealed class RemoteIconConverter : IValueConverter
             image.BeginInit();
             image.UriSource = new Uri(url, UriKind.Absolute);
             image.CacheOption = BitmapCacheOption.OnDemand;
-            image.DecodePixelWidth = 96;
+            image.DecodePixelWidth = decodeWidth;
             image.EndInit();
             lock (Gate)
             {
-                Cache[url] = image;
+                Cache[cacheKey] = image;
             }
 
             return image;
@@ -186,7 +191,7 @@ public sealed class RemoteIconConverter : IValueConverter
         {
             lock (Gate)
             {
-                Cache[url] = null;
+                Cache[cacheKey] = null;
             }
 
             return null;

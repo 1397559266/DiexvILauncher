@@ -6,7 +6,8 @@
         WindowStartupLocation="CenterOwner"
         Background="{StaticResource BrushBackground}"
         FontFamily="{StaticResource FontUi}"
-        Foreground="{StaticResource BrushText}">
+        Foreground="{StaticResource BrushText}"
+        UseLayoutRounding="True" SnapsToDevicePixels="True">
     <Grid Margin="18">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -35,9 +36,11 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border Width="220" Height="130" CornerRadius="9" Margin="0,0,8,8" ClipToBounds="True"
+                            <Border Width="248" Height="146" CornerRadius="9" Margin="0,0,8,8" ClipToBounds="True"
                                     Background="#FFF2F8FF" ToolTip="{Binding Title}">
-                                <Image Source="{Binding Url, Converter={StaticResource RemoteIcon}}" Stretch="UniformToFill" />
+                                <Image Source="{Binding Url, Converter={StaticResource RemoteIcon}, ConverterParameter=720}"
+                                       Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality"
+                                       SnapsToDevicePixels="True" />
                             </Border>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
