@@ -107,7 +107,7 @@ $env:MS_CLIENT_ID = "your Azure Application (client) ID"
 - Reads `mods/*.jar` and `*.jar.disabled`; enable/disable by renaming, effective on the next launch.
 - Display name, version, mod id and icon are read from `fabric.mod.json`, `quilt.mod.json`, `META-INF/mods.toml` and `MANIFEST.MF`.
 - Search, filter (all/enabled/disabled), install from file, install from link, open folder, refresh.
-- Multi-select: tick rows on the left and a floating bar appears (select all / clear / enable / disable / delete) for batch operations; deletion moves files to `%APPDATA%\ILauncher\trash\mods` first.
+- Multi-select: click a mod row to select it, keep clicking to add more (click again to deselect) and a floating bar appears (enable / disable / delete / clear selection); deletion moves files to `%APPDATA%\ILauncher\trash\mods` first.
 - The install dialog offers the target game version, loader and release channel, then the concrete file version; declared prerequisites (required/optional) are listed recursively, with a one-click install for missing required ones.
 - Chinese mod names are resolved to their English aliases through MC百科 before searching Modrinth.
 - Dependency scanning reads both Modrinth metadata and jar metadata, using HTTP range requests so that jars are not downloaded in full; results are cached in `jar-dependencies.json`.

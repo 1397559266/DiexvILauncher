@@ -553,7 +553,7 @@ public sealed class ModsViewModel : ObservableObject
         {
             // 同名文件（通常是同一个模组）直接跳过，避免拖两次就多出一个副本。
             var existing = new HashSet<string>(
-                Directory.EnumerateFiles(_instance.ModsDirectory).Select(Path.GetFileName),
+                Directory.EnumerateFiles(_instance.ModsDirectory).Select(path => Path.GetFileName(path)),
                 StringComparer.OrdinalIgnoreCase);
             var toCopy = new List<string>();
             var skipped = 0;

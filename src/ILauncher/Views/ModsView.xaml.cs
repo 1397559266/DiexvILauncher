@@ -1,6 +1,9 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
+using System.Windows.Media;
 using ILauncher.ViewModels;
 
 namespace ILauncher.Views;
@@ -10,6 +13,46 @@ public partial class ModsView : UserControl
     public ModsView()
     {
         InitializeComponent();
+    }
+
+    /// <summary>单击整行即切换该模组的选中状态，可以连续点击选中多个。</summary>
+    private void OnRowClick(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is not DependencyObject source)
+        {
+            return;
+        }
+
+        // 点在开关或「更新」按钮上时交给按钮自己处理，不改变选中状态。
+        if (FindAncestor<ButtonBase>(source) != null)
+        {
+            return;
+        }
+
+        if (FindAncestor<ListBoxItem>(source)?.DataContext is not ModItemViewModel mod)
+        {
+            return;
+        }
+
+        mod.IsSelected = !mod.IsSelected;
+        e.Handled = true;
+    }
+
+    private static T? FindAncestor<T>(DependencyObject? current) where T : DependencyObject
+    {
+        while (current != null)
+        {
+            if (current is T match)
+            {
+                return match;
+            }
+
+            current = current is Visual or System.Windows.Media.Media3D.Visual3D
+                ? VisualTreeHelper.GetParent(current)
+                : LogicalTreeHelper.GetParent(current);
+        }
+
+        return null;
     }
 
     private void OnDragOver(object sender, DragEventArgs e)
