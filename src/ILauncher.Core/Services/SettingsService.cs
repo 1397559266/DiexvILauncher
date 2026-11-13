@@ -50,6 +50,12 @@ public sealed class LauncherSettings
     public string JavaPath { get; set; } = "";
     public int MemoryMb { get; set; } = 4096;
 
+    /// <summary>内存分配方式：auto = 按可用内存与模组数量自动计算，manual = 使用 MemoryMb。</summary>
+    public string MemoryMode { get; set; } = "auto";
+
+    public const int MinMemoryMb = 512;
+    public const int MaxMemoryMb = 65536;
+
     /// <summary>全局额外 JVM 参数（可被版本覆盖），例如 -XX:+UseG1GC。</summary>
     public string ExtraJvmArgs { get; set; } = "";
     public int HomeVersionsPerRow { get; set; } = 3;
@@ -191,6 +197,25 @@ public sealed class SettingsService
     {
         var overrides = GetInstanceSettings(instanceId);
         return string.IsNullOrWhiteSpace(overrides.ExtraJvmArgs) ? Settings.ExtraJvmArgs : overrides.ExtraJvmArgs;
+    }
+
+    /// <summary>该实例实际使用的内存（MB）：版本覆盖 > 自动分配 > 全局手动值。</summary>
+    public int ResolveMemoryMb(string instanceId, int modCount = 0, bool modded = false, bool optiFine = false,
+        bool is32BitJava = false)
+    {
+        var overrides = GetInstanceSettings(instanceId);
+        if (overrides.MemoryMb is int manual)
+        {
+            return Math.Clamp(manual, LauncherSettings.MinMemoryMb, LauncherSettings.MaxMemoryMb);
+        }
+
+        if (string.Equals(Settings.MemoryMode, "auto", StringComparison.OrdinalIgnoreCase))
+        {
+            var suggestion = MemoryAllocator.Suggest(modCount, modded, optiFine, is32BitJava);
+            return Math.Clamp((int)Math.Round(suggestion.Gigabytes * 1024), LauncherSettings.MinMemoryMb, LauncherSettings.MaxMemoryMb);
+        }
+
+        return Math.Clamp(Settings.MemoryMb, LauncherSettings.MinMemoryMb, LauncherSettings.MaxMemoryMb);
     }
 
     public string ResolvePlayerName()

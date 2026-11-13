@@ -19,6 +19,7 @@ public sealed class SettingsViewModel : ObservableObject
     private string _rootPath;
     private string _playerName;
     private int _memoryMb;
+    private bool _autoMemory;
     private string _extraJvmArgs = "";
     private int _width;
     private int _height;
@@ -45,6 +46,7 @@ public sealed class SettingsViewModel : ObservableObject
         _rootPath = settings.Settings.MinecraftRoot;
         _playerName = settings.ResolvePlayerName();
         _memoryMb = settings.Settings.MemoryMb;
+        _autoMemory = !string.Equals(settings.Settings.MemoryMode, "manual", StringComparison.OrdinalIgnoreCase);
         _extraJvmArgs = settings.Settings.ExtraJvmArgs;
         _width = settings.Settings.WindowWidth;
         _height = settings.Settings.WindowHeight;
@@ -184,7 +186,27 @@ public sealed class SettingsViewModel : ObservableObject
         }
     }
 
-    public string MemoryText => $"{MemoryMb:N0} MB";
+    /// <summary>自动分配内存（按可用物理内存与当前版本模组数量计算，算法与 PCL 一致）。</summary>
+    public bool IsAutoMemory
+    {
+        get => _autoMemory;
+        set
+        {
+            if (!SetProperty(ref _autoMemory, value))
+            {
+                return;
+            }
+
+            _settings.Settings.MemoryMode = value ? "auto" : "manual";
+            _settings.Save();
+            OnPropertyChanged(nameof(IsManualMemory));
+            OnPropertyChanged(nameof(MemoryText));
+        }
+    }
+
+    public bool IsManualMemory => !IsAutoMemory;
+
+    public string MemoryText => IsAutoMemory ? "自动分配" : $"{MemoryMb:N0} MB";
 
     /// <summary>全局额外 JVM 参数，留空表示不追加。</summary>
     public string ExtraJvmArgs

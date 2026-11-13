@@ -16,6 +16,7 @@ public sealed class InstanceSettingsViewModel : ObservableObject
     private readonly Action<string, bool> _toast;
     private readonly Action? _saved;
     private int _memoryMb;
+    private int _memoryBaseline;
     private string _extraJvmArgs = "";
     private bool _useCustomResolution;
     private int _width;
@@ -118,7 +119,10 @@ public sealed class InstanceSettingsViewModel : ObservableObject
         }
     }
 
-    public string MemoryText => $"{MemoryMb:N0} MB";
+    public string MemoryText => MemoryMb == _memoryBaseline &&
+                                string.Equals(_settings.Settings.MemoryMode, "auto", StringComparison.OrdinalIgnoreCase)
+        ? $"{MemoryMb:N0} MB（自动）"
+        : $"{MemoryMb:N0} MB";
 
     /// <summary>版本级额外 JVM 参数；留空表示跟随全局。</summary>
     public string ExtraJvmArgs
@@ -264,7 +268,7 @@ public sealed class InstanceSettingsViewModel : ObservableObject
         var overrides = new InstanceOverrides
         {
             JavaPath = SelectedJava is { IsAuto: false } ? SelectedJava.Path : "",
-            MemoryMb = MemoryMb == _settings.Settings.MemoryMb ? null : MemoryMb,
+            MemoryMb = MemoryMb == _memoryBaseline ? null : Math.Clamp(MemoryMb, 512, 65536),
             Width = UseCustomResolution ? Math.Clamp(Width, 320, 7680) : null,
             ExtraJvmArgs = ExtraJvmArgs.Trim(),
             Height = UseCustomResolution ? Math.Clamp(Height, 240, 4320) : null

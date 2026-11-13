@@ -213,12 +213,23 @@
                     </StackPanel>
 
                     <Grid Margin="0,0,0,4">
-                        <TextBlock Text="最大内存" Style="{StaticResource Label}" />
+                        <TextBlock Text="内存分配" Style="{StaticResource Label}" />
                         <TextBlock Text="{Binding MemoryText}" FontSize="11.5" FontWeight="SemiBold"
                                    Foreground="{StaticResource BrushAccent}" HorizontalAlignment="Right" />
                     </Grid>
                     <Slider Style="{StaticResource AccentSlider}" Minimum="1024" Maximum="16384" TickFrequency="512"
-                            IsSnapToTickEnabled="True" Value="{Binding MemoryMb, Mode=TwoWay}" />
+                            IsSnapToTickEnabled="True" IsEnabled="{Binding IsManualMemory}"
+                            Value="{Binding MemoryMb, Mode=TwoWay}" />
+                    <Grid Margin="0,10,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding IsAutoMemory, Mode=TwoWay}"
+                                      AutomationProperties.Name="自动分配内存" />
+                            <TextBlock Text="自动分配内存" FontSize="10.5" Margin="8,0,0,0" VerticalAlignment="Center"
+                                       Foreground="{StaticResource BrushTextSecondary}" />
+                        </StackPanel>
+                        <TextBlock Text="按可用物理内存与版本模组数量计算" FontSize="9" VerticalAlignment="Center"
+                                   HorizontalAlignment="Right" Foreground="{StaticResource BrushTextMuted}" />
+                    </Grid>
 
                     <TextBlock Text="额外 JVM 参数" Style="{StaticResource Label}" Margin="0,12,0,4" />
                     <TextBox Style="{StaticResource InputTextBox}" Height="34"

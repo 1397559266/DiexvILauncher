@@ -107,6 +107,7 @@ $env:MS_CLIENT_ID = "your Azure Application (client) ID"
 - Reads `mods/*.jar` and `*.jar.disabled`; enable/disable by renaming, effective on the next launch.
 - Display name, version, mod id and icon are read from `fabric.mod.json`, `quilt.mod.json`, `META-INF/mods.toml` and `MANIFEST.MF`.
 - Search, filter (all/enabled/disabled), install from file, install from link, open folder, refresh.
+- Memory: automatic allocation (staged from available physical memory and the instance's mod count, same algorithm as PCL) or a manual value; per-version overrides still win.
 - Skin: after a Microsoft sign-in the launcher loads the account's own skin from Mojang (cached under `%APPDATA%\ILauncher\skins\account\<uuid>.png`) and can switch back to a local skin; offline accounts have no official skin, so the game shows the default one.
 - Multi-select: click a mod row to select it, keep clicking to add more (click again to deselect) and a floating bar appears (enable / disable / delete / clear selection); deletion moves files to `%APPDATA%\ILauncher\trash\mods` first.
 - The install dialog offers the target game version, loader and release channel, then the concrete file version; declared prerequisites (required/optional) are listed recursively, with a one-click install for missing required ones.
