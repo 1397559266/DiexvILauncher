@@ -67,7 +67,7 @@
         </Style>
     </UserControl.Resources>
 
-    <Grid Margin="24,18,24,20">
+    <Grid Margin="24,18,24,20" AllowDrop="True" DragOver="OnDragOver" DragLeave="OnDragLeave" Drop="OnDrop">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -316,6 +316,18 @@
                     </StackPanel>
                 </Grid>
             </Grid>
+        </Border>
+
+        <Border x:Name="DropOverlay" Visibility="Collapsed" Panel.ZIndex="50" Margin="10"
+                Background="#E6FFFFFF" BorderBrush="{StaticResource BrushAccent}" BorderThickness="2"
+                CornerRadius="14" IsHitTestVisible="False">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <controls:Icon Data="{StaticResource IconBox}" Fill="{StaticResource BrushAccent}" Width="38" Height="38" />
+                <TextBlock Text="松开即可安装模组" FontSize="15" FontWeight="SemiBold" Margin="0,12,0,0"
+                           HorizontalAlignment="Center" />
+                <TextBlock Text="支持 .jar 文件，会复制到当前版本的 mods 文件夹" FontSize="10.5"
+                           Foreground="{StaticResource BrushTextSecondary}" Margin="0,4,0,0" HorizontalAlignment="Center" />
+            </StackPanel>
         </Border>
     </Grid>
 </UserControl>

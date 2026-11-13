@@ -533,6 +533,60 @@ public sealed class ModsViewModel : ObservableObject
                || mod.Version.Contains(_searchLower, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>拖拽 .jar 到模组页时调用：复制到当前版本的 mods 目录并刷新列表。</summary>
+    public async Task InstallDroppedAsync(IReadOnlyList<string> files)
+    {
+        if (_instance == null)
+        {
+            _toast("请先选择一个游戏版本。", true);
+            return;
+        }
+
+        var jars = files.Where(file => file.EndsWith(".jar", StringComparison.OrdinalIgnoreCase)).ToList();
+        if (jars.Count == 0)
+        {
+            _toast("只支持 .jar 模组文件。", true);
+            return;
+        }
+
+        try
+        {
+            // 同名文件（通常是同一个模组）直接跳过，避免拖两次就多出一个副本。
+            var existing = new HashSet<string>(
+                Directory.EnumerateFiles(_instance.ModsDirectory).Select(Path.GetFileName),
+                StringComparer.OrdinalIgnoreCase);
+            var toCopy = new List<string>();
+            var skipped = 0;
+            foreach (var jar in jars)
+            {
+                if (existing.Contains(Path.GetFileName(jar)))
+                {
+                    skipped++;
+                }
+                else
+                {
+                    toCopy.Add(jar);
+                }
+            }
+
+            if (toCopy.Count == 0)
+            {
+                _toast($"{skipped} 个模组已存在（同名），没有覆盖。", true);
+                return;
+            }
+
+            var copied = await _modService.InstallAsync(toCopy, _instance.ModsDirectory);
+            await LoadAsync();
+            _modsChanged?.Invoke();
+            var skippedText = skipped > 0 ? $"，跳过 {skipped} 个同名文件" : "";
+            _toast($"已安装 {copied} 个模组{skippedText}，重启游戏后生效。", false);
+        }
+        catch (Exception ex)
+        {
+            _toast($"安装失败：{ex.Message}", true);
+        }
+    }
+
     private void SetFilter(object? parameter)
     {
         var key = parameter as string ?? "all";
