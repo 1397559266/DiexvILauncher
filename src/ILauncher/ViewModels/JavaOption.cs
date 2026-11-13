@@ -25,6 +25,8 @@ public sealed class JavaOption : ObservableObject
     public int Major { get; init; }
     public bool IsAuto { get; init; }
 
+    public override string ToString() => Label;
+
     public bool IsSelected
     {
         get => _isSelected;

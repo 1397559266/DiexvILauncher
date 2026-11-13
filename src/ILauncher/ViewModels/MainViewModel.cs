@@ -27,6 +27,8 @@ public sealed class MainViewModel : ObservableObject
     private int _homeVersionsPerRow = 3;
     private string _rootPath = "";
     private string _selectedJavaText = "检测中…";
+    private JavaOption? _selectedHomeJava;
+    private bool _homeJavaLoading;
     private bool _isBusy;
     private string _busyMessage = "正在扫描游戏版本…";
     private bool _isHome = true;
@@ -183,6 +185,30 @@ public sealed class MainViewModel : ObservableObject
     public ObservableCollection<DownloadFilterOption> HomeTypeFilters { get; }
     public ObservableCollection<DownloadFilterOption> HomeLayoutOptions { get; }
     public ObservableCollection<JavaInfo> JavaRuntimes { get; }
+
+    /// <summary>运行环境面板里的 Java 下拉选项（含“自动选择”）。</summary>
+    public ObservableCollection<JavaOption> HomeJavaOptions { get; } = new();
+
+    public JavaOption? SelectedHomeJava
+    {
+        get => _selectedHomeJava;
+        set
+        {
+            if (!SetProperty(ref _selectedHomeJava, value) || value == null || _homeJavaLoading)
+            {
+                return;
+            }
+
+            SettingsService.Settings.JavaPath = value.IsAuto ? "" : value.Path;
+            SettingsService.Save();
+            foreach (var option in HomeJavaOptions)
+            {
+                option.IsSelected = ReferenceEquals(option, value);
+            }
+
+            _ = UpdateSelectedJavaAsync();
+        }
+    }
 
     public object? CurrentPage
     {
@@ -483,6 +509,8 @@ public sealed class MainViewModel : ObservableObject
             {
                 JavaRuntimes.Add(java);
             }
+
+            await LoadHomeJavaOptionsAsync();
 
             RootPath = InstallationService.ResolveRoot() ?? "";
             if (string.IsNullOrWhiteSpace(RootPath))
@@ -817,6 +845,50 @@ public sealed class MainViewModel : ObservableObject
         ToastVisible = true;
         _toastTimer.Stop();
         _toastTimer.Start();
+    }
+
+    /// <summary>填充运行环境面板的 Java 下拉：自动选择 + 已检测到的运行时。</summary>
+    public async Task LoadHomeJavaOptionsAsync()
+    {
+        _homeJavaLoading = true;
+        try
+        {
+            var installed = JavaRuntimes.Count > 0 ? JavaRuntimes.ToList() : (await JavaService.DiscoverAsync()).ToList();
+            var current = SettingsService.Settings.JavaPath;
+
+            HomeJavaOptions.Clear();
+            var auto = new JavaOption
+            {
+                Path = "",
+                Label = "自动选择（推荐）",
+                Detail = "按版本要求挑选最合适的 Java",
+                IsAuto = true
+            };
+            HomeJavaOptions.Add(auto);
+
+            foreach (var java in installed)
+            {
+                HomeJavaOptions.Add(new JavaOption
+                {
+                    Path = java.Path,
+                    Label = $"Java {java.Major} · {java.Version}",
+                    Detail = java.Path,
+                    Major = java.Major
+                });
+            }
+
+            var selected = string.IsNullOrWhiteSpace(current)
+                ? auto
+                : HomeJavaOptions.FirstOrDefault(o =>
+                    !o.IsAuto && string.Equals(o.Path, current, StringComparison.OrdinalIgnoreCase)) ?? auto;
+            selected.IsSelected = true;
+            _selectedHomeJava = selected;
+            OnPropertyChanged(nameof(SelectedHomeJava));
+        }
+        finally
+        {
+            _homeJavaLoading = false;
+        }
     }
 
     private async Task UpdateSelectedJavaAsync()
