@@ -448,7 +448,9 @@
                                     </Border>
                                     <StackPanel Margin="10,1,0,0">
                                         <TextBlock Text="测试游戏" FontSize="15" FontWeight="Bold" Foreground="#FFFFFFFF" />
-                                        <TextBlock Text="HMCL 式启动测试" FontSize="9" Foreground="#BFFFFFFF" />
+                                        <TextBlock Text="{Binding TestCardLogText}" FontSize="9" Foreground="#BFFFFFFF"
+                                                   TextTrimming="CharacterEllipsis" MaxWidth="420"
+                                                   ToolTip="{Binding TestCardLogText}" />
                                     </StackPanel>
                                 </StackPanel>
                                 <TextBlock Text="在版本设置的左下角，一键启动并在日志面板中实时查看全部游戏输出。"

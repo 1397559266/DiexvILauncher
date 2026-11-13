@@ -164,6 +164,7 @@ public sealed class MainViewModel : ObservableObject
         });
 
         LaunchLog.PropertyChanged += OnLaunchLogPropertyChanged;
+        LaunchLog.Logs.CollectionChanged += (_, _) => OnPropertyChanged(nameof(TestCardLogText));
     }
 
     public SettingsService SettingsService { get; }
@@ -417,6 +418,24 @@ public sealed class MainViewModel : ObservableObject
     {
         get => _selectedJavaText;
         private set => SetProperty(ref _selectedJavaText, value);
+    }
+
+    /// <summary>测试游戏卡片上的一行实时日志。</summary>
+    public string TestCardLogText
+    {
+        get
+        {
+            var last = LaunchLog.Logs.LastOrDefault();
+            if (last != null && !string.IsNullOrWhiteSpace(last.DisplayMessage))
+            {
+                var text = last.DisplayMessage.Length > 64
+                    ? last.DisplayMessage[..64] + "…"
+                    : last.DisplayMessage;
+                return LaunchLog.IsRunning ? $"运行中 · {text}" : $"上次启动 · {text}";
+            }
+
+            return LaunchLog.IsRunning ? "正在启动游戏…" : "点击下方按钮启动测试，这里会显示实时日志";
+        }
     }
 
     public string PlayerName => SettingsService.ResolvePlayerName();
