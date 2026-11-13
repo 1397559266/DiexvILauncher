@@ -24,6 +24,9 @@ public sealed class AccountViewModel : ObservableObject
     private readonly Action? _saved;
     private string _playerName;
     private string _skinPath;
+    private string _localSkinPath;
+    private string? _accountSkinPath;
+    private bool _useAccountSkin;
     private string _skinModel;
     private string _capePath;
     private string _profileLookup = "";
@@ -43,7 +46,9 @@ public sealed class AccountViewModel : ObservableObject
         _saved = saved;
 
         _playerName = settings.ResolvePlayerName();
-        _skinPath = skins.Resolve(settings.Settings.SkinPath);
+        _localSkinPath = skins.Resolve(settings.Settings.SkinPath);
+        _skinPath = _localSkinPath;
+        _useAccountSkin = settings.Settings.UseAccountSkin;
         _skinModel = string.IsNullOrWhiteSpace(settings.Settings.SkinModel) ? "Steve" : settings.Settings.SkinModel;
         _capePath = settings.Settings.CapePath;
         _profileUuid = settings.Settings.ProfileUuid;
@@ -79,6 +84,7 @@ public sealed class AccountViewModel : ObservableObject
         RefreshLibraryCommand = new RelayCommand(LoadLibrary);
 
         LoadLibrary();
+        _ = RefreshAccountSkinAsync();
     }
 
     public ObservableCollection<SkinEntry> Skins { get; }
@@ -104,6 +110,114 @@ public sealed class AccountViewModel : ObservableObject
                 OnPropertyChanged(nameof(AccountTypeText));
                 OnPropertyChanged(nameof(UuidText));
             }
+        }
+    }
+
+    /// <summary>是否优先显示微软账号自己的皮肤；关闭后使用本地皮肤库。</summary>
+    public bool UseAccountSkin
+    {
+        get => _useAccountSkin;
+        set
+        {
+            if (!SetProperty(ref _useAccountSkin, value))
+            {
+                return;
+            }
+
+            _settings.Settings.UseAccountSkin = value;
+            _settings.Save();
+            ApplySkinPath();
+            OnPropertyChanged(nameof(SkinName));
+            OnPropertyChanged(nameof(SkinSourceText));
+        }
+    }
+
+    public bool HasAccountSkin => IsMicrosoftAccount;
+
+    public string SkinSourceText => !IsMicrosoftAccount
+        ? "离线账户没有官方皮肤，游戏内会显示默认皮肤"
+        : UseAccountSkin
+            ? "正在使用微软账号的皮肤（游戏内也会显示）"
+            : "正在使用本地皮肤（仅启动器内显示，游戏内仍是账号皮肤）";
+
+    private void ApplySkinPath()
+    {
+        var target = UseAccountSkin && IsMicrosoftAccount && !string.IsNullOrWhiteSpace(_accountSkinPath)
+            ? _accountSkinPath!
+            : _localSkinPath;
+        SkinPath = target;
+        CapePath = _skins.FindCapeFor(target) ?? "";
+    }
+
+    /// <summary>拉取账号当前皮肤到本地缓存；地址变化或缓存缺失时才会真正下载。</summary>
+    private async Task RefreshAccountSkinAsync()
+    {
+        if (!IsMicrosoftAccount)
+        {
+            _accountSkinPath = null;
+            ApplySkinPath();
+            return;
+        }
+
+        var uuid = string.IsNullOrWhiteSpace(_settings.Settings.MicrosoftUuid)
+            ? _profileUuid
+            : _settings.Settings.MicrosoftUuid;
+
+        // 老版本升级上来的账号没有记录皮肤地址，用现有令牌补一次；令牌过期则刷新后再取。
+        if (string.IsNullOrWhiteSpace(_settings.Settings.MicrosoftSkinUrl))
+        {
+            var skinUrl = await TryFetchSkinUrlAsync();
+            if (!string.IsNullOrWhiteSpace(skinUrl))
+            {
+                _settings.Settings.MicrosoftSkinUrl = skinUrl;
+                _settings.Save();
+            }
+        }
+        var path = await _skins.EnsureAccountSkinAsync(uuid, _settings.Settings.MicrosoftSkinUrl);
+        _accountSkinPath = path ?? _skins.GetAccountSkinPath(uuid);
+        ApplySkinPath();
+    }
+
+    private async Task<string?> TryFetchSkinUrlAsync()
+    {
+        var token = string.IsNullOrWhiteSpace(_settings.Settings.MicrosoftAccessToken)
+            ? TokenProtection.Unprotect(_settings.Settings.MicrosoftAccessTokenProtected)
+            : _settings.Settings.MicrosoftAccessToken;
+        var profile = await MicrosoftAuthService.TryGetProfileAsync(token);
+        if (profile?.SkinUrl is { Length: > 0 } current)
+        {
+            return current;
+        }
+
+        var refresh = TokenProtection.Unprotect(_settings.Settings.MicrosoftRefreshTokenProtected);
+        if (string.IsNullOrWhiteSpace(refresh))
+        {
+            refresh = _settings.Settings.MicrosoftRefreshToken;
+        }
+
+        if (string.IsNullOrWhiteSpace(refresh))
+        {
+            return null;
+        }
+
+        try
+        {
+            var clientId = string.IsNullOrWhiteSpace(_settings.Settings.MicrosoftClientId)
+                ? SettingsService.BundledMicrosoftClientId
+                : _settings.Settings.MicrosoftClientId;
+            var account = await new MicrosoftAuthService()
+                .RefreshAsync(clientId, refresh, _ => { }, CancellationToken.None);
+            _settings.Settings.MicrosoftAccessToken = account.AccessToken;
+            _settings.Settings.MicrosoftRefreshToken = account.RefreshToken;
+            _settings.Settings.MicrosoftAccessTokenProtected = TokenProtection.Protect(account.AccessToken);
+            _settings.Settings.MicrosoftRefreshTokenProtected = TokenProtection.Protect(account.RefreshToken);
+            _settings.Settings.ProfileUuid = string.IsNullOrWhiteSpace(account.Uuid) ? _profileUuid : account.Uuid;
+            _settings.Save();
+            return account.SkinUrl;
+        }
+        catch
+        {
+            return null;
         }
     }
 
@@ -160,14 +274,19 @@ public sealed class AccountViewModel : ObservableObject
                 entry.IsSelected = ReferenceEquals(entry, value);
             }
 
-            SkinPath = value.Path;
+            _localSkinPath = value.Path;
+            UseAccountSkin = false;
+            ApplySkinPath();
             SkinModel = value.Model;
-            CapePath = _skins.FindCapeFor(value.Path) ?? "";
             PersistSkinSelection();
         }
     }
 
-    public string SkinName => string.IsNullOrWhiteSpace(SkinPath) ? "Steve" : Path.GetFileNameWithoutExtension(SkinPath);
+    public string SkinName => UseAccountSkin && IsMicrosoftAccount && _accountSkinPath != null
+        ? $"{PlayerName} 的账号皮肤"
+        : string.IsNullOrWhiteSpace(SkinPath)
+            ? "Steve"
+            : Path.GetFileNameWithoutExtension(SkinPath);
 
     public string AccountTypeText =>
         LanguageService.Translate(IsMicrosoftAccount
@@ -267,26 +386,17 @@ public sealed class AccountViewModel : ObservableObject
 
         _settings.Save();
 
-        if (!string.IsNullOrWhiteSpace(account.SkinUrl))
-        {
-            try
-            {
-                var bytes = await DownloadHelper.GetBytesAsync(account.SkinUrl, CancellationToken.None);
-                var path = Path.Combine(_skins.SkinsDirectory,
-                    $"{account.Name}-{DateTime.Now:yyyyMMdd-HHmmss}.png");
-                await File.WriteAllBytesAsync(path, bytes);
-                SkinPath = path;
-                SkinModel = "Steve";
-            }
-            catch
-            {
-                // The account is still usable if the skin download fails.
-            }
-        }
+        _settings.Settings.MicrosoftSkinUrl = account.SkinUrl ?? "";
+        _settings.Save();
+        _useAccountSkin = true;
+        _settings.Settings.UseAccountSkin = true;
+        await RefreshAccountSkinAsync();
 
         Save();
         OnPropertyChanged(nameof(AccountTypeText));
         OnPropertyChanged(nameof(IsMicrosoftAccount));
+        OnPropertyChanged(nameof(HasAccountSkin));
+        OnPropertyChanged(nameof(SkinSourceText));
         _toast("微软账户登录成功。", false);
     }
 
@@ -298,6 +408,8 @@ public sealed class AccountViewModel : ObservableObject
         }
 
         _settings.Settings.AccountType = "离线账户";
+        _settings.Settings.MicrosoftSkinUrl = "";
+        _accountSkinPath = null;
         _settings.Settings.MicrosoftAccessToken = "";
         _settings.Settings.MicrosoftRefreshToken = "";
         _settings.Settings.MicrosoftUuid = "";
@@ -355,7 +467,8 @@ public sealed class AccountViewModel : ObservableObject
 
     private void PersistSkinSelection()
     {
-        _settings.Settings.SkinPath = SkinPath;
+        _settings.Settings.SkinPath = _localSkinPath;
+        _settings.Settings.UseAccountSkin = UseAccountSkin;
         _settings.Settings.SkinModel = SkinModel;
         _settings.Settings.CapePath = CapePath;
         _settings.Save();
@@ -371,7 +484,8 @@ public sealed class AccountViewModel : ObservableObject
         }
 
         _settings.Settings.PlayerName = PlayerName.Trim();
-        _settings.Settings.SkinPath = SkinPath;
+        _settings.Settings.SkinPath = _localSkinPath;
+        _settings.Settings.UseAccountSkin = UseAccountSkin;
         _settings.Settings.SkinModel = SkinModel;
         _settings.Settings.CapePath = CapePath;
         _settings.Settings.ProfileUuid = _profileUuid;
@@ -400,7 +514,9 @@ public sealed class AccountViewModel : ObservableObject
         try
         {
             var target = _skins.Import(dialog.FileName);
-            SkinPath = target;
+            _localSkinPath = target;
+            UseAccountSkin = false;
+            ApplySkinPath();
             SkinModel = SkinModel;
             LoadLibrary();
             _selectedSkin = Skins.FirstOrDefault(s => string.Equals(s.Path, target, StringComparison.OrdinalIgnoreCase));
@@ -421,9 +537,11 @@ public sealed class AccountViewModel : ObservableObject
 
     private void UseDefault()
     {
-        SkinPath = _skins.DefaultSkinPath;
+        _localSkinPath = _skins.DefaultSkinPath;
+        UseAccountSkin = false;
+        ApplySkinPath();
         SkinModel = "Steve";
-        CapePath = _skins.FindCapeFor(SkinPath) ?? "";
+        CapePath = _skins.FindCapeFor(_localSkinPath) ?? "";
         LoadLibrary();
         PersistSkinSelection();
         _toast("已切换到默认 Steve 皮肤。", false);

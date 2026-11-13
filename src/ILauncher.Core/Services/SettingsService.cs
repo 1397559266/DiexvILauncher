@@ -9,6 +9,12 @@ public sealed class LauncherSettings
     public string PlayerName { get; set; } = Environment.UserName;
     public string SkinPath { get; set; } = "";
     public string SkinModel { get; set; } = "Steve";
+
+    /// <summary>微软账号登录后优先显示账号自己的皮肤（true），否则使用本地皮肤库。</summary>
+    public bool UseAccountSkin { get; set; } = true;
+
+    /// <summary>账号当前皮肤的下载地址，用于判断是否需要重新缓存。</summary>
+    public string MicrosoftSkinUrl { get; set; } = "";
     public string CapePath { get; set; } = "";
     public string ProfileUuid { get; set; } = "";
     public string AccountType { get; set; } = "离线账户";

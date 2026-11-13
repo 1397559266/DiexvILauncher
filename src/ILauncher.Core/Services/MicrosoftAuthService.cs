@@ -624,6 +624,25 @@ public sealed class MicrosoftAuthService
                ?? throw new InvalidOperationException("Minecraft 没有返回访问令牌。");
     }
 
+    /// <summary>用 Minecraft 令牌读取账号档案（含皮肤地址）；令牌失效时返回 null。</summary>
+    public static async Task<(string Name, string Uuid, string? SkinUrl)?> TryGetProfileAsync(string accessToken,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(accessToken))
+        {
+            return null;
+        }
+
+        try
+        {
+            return await MinecraftProfileAsync(accessToken, cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private static async Task<(string Name, string Uuid, string? SkinUrl)> MinecraftProfileAsync(string accessToken,
         CancellationToken cancellationToken)
     {

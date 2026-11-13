@@ -36,6 +36,75 @@ public sealed class SkinService
             ? Path.Combine(SkinsDirectory, "Steve.png")
             : Path.Combine(SkinsDirectory, "Default.png");
 
+    /// <summary>正版账号皮肤的缓存目录（与本地皮肤库分开，不参与皮肤库列表）。</summary>
+    public string AccountSkinDirectory => Path.Combine(SkinsDirectory, "account");
+
+    public string? GetAccountSkinPath(string? uuid)
+    {
+        if (string.IsNullOrWhiteSpace(uuid))
+        {
+            return null;
+        }
+
+        var path = Path.Combine(AccountSkinDirectory, NormalizeUuid(uuid) + ".png");
+        return File.Exists(path) ? path : null;
+    }
+
+    /// <summary>缓存正版账号皮肤：地址没变就复用，变了才重新下载。</summary>
+    public async Task<string?> EnsureAccountSkinAsync(string uuid, string? skinUrl,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(uuid) || string.IsNullOrWhiteSpace(skinUrl))
+        {
+            return null;
+        }
+
+        try
+        {
+            Directory.CreateDirectory(AccountSkinDirectory);
+            var id = NormalizeUuid(uuid);
+            var path = Path.Combine(AccountSkinDirectory, id + ".png");
+            var marker = Path.Combine(AccountSkinDirectory, id + ".url");
+            if (File.Exists(path) && File.Exists(marker) &&
+                string.Equals(File.ReadAllText(marker).Trim(), skinUrl, StringComparison.Ordinal))
+            {
+                return path;
+            }
+
+            var bytes = await DownloadHelper.GetBytesAsync(skinUrl, cancellationToken);
+            if (!IsValidSkinImage(bytes))
+            {
+                return null;
+            }
+
+            await File.WriteAllBytesAsync(path, bytes, cancellationToken);
+            await File.WriteAllTextAsync(marker, skinUrl, cancellationToken);
+            return path;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static string NormalizeUuid(string uuid) => uuid.Replace("-", "").ToLowerInvariant();
+
+    private static bool IsValidSkinImage(byte[] bytes)
+    {
+        try
+        {
+            using var stream = new MemoryStream(bytes);
+            var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.PreservePixelFormat,
+                BitmapCacheOption.OnLoad);
+            var frame = decoder.Frames[0];
+            return frame.PixelWidth == 64 && frame.PixelHeight is 32 or 64;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public IReadOnlyList<SkinEntry> LoadLibrary(string? selectedPath = null)
     {
         var entries = new List<SkinEntry>();
