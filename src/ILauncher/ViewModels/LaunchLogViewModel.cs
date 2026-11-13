@@ -374,6 +374,7 @@ public sealed class LaunchLogViewModel : ObservableObject
                 PlayerName = _settings.ResolvePlayerName(),
                 MemoryMb = memory,
                 JavaPath = string.IsNullOrWhiteSpace(javaPath) ? null : javaPath,
+                ExtraJvmArgs = _settings.ResolveExtraJvmArgs(instance.Id),
                 Width = width,
                 Height = height,
                 TestMode = testMode,

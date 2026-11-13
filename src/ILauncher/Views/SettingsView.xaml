@@ -220,6 +220,14 @@
                     <Slider Style="{StaticResource AccentSlider}" Minimum="1024" Maximum="16384" TickFrequency="512"
                             IsSnapToTickEnabled="True" Value="{Binding MemoryMb, Mode=TwoWay}" />
 
+                    <TextBlock Text="额外 JVM 参数" Style="{StaticResource Label}" Margin="0,12,0,4" />
+                    <TextBox Style="{StaticResource InputTextBox}" Height="34"
+                             Text="{Binding ExtraJvmArgs, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="例如 -XX:+UseG1GC -XX:+ParallelRefProcEnabled；版本设置可以单独覆盖"
+                             AutomationProperties.Name="额外 JVM 参数" />
+                    <TextBlock Text="留空表示不追加；多个参数用空格分隔，含空格的值请用双引号包裹"
+                               FontSize="9" Foreground="{StaticResource BrushTextMuted}" Margin="2,4,0,0" />
+
                     <Border Style="{StaticResource Divider}" Margin="0,12,0,12" />
 
                     <Grid>

@@ -16,6 +16,7 @@ public sealed class InstanceSettingsViewModel : ObservableObject
     private readonly Action<string, bool> _toast;
     private readonly Action? _saved;
     private int _memoryMb;
+    private string _extraJvmArgs = "";
     private bool _useCustomResolution;
     private int _width;
     private int _height;
@@ -58,6 +59,7 @@ public sealed class InstanceSettingsViewModel : ObservableObject
         AutoOption.IsSelected = string.IsNullOrWhiteSpace(overrides.JavaPath);
         _selectedJava = AutoOption;
         _javaSummary = overrides.JavaPath is { Length: > 0 } custom ? custom : "跟随全局设置";
+        _extraJvmArgs = overrides.ExtraJvmArgs;
         _ = LoadJavaAsync();
     }
 
@@ -117,6 +119,13 @@ public sealed class InstanceSettingsViewModel : ObservableObject
     }
 
     public string MemoryText => $"{MemoryMb:N0} MB";
+
+    /// <summary>版本级额外 JVM 参数；留空表示跟随全局。</summary>
+    public string ExtraJvmArgs
+    {
+        get => _extraJvmArgs;
+        set => SetProperty(ref _extraJvmArgs, value ?? "");
+    }
 
     public bool UseCustomResolution
     {
@@ -257,6 +266,7 @@ public sealed class InstanceSettingsViewModel : ObservableObject
             JavaPath = SelectedJava is { IsAuto: false } ? SelectedJava.Path : "",
             MemoryMb = MemoryMb == _settings.Settings.MemoryMb ? null : MemoryMb,
             Width = UseCustomResolution ? Math.Clamp(Width, 320, 7680) : null,
+            ExtraJvmArgs = ExtraJvmArgs.Trim(),
             Height = UseCustomResolution ? Math.Clamp(Height, 240, 4320) : null
         };
 
@@ -273,6 +283,7 @@ public sealed class InstanceSettingsViewModel : ObservableObject
         UseCustomResolution = false;
         Width = _settings.Settings.WindowWidth;
         Height = _settings.Settings.WindowHeight;
+        ExtraJvmArgs = "";
         AutoOption.IsSelected = true;
         SelectJava(AutoOption);
         _toast("已恢复为全局设置。", false);

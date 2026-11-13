@@ -391,6 +391,13 @@ public sealed partial class LaunchService
         arguments.Add("-Dminecraft.launcher.brand=ILauncher");
         arguments.Add("-Dminecraft.launcher.version=1.1.0");
 
+        // 用户自定义 JVM 参数放在基础参数之后、版本自带参数之前，
+        // 这样像 -XX:+UseG1GC 这类调优参数会生效，而不会被版本默认值覆盖掉顺序。
+        if (!string.IsNullOrWhiteSpace(request.ExtraJvmArgs))
+        {
+            arguments.AddRange(SplitArguments(request.ExtraJvmArgs));
+        }
+
         foreach (var entry in metadata.JvmArguments)
         {
             if (!entry.IsAllowed(features))
@@ -982,5 +989,36 @@ public sealed partial class LaunchService
 
     [GeneratedRegex(@"\$\{([^}]+)\}")]
     private static partial Regex PlaceholderRegex();
-}
+    /// <summary>把用户输入的参数字符串拆开，支持双引号包裹含空格的参数。</summary>
+    private static IEnumerable<string> SplitArguments(string text)
+    {
+        var current = new System.Text.StringBuilder();
+        var quoted = false;
+        foreach (var ch in text)
+        {
+            if (ch == '"')
+            {
+                quoted = !quoted;
+                continue;
+            }
 
+            if (!quoted && char.IsWhiteSpace(ch))
+            {
+                if (current.Length > 0)
+                {
+                    yield return current.ToString();
+                    current.Clear();
+                }
+
+                continue;
+            }
+
+            current.Append(ch);
+        }
+
+        if (current.Length > 0)
+        {
+            yield return current.ToString();
+        }
+    }
+}

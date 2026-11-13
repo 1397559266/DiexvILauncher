@@ -18,6 +18,7 @@ public sealed class SettingsViewModel : ObservableObject
     private string _rootPath;
     private string _playerName;
     private int _memoryMb;
+    private string _extraJvmArgs = "";
     private int _width;
     private int _height;
     private bool _closeLauncher;
@@ -43,6 +44,7 @@ public sealed class SettingsViewModel : ObservableObject
         _rootPath = settings.Settings.MinecraftRoot;
         _playerName = settings.ResolvePlayerName();
         _memoryMb = settings.Settings.MemoryMb;
+        _extraJvmArgs = settings.Settings.ExtraJvmArgs;
         _width = settings.Settings.WindowWidth;
         _height = settings.Settings.WindowHeight;
         _closeLauncher = settings.Settings.CloseLauncherOnGameStart;
@@ -182,6 +184,13 @@ public sealed class SettingsViewModel : ObservableObject
     }
 
     public string MemoryText => $"{MemoryMb:N0} MB";
+
+    /// <summary>全局额外 JVM 参数，留空表示不追加。</summary>
+    public string ExtraJvmArgs
+    {
+        get => _extraJvmArgs;
+        set => SetProperty(ref _extraJvmArgs, value ?? "");
+    }
 
     public int Width
     {
@@ -399,6 +408,7 @@ public sealed class SettingsViewModel : ObservableObject
         _settings.Settings.CloseLauncherOnGameStart = CloseLauncher;
         _settings.Settings.DownloadSource = SelectedDownloadSource == "镜像源优先" ? "mirror" : "official";
         _settings.Settings.UiLanguage = SelectedUiLanguage == "English" ? "en-US" : "zh-CN";
+        _settings.Settings.ExtraJvmArgs = ExtraJvmArgs.Trim();
         _settings.Save();
         LanguageService.SetLanguage(_settings.Settings.UiLanguage);
 

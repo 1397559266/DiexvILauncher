@@ -113,6 +113,14 @@
                         <TextBlock Text="16 GB" FontSize="8.5" Foreground="{StaticResource BrushTextMuted}" HorizontalAlignment="Right" />
                     </Grid>
 
+                    <TextBlock Text="额外 JVM 参数" Style="{StaticResource SettingLabel}" Margin="0,14,0,5" />
+                    <TextBox Style="{StaticResource InputTextBox}" Height="34"
+                             Text="{Binding ExtraJvmArgs, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="留空跟随启动器全局设置"
+                             AutomationProperties.Name="版本额外 JVM 参数" />
+                    <TextBlock Text="留空表示跟随全局；填写后只对这个版本生效"
+                               FontSize="8.5" Foreground="{StaticResource BrushTextMuted}" Margin="2,4,0,0" />
+
                     <Border Style="{StaticResource Divider}" Margin="0,14,0,14" />
 
                     <Grid>

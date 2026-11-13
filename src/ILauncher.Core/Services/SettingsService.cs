@@ -43,6 +43,9 @@ public sealed class LauncherSettings
     public string MicrosoftUuid { get; set; } = "";
     public string JavaPath { get; set; } = "";
     public int MemoryMb { get; set; } = 4096;
+
+    /// <summary>全局额外 JVM 参数（可被版本覆盖），例如 -XX:+UseG1GC。</summary>
+    public string ExtraJvmArgs { get; set; } = "";
     public int HomeVersionsPerRow { get; set; } = 3;
     public string DownloadSource { get; set; } = "official";
     public int WindowWidth { get; set; } = 1280;
@@ -59,6 +62,9 @@ public sealed class InstanceOverrides
 {
     public string JavaPath { get; set; } = "";
     public int? MemoryMb { get; set; }
+
+    /// <summary>版本级 JVM 参数；留空表示跟随全局。</summary>
+    public string ExtraJvmArgs { get; set; } = "";
     public int? Width { get; set; }
     public int? Height { get; set; }
 }
@@ -172,6 +178,13 @@ public sealed class SettingsService
     {
         Settings.Instances[instanceId] = overrides;
         Save();
+    }
+
+    /// <summary>取该版本实际生效的额外 JVM 参数：版本设置非空则用它，否则用全局。</summary>
+    public string ResolveExtraJvmArgs(string instanceId)
+    {
+        var overrides = GetInstanceSettings(instanceId);
+        return string.IsNullOrWhiteSpace(overrides.ExtraJvmArgs) ? Settings.ExtraJvmArgs : overrides.ExtraJvmArgs;
     }
 
     public string ResolvePlayerName()

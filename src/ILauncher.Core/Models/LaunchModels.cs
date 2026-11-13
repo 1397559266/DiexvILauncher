@@ -10,6 +10,9 @@ public sealed record LaunchRequest
 
     public string? JavaPath { get; init; }
 
+    /// <summary>额外的 JVM 参数（来自启动器或版本设置），原样拼在自动生成的参数之后。</summary>
+    public string? ExtraJvmArgs { get; init; }
+
     public string? GameDirectory { get; init; }
 
     public string? ServerAddress { get; init; }
