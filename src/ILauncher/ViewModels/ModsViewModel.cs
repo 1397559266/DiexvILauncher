@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Security.Cryptography;
+using System.Windows;
 using System.Windows.Data;
 using System.Windows.Threading;
 using ILauncher.Core;
@@ -68,6 +69,15 @@ public sealed class ModItemViewModel : ObservableObject
                 OnPropertyChanged(nameof(HasLocalIcon));
             }
         }
+    }
+
+    private bool _isSelected;
+
+    /// <summary>多选状态，用于批量启用/禁用/删除。</summary>
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set => SetProperty(ref _isSelected, value);
     }
 
     public bool HasRemoteIcon => !string.IsNullOrWhiteSpace(_remoteIconUrl);
@@ -220,6 +230,11 @@ public sealed class ModsViewModel : ObservableObject
                 await UpdateModAsync(item);
             }
         });
+        SelectAllCommand = new RelayCommand(SelectAll);
+        ClearSelectionCommand = new RelayCommand(ClearSelection);
+        EnableSelectedCommand = new AsyncRelayCommand(() => SetSelectedEnabledAsync(true), () => HasSelection);
+        DisableSelectedCommand = new AsyncRelayCommand(() => SetSelectedEnabledAsync(false), () => HasSelection);
+        DeleteSelectedCommand = new AsyncRelayCommand(DeleteSelectedAsync, () => HasSelection);
     }
 
     public ObservableCollection<ModItemViewModel> Mods { get; } = new();
@@ -247,6 +262,17 @@ public sealed class ModsViewModel : ObservableObject
     public RelayCommand SetFilterCommand { get; }
     public AsyncRelayCommand CheckUpdatesCommand { get; }
     public AsyncRelayCommand UpdateModCommand { get; }
+    public RelayCommand SelectAllCommand { get; }
+    public RelayCommand ClearSelectionCommand { get; }
+    public AsyncRelayCommand EnableSelectedCommand { get; }
+    public AsyncRelayCommand DisableSelectedCommand { get; }
+    public AsyncRelayCommand DeleteSelectedCommand { get; }
+
+    public int SelectedCount => Mods.Count(m => m.IsSelected);
+
+    public bool HasSelection => SelectedCount > 0;
+
+    public string SelectionText => $"已选择 {SelectedCount} 个模组";
 
     public bool IsCheckingUpdates
     {
@@ -306,7 +332,7 @@ public sealed class ModsViewModel : ObservableObject
         }
     }
 
-    public bool IsEmpty => Mods.Count == 0;
+    public bool IsEmpty => !IsLoading && Mods.Count == 0;
 
     public int EnabledCount
     {
@@ -384,15 +410,17 @@ public sealed class ModsViewModel : ObservableObject
             Mods.Clear();
             foreach (var model in models)
             {
-                Mods.Add(new ModItemViewModel
+                var item = new ModItemViewModel
                 {
                     Model = model,
                     Enabled = model.Enabled
-                });
+                };
+                item.PropertyChanged += OnSelectionChanged;
+                Mods.Add(item);
             }
 
             RecalculateCounts();
-            ApplyCachedUpdates();
+            _ = ApplyCachedUpdatesAsync();
             RecalculateCounts();
             ModsView.Refresh();
             OnPropertyChanged(nameof(IsEmpty));
@@ -568,11 +596,7 @@ public sealed class ModsViewModel : ObservableObject
             item.LatestVersion = "";
             item.LatestVersionInfo = null;
 
-            var sha1 = await Task.Run(() =>
-            {
-                using var stream = File.OpenRead(path);
-                return Convert.ToHexString(SHA1.HashData(stream)).ToLowerInvariant();
-            });
+            var sha1 = await Task.Run(() => ModHashCache.GetSha1(path));
             item.CachedSha1 = sha1;
             candidates.Add((item, sha1));
         }
@@ -611,6 +635,127 @@ public sealed class ModsViewModel : ObservableObject
         RecalculateCounts();
         ModsView.Refresh();
         return available;
+    }
+
+    private void OnSelectionChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is not nameof(ModItemViewModel.IsSelected))
+        {
+            return;
+        }
+
+        OnPropertyChanged(nameof(SelectedCount));
+        OnPropertyChanged(nameof(HasSelection));
+        OnPropertyChanged(nameof(SelectionText));
+        EnableSelectedCommand.RaiseCanExecuteChanged();
+        DisableSelectedCommand.RaiseCanExecuteChanged();
+        DeleteSelectedCommand.RaiseCanExecuteChanged();
+    }
+
+    private void SelectAll()
+    {
+        foreach (var item in ModsView.Cast<ModItemViewModel>())
+        {
+            item.IsSelected = true;
+        }
+    }
+
+    private void ClearSelection()
+    {
+        foreach (var item in Mods)
+        {
+            item.IsSelected = false;
+        }
+    }
+
+    /// <summary>批量启用/禁用：直接改文件名，和单行开关是同一套逻辑。</summary>
+    private async Task SetSelectedEnabledAsync(bool enable)
+    {
+        var targets = Mods.Where(m => m.IsSelected && m.Enabled != enable).ToList();
+        if (targets.Count == 0)
+        {
+            _toast("选中的模组已经处于该状态。", false);
+            return;
+        }
+
+        foreach (var item in targets)
+        {
+            item.IsBusy = true;
+            try
+            {
+                await _modService.ToggleAsync(item.Model, enable);
+                item.Enabled = item.Model.Enabled;
+                item.RefreshBindings();
+            }
+            catch (Exception ex)
+            {
+                _toast($"处理 {item.Name} 失败：{ex.Message}", true);
+            }
+            finally
+            {
+                item.IsBusy = false;
+            }
+        }
+
+        RecalculateCounts();
+        ModsView.Refresh();
+        _modsChanged?.Invoke();
+        _toast($"已{(enable ? "启用" : "禁用")} {targets.Count} 个模组，下次启动游戏时生效。", false);
+    }
+
+    /// <summary>批量删除：文件先移到回收目录，避免误删后无法恢复。</summary>
+    private async Task DeleteSelectedAsync()
+    {
+        var targets = Mods.Where(m => m.IsSelected).ToList();
+        if (targets.Count == 0)
+        {
+            return;
+        }
+
+        var confirm = LocalizedDialog.Show($"确定删除选中的 {targets.Count} 个模组文件？\n\n文件会移到回收目录，可手动恢复。",
+            "删除模组", MessageBoxButton.OKCancel, MessageBoxImage.Warning);
+        if (confirm != MessageBoxResult.OK)
+        {
+            return;
+        }
+
+        var trash = Path.Combine(AppPaths.DataDirectory, "trash", "mods", DateTime.Now.ToString("yyyyMMdd-HHmmss"));
+        var removed = 0;
+        await Task.Run(() =>
+        {
+            Directory.CreateDirectory(trash);
+            foreach (var item in targets)
+            {
+                try
+                {
+                    var source = item.Model.FilePath;
+                    if (!File.Exists(source))
+                    {
+                        continue;
+                    }
+
+                    File.Move(source, Path.Combine(trash, Path.GetFileName(source)));
+                    removed++;
+                }
+                catch
+                {
+                    // 单个文件失败不影响其余删除。
+                }
+            }
+        });
+
+        foreach (var item in targets)
+        {
+            if (!File.Exists(item.Model.FilePath))
+            {
+                Mods.Remove(item);
+            }
+        }
+
+        RecalculateCounts();
+        ModsView.Refresh();
+        _modsChanged?.Invoke();
+        _toast($"已删除 {removed} 个模组，文件在 {trash}。", false);
     }
 
     /// <summary>用 MC百科补全模组中文名；MC百科限流，按顺序慢慢查，结果有本地缓存。</summary>
@@ -717,32 +862,29 @@ public sealed class ModsViewModel : ObservableObject
     }
 
     /// <summary>进入模组管理时先把缓存里的“可更新”和远程图标贴上去，界面不需要等网络。</summary>
-    private void ApplyCachedUpdates()
+    private async Task ApplyCachedUpdatesAsync()
     {
         var cache = LoadUpdateCache();
-        foreach (var item in Mods)
+        if (cache.Count == 0)
         {
-            var path = item.Model.FilePath;
-            if (!File.Exists(path))
+            return;
+        }
+
+        var items = Mods.ToList();
+        // 哈希在后台算，并命中 ModHashCache，避免进页面时读全部 jar 卡住 UI。
+        var hashes = await Task.Run(() => items.ToDictionary(
+            item => item,
+            item => ModHashCache.GetSha1(item.Model.FilePath)));
+        ModHashCache.SaveIfDirty();
+
+        foreach (var item in items)
+        {
+            if (!hashes.TryGetValue(item, out var sha1) || string.IsNullOrEmpty(sha1))
             {
                 continue;
             }
 
-            var sha1 = item.CachedSha1;
-            if (string.IsNullOrEmpty(sha1))
-            {
-                try
-                {
-                    using var stream = File.OpenRead(path);
-                    sha1 = Convert.ToHexString(SHA1.HashData(stream)).ToLowerInvariant();
-                    item.CachedSha1 = sha1;
-                }
-                catch
-                {
-                    continue;
-                }
-            }
-
+            item.CachedSha1 = sha1;
             if (!cache.TryGetValue(sha1, out var state))
             {
                 continue;
@@ -759,6 +901,9 @@ public sealed class ModsViewModel : ObservableObject
             item.LatestVersion = state.LatestVersionNumber;
             item.UpdateAvailable = true;
         }
+
+        RecalculateCounts();
+        ModsView.Refresh();
     }
     private async Task UpdateModAsync(ModItemViewModel item)
     {

@@ -191,12 +191,18 @@
                             <DataTemplate>
                                 <Grid Height="64" Margin="7,0">
                                     <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="26" />
                                         <ColumnDefinition Width="44" />
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
 
-                                    <Border Width="38" Height="38" CornerRadius="9" Background="#FFF2F8FF" VerticalAlignment="Center">
+                                    <CheckBox Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                              IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                              ToolTip="选择此模组，用于批量启用/禁用/删除"
+                                              AutomationProperties.Name="选择模组" />
+
+                                    <Border Grid.Column="1" Width="38" Height="38" CornerRadius="9" Background="#FFF2F8FF" VerticalAlignment="Center">
                                         <Grid>
                                             <controls:Icon Data="{StaticResource IconPuzzle}" Fill="#FFB3CBE8" Width="18" Height="18" />
                                             <Image Source="{Binding RemoteIconUrl, Converter={StaticResource RemoteIcon}}" Stretch="Uniform"
@@ -208,7 +214,7 @@
                                         </Grid>
                                     </Border>
 
-                                    <StackPanel Grid.Column="1" Margin="10,0,10,0" VerticalAlignment="Center">
+                                    <StackPanel Grid.Column="2" Margin="10,0,10,0" VerticalAlignment="Center">
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="{Binding DisplayTitle}" FontSize="12.5" FontWeight="SemiBold"
                                                        TextTrimming="CharacterEllipsis" MaxWidth="420" ToolTip="{Binding Name}">
@@ -240,7 +246,7 @@
                                                    Margin="0,1,0,0" TextTrimming="CharacterEllipsis" ToolTip="{Binding FileName}" />
                                     </StackPanel>
 
-                                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,4,0">
+                                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,4,0">
                                         <Button Style="{StaticResource PrimaryButton}" Height="26" MinWidth="52" Margin="0,0,7,0"
                                                 Command="{Binding DataContext.UpdateModCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
                                                 CommandParameter="{Binding}"
@@ -271,6 +277,27 @@
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
+
+                    <!-- 多选操作栏 -->
+                    <Border VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,16"
+                            Background="#F7FFFFFF" BorderBrush="{StaticResource BrushBorder}" BorderThickness="1"
+                            CornerRadius="12" Padding="14,9" Panel.ZIndex="10"
+                            Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding SelectionText}" FontSize="10.5" VerticalAlignment="Center"
+                                       Margin="0,0,12,0" Foreground="{StaticResource BrushTextSecondary}" />
+                            <Button Style="{StaticResource SecondaryButton}" Height="28" Content="全选"
+                                    Command="{Binding SelectAllCommand}" Margin="0,0,6,0" />
+                            <Button Style="{StaticResource SecondaryButton}" Height="28" Content="取消选择"
+                                    Command="{Binding ClearSelectionCommand}" Margin="0,0,6,0" />
+                            <Button Style="{StaticResource PrimaryButton}" Height="28" Content="启用"
+                                    Command="{Binding EnableSelectedCommand}" Margin="0,0,6,0" />
+                            <Button Style="{StaticResource SecondaryButton}" Height="28" Content="禁用"
+                                    Command="{Binding DisableSelectedCommand}" Margin="0,0,6,0" />
+                            <Button Style="{StaticResource SecondaryButton}" Height="28" Content="删除"
+                                    Command="{Binding DeleteSelectedCommand}" Foreground="{StaticResource BrushDanger}" />
+                        </StackPanel>
+                    </Border>
 
                     <!-- Loading -->
                     <controls:SkeletonList VerticalAlignment="Top" Margin="0,2,0,0"
