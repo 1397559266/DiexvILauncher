@@ -38,7 +38,11 @@ public sealed class InstanceSettingsViewModel : ObservableObject
         _saved = saved;
 
         var overrides = settings.GetInstanceSettings(instance.Id);
-        _memoryMb = overrides.MemoryMb ?? settings.Settings.MemoryMb;
+        _memoryBaseline = settings.ResolveMemoryMb(instance.Id, instance.ModCount,
+            !string.Equals(instance.Loader, "原版", StringComparison.Ordinal),
+            (instance.Loader + instance.LoaderVersion + instance.Id)
+                .Contains("OptiFine", StringComparison.OrdinalIgnoreCase));
+        _memoryMb = overrides.MemoryMb ?? _memoryBaseline;
         _useCustomResolution = overrides.Width is > 0 && overrides.Height is > 0;
         _width = overrides.Width ?? settings.Settings.WindowWidth;
         _height = overrides.Height ?? settings.Settings.WindowHeight;
