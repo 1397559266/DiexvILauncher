@@ -129,6 +129,7 @@ public sealed class AccountViewModel : ObservableObject
             ApplySkinPath();
             OnPropertyChanged(nameof(SkinName));
             OnPropertyChanged(nameof(SkinSourceText));
+            _saved?.Invoke();
         }
     }
 
@@ -156,6 +157,7 @@ public sealed class AccountViewModel : ObservableObject
         {
             _accountSkinPath = null;
             ApplySkinPath();
+            _saved?.Invoke();
             return;
         }
 
@@ -176,6 +178,8 @@ public sealed class AccountViewModel : ObservableObject
         var path = await _skins.EnsureAccountSkinAsync(uuid, _settings.Settings.MicrosoftSkinUrl);
         _accountSkinPath = path ?? _skins.GetAccountSkinPath(uuid);
         ApplySkinPath();
+        OnPropertyChanged(nameof(SkinName));
+        _saved?.Invoke();
     }
 
     private async Task<string?> TryFetchSkinUrlAsync()

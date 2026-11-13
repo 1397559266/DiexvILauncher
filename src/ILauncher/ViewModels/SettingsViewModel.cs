@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Input;
 using ILauncher.Core;
 using ILauncher.Core.Services;
+using ILauncher.Services;
 using ILauncher.Localization;
 using Microsoft.Win32;
 
@@ -165,7 +166,7 @@ public sealed class SettingsViewModel : ObservableObject
         set => SetProperty(ref _playerName, value);
     }
 
-    public string SkinPath => _settings.Settings.SkinPath;
+    public string SkinPath => SkinResolver.Resolve(_settings, (Application.Current as App)?.Skins);
 
     public void RefreshSkin() => OnPropertyChanged(nameof(SkinPath));
 

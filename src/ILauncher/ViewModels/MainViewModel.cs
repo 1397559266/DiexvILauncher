@@ -402,7 +402,7 @@ public sealed class MainViewModel : ObservableObject
         get
         {
             var skins = (Application.Current as App)?.Skins;
-            return skins?.Resolve(SettingsService.Settings.SkinPath) ?? SettingsService.Settings.SkinPath;
+            return SkinResolver.Resolve(SettingsService, skins);
         }
     }
 
