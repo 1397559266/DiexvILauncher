@@ -286,6 +286,8 @@
                             <TextBlock Text="{Binding SelectionText}" FontSize="10.5" VerticalAlignment="Center"
                                        MaxWidth="320" TextTrimming="CharacterEllipsis"
                                        Margin="0,0,12,0" Foreground="{StaticResource BrushTextSecondary}" />
+                            <Button Style="{StaticResource SecondaryButton}" Height="28" Content="全选"
+                                    Command="{Binding SelectAllCommand}" Margin="0,0,6,0" />
                             <Button Style="{StaticResource PrimaryButton}" Height="28" Content="启用"
                                     Command="{Binding EnableSelectedCommand}" Margin="0,0,6,0" />
                             <Button Style="{StaticResource SecondaryButton}" Height="28" Content="禁用"
