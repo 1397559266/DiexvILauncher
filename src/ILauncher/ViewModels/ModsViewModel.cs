@@ -180,6 +180,7 @@ public sealed class ModsViewModel : ObservableObject
     private readonly ModUpdateService _updates = new();
     private readonly McmodService _mcmod = new();
     private bool _chineseNamesStarted;
+    private bool _bulkUpdating;
     private readonly Dictionary<string, ModUpdateState> _updateStates = new(StringComparer.OrdinalIgnoreCase);
     private bool _hasUpdates;
     private bool _updateCheckStarted;
@@ -235,6 +236,7 @@ public sealed class ModsViewModel : ObservableObject
         EnableSelectedCommand = new AsyncRelayCommand(() => SetSelectedEnabledAsync(true), () => HasSelection);
         DisableSelectedCommand = new AsyncRelayCommand(() => SetSelectedEnabledAsync(false), () => HasSelection);
         DeleteSelectedCommand = new AsyncRelayCommand(DeleteSelectedAsync, () => HasSelection);
+        UpdateSelectedCommand = new AsyncRelayCommand(UpdateSelectedAsync, () => HasSelection && !_bulkUpdating);
     }
 
     public ObservableCollection<ModItemViewModel> Mods { get; } = new();
@@ -262,6 +264,9 @@ public sealed class ModsViewModel : ObservableObject
     public RelayCommand SetFilterCommand { get; }
     public AsyncRelayCommand CheckUpdatesCommand { get; }
     public AsyncRelayCommand UpdateModCommand { get; }
+
+    /// <summary>批量更新选中的模组。</summary>
+    public AsyncRelayCommand UpdateSelectedCommand { get; }
     public RelayCommand SelectAllCommand { get; }
     public RelayCommand ClearSelectionCommand { get; }
     public AsyncRelayCommand EnableSelectedCommand { get; }
@@ -704,6 +709,7 @@ public sealed class ModsViewModel : ObservableObject
         EnableSelectedCommand.RaiseCanExecuteChanged();
         DisableSelectedCommand.RaiseCanExecuteChanged();
         DeleteSelectedCommand.RaiseCanExecuteChanged();
+        UpdateSelectedCommand.RaiseCanExecuteChanged();
     }
 
     private void SelectAll()
@@ -961,46 +967,73 @@ public sealed class ModsViewModel : ObservableObject
     }
     private async Task UpdateModAsync(ModItemViewModel item)
     {
+        if (await ApplyUpdateCoreAsync(item))
+        {
+            _toast($"{item.Name} 已更新到 v{item.LatestVersion}，旧版本已禁用。", false);
+            await LoadAsync();
+            _modsChanged?.Invoke();
+        }
+    }
+
+    /// <summary>批量更新选中的、且确实有可用更新的模组。</summary>
+    private async Task UpdateSelectedAsync()
+    {
+        if (_instance == null || _bulkUpdating)
+        {
+            return;
+        }
+
+        var targets = Mods.Where(m => m.IsSelected && m.UpdateAvailable).ToList();
+        if (targets.Count == 0)
+        {
+            _toast("选中的模组没有可用更新，可以先点「检查更新」。", true);
+            return;
+        }
+
+        _bulkUpdating = true;
+        UpdateSelectedCommand.RaiseCanExecuteChanged();
+        var succeeded = 0;
+        var failed = 0;
+        try
+        {
+            for (var index = 0; index < targets.Count; index++)
+            {
+                var item = targets[index];
+                _toast($"正在更新 {index + 1}/{targets.Count}：{item.Name}", false);
+                if (await ApplyUpdateCoreAsync(item))
+                {
+                    succeeded++;
+                }
+                else
+                {
+                    failed++;
+                }
+            }
+        }
+        finally
+        {
+            _bulkUpdating = false;
+            UpdateSelectedCommand.RaiseCanExecuteChanged();
+        }
+
+        await LoadAsync();
+        _modsChanged?.Invoke();
+        _toast(failed == 0
+            ? $"已更新 {succeeded} 个模组，旧版本已禁用。"
+            : $"批量更新完成：成功 {succeeded} 个，失败 {failed} 个。", failed > 0);
+    }
+
+    /// <summary>下载并替换单个模组；成功返回 true。</summary>
+    private async Task<bool> ApplyUpdateCoreAsync(ModItemViewModel item)
+    {
         if (_instance == null)
         {
-            return;
+            return false;
         }
 
-        if (item.LatestVersionInfo?.File == null && _updateStates.TryGetValue(item.CachedSha1, out var cached) &&
-            !string.IsNullOrWhiteSpace(cached.LatestDownloadUrl))
+        if (!await EnsureLatestFileAsync(item) || item.LatestVersionInfo?.File == null)
         {
-            item.LatestVersionInfo = new ModrinthVersion(
-                cached.LatestVersionId,
-                cached.ProjectId,
-                cached.LatestVersionNumber,
-                cached.LatestVersionNumber,
-                "release",
-                cached.CheckedAt,
-                [],
-                [],
-                new ModrinthFile(cached.LatestDownloadUrl, cached.LatestFileName ?? "mod.jar", 0, true,
-                    cached.LatestSha1),
-                []);
-            item.LatestVersion = cached.LatestVersionNumber;
-        }
-        else if (item.LatestVersionInfo?.File == null && !string.IsNullOrWhiteSpace(item.CachedLatestVersionId) &&
-                 !item.CachedLatestVersionId.StartsWith("cf-", StringComparison.Ordinal))
-        {
-            try
-            {
-                item.LatestVersionInfo = await _modrinth.GetVersionAsync(item.CachedLatestVersionId);
-                item.LatestVersion = item.LatestVersionInfo?.VersionNumber ?? item.LatestVersion;
-            }
-            catch
-            {
-                // 补拉失败就交给下面统一提示。
-            }
-        }
-
-        if (item.LatestVersionInfo?.File == null)
-        {
-            _toast("没有拿到最新版本的文件信息，请点「检查更新」后重试。", true);
-            return;
+            return false;
         }
 
         item.IsBusy = true;
@@ -1044,18 +1077,65 @@ public sealed class ModsViewModel : ObservableObject
                 }
             }
 
-            _toast($"{item.Name} 已更新到 v{item.LatestVersion}，旧版本已禁用。", false);
-            await LoadAsync();
-            _modsChanged?.Invoke();
+            return true;
         }
         catch (Exception ex)
         {
-            _toast($"更新失败：{ex.Message}", true);
+            _toast($"更新 {item.Name} 失败：{ex.Message}", true);
+            return false;
         }
         finally
         {
             item.IsBusy = false;
         }
+    }
+
+    /// <summary>确保拿到了最新版本的文件信息（缓存优先，缺失时补拉）。</summary>
+    private async Task<bool> EnsureLatestFileAsync(ModItemViewModel item)
+    {
+        if (_instance == null)
+        {
+            return false;
+        }
+
+        if (item.LatestVersionInfo?.File == null && _updateStates.TryGetValue(item.CachedSha1, out var cached) &&
+            !string.IsNullOrWhiteSpace(cached.LatestDownloadUrl))
+        {
+            item.LatestVersionInfo = new ModrinthVersion(
+                cached.LatestVersionId,
+                cached.ProjectId,
+                cached.LatestVersionNumber,
+                cached.LatestVersionNumber,
+                "release",
+                cached.CheckedAt,
+                [],
+                [],
+                new ModrinthFile(cached.LatestDownloadUrl, cached.LatestFileName ?? "mod.jar", 0, true,
+                    cached.LatestSha1),
+                []);
+            item.LatestVersion = cached.LatestVersionNumber;
+        }
+        else if (item.LatestVersionInfo?.File == null && !string.IsNullOrWhiteSpace(item.CachedLatestVersionId) &&
+                 !item.CachedLatestVersionId.StartsWith("cf-", StringComparison.Ordinal))
+        {
+            try
+            {
+                item.LatestVersionInfo = await _modrinth.GetVersionAsync(item.CachedLatestVersionId);
+                item.LatestVersion = item.LatestVersionInfo?.VersionNumber ?? item.LatestVersion;
+            }
+            catch
+            {
+                // 补拉失败就交给下面统一提示。
+            }
+        }
+
+        if (item.LatestVersionInfo?.File != null)
+        {
+            return true;
+        }
+
+        _toast($"{item.Name} 没有拿到最新版本的文件信息，请点「检查更新」后重试。", true);
+        return false;
     }
 
     private static string? LoaderKey(string loader) => loader switch
