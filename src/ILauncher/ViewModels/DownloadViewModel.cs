@@ -1690,11 +1690,6 @@ public sealed class DownloadViewModel : ObservableObject
     private async Task<IReadOnlyList<ModDependencyItem>> AnalyzeDependenciesAsync(ModrinthVersion version,
         string gameVersion, string? loader, CancellationToken cancellationToken)
     {
-        if (!string.Equals(version.Source, "Modrinth", StringComparison.OrdinalIgnoreCase))
-        {
-            return Array.Empty<ModDependencyItem>();
-        }
-
         var instance = ResolveInstallInstance(gameVersion, loader);
         if (instance == null)
         {
@@ -1738,7 +1733,7 @@ public sealed class DownloadViewModel : ObservableObject
                 result.Add(new ModDependencyItem
                 {
                     ProjectId = project?.Id ?? dependency.ProjectId ?? "",
-                    VersionId = dependency.VersionId,
+                    VersionId = dependencyVersion?.Id ?? dependency.VersionId,
                     Slug = project?.Slug,
                     Title = project?.Title ??
                             (!string.IsNullOrWhiteSpace(dependency.FileName) ? dependency.FileName! : "未知前置"),
@@ -1764,10 +1759,13 @@ public sealed class DownloadViewModel : ObservableObject
     private async Task<DependencyLoadResult> AnalyzeJarDependenciesAsync(ModrinthVersion version,
         string gameVersion, string? loader, CancellationToken cancellationToken)
     {
-        if (!string.Equals(version.Source, "Modrinth", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(version.Source, "CurseForge", StringComparison.OrdinalIgnoreCase))
         {
-            return new DependencyLoadResult(Array.Empty<ModDependencyItem>(), false, "CurseForge 文件不走 Modrinth 前置解析");
+            // CurseForge 的文件自带 dependencies 字段，直接按接口解析，不再读 JAR。
+            var cfDependencies = await AnalyzeDependenciesAsync(version, gameVersion, loader, cancellationToken);
+            return new DependencyLoadResult(cfDependencies, true, null);
         }
+
 
         var instance = ResolveInstallInstance(gameVersion, loader);
         if (instance == null || version.File == null)
@@ -1846,6 +1844,33 @@ public sealed class DownloadViewModel : ObservableObject
 
         var instance = ResolveInstallInstance(gameVersion, loader)
                        ?? throw new InvalidOperationException("找不到对应的已安装版本。");
+
+        // CurseForge 前置：从镜像取项目与文件，再走同一套下载安装。
+        if (item.ProjectId.StartsWith("cf:", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!long.TryParse(item.ProjectId[3..], out var cfModId))
+            {
+                throw new InvalidOperationException("无法识别的前置项目。");
+            }
+
+            var cfProject = await _curseForge.GetModAsync(cfModId, cancellationToken)
+                            ?? throw new InvalidOperationException("无法获取前置项目信息。");
+            var cfFiles = await _curseForge.GetFilesAsync(cfModId, gameVersion, loader, cancellationToken);
+            var cfVersion = !string.IsNullOrWhiteSpace(item.VersionId)
+                ? cfFiles.FirstOrDefault(file =>
+                    string.Equals(file.Id, item.VersionId, StringComparison.OrdinalIgnoreCase))
+                : null;
+            cfVersion ??= cfFiles.FirstOrDefault();
+            if (cfVersion?.File == null)
+            {
+                throw new InvalidOperationException("该前置没有适用于当前版本的文件。");
+            }
+
+            await _modrinth.InstallVersionAsync(cfProject, cfVersion, instance.ModsDirectory, progress,
+                cancellationToken);
+            return;
+        }
+
         var project = await _modrinth.GetProjectAsync(item.ProjectId, cancellationToken)
                       ?? throw new InvalidOperationException("无法获取前置项目信息。");
         ModrinthVersion? version = null;
@@ -2103,6 +2128,30 @@ public sealed class DownloadViewModel : ObservableObject
         if (string.IsNullOrWhiteSpace(projectId))
         {
             return (null, exactVersion);
+        }
+
+        // CurseForge 依赖用 cf:<modId> 标识，直接查 CurseForge 镜像。
+        if (projectId.StartsWith("cf:", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!long.TryParse(projectId[3..], out var cfModId))
+            {
+                return (null, exactVersion);
+            }
+
+            if (!projectCache.TryGetValue(projectId, out var cfProject))
+            {
+                cfProject = await _curseForge.GetModAsync(cfModId, cancellationToken);
+                projectCache[projectId] = cfProject;
+            }
+
+            var cfVersion = exactVersion;
+            if (cfVersion == null && cfProject != null)
+            {
+                var cfFiles = await _curseForge.GetFilesAsync(cfModId, gameVersion, loader, cancellationToken);
+                cfVersion = cfFiles.FirstOrDefault();
+            }
+
+            return (cfProject, cfVersion);
         }
 
         if (!projectCache.TryGetValue(projectId, out var project))

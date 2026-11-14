@@ -3,6 +3,26 @@
                     xmlns:controls="clr-namespace:ILauncher.Controls"
                     xmlns:vm="clr-namespace:ILauncher.ViewModels">
 
+        <!-- ═══════════════ 去掉键盘焦点虚线框 ═══════════════ -->
+        <!-- 覆盖系统 FocusVisualStyle 资源：Alt/Tab 时不再给焦点控件画虚线框。 -->
+        <Style x:Key="{x:Static SystemParameters.FocusVisualStyleKey}" TargetType="{x:Type Control}" />
+        <!-- 按 Alt/Tab 时 WPF 会给焦点控件画 1px 虚线框，和当前圆角卡片风格不搭，统一关闭。 -->
+        <Style TargetType="Button"><Setter Property="FocusVisualStyle" Value="{x:Null}" /></Style>
+        <Style TargetType="RepeatButton"><Setter Property="FocusVisualStyle" Value="{x:Null}" /></Style>
+        <Style TargetType="ToggleButton"><Setter Property="FocusVisualStyle" Value="{x:Null}" /></Style>
+        <Style TargetType="CheckBox"><Setter Property="FocusVisualStyle" Value="{x:Null}" /></Style>
+        <Style TargetType="RadioButton"><Setter Property="FocusVisualStyle" Value="{x:Null}" /></Style>
+        <Style TargetType="TextBox"><Setter Property="FocusVisualStyle" Value="{x:Null}" /></Style>
+        <Style TargetType="PasswordBox"><Setter Property="FocusVisualStyle" Value="{x:Null}" /></Style>
+        <Style TargetType="Slider"><Setter Property="FocusVisualStyle" Value="{x:Null}" /></Style>
+        <Style TargetType="ListBox"><Setter Property="FocusVisualStyle" Value="{x:Null}" /></Style>
+        <Style TargetType="ListBoxItem"><Setter Property="FocusVisualStyle" Value="{x:Null}" /></Style>
+        <Style TargetType="ListViewItem"><Setter Property="FocusVisualStyle" Value="{x:Null}" /></Style>
+        <Style TargetType="TreeViewItem"><Setter Property="FocusVisualStyle" Value="{x:Null}" /></Style>
+        <Style TargetType="TabItem"><Setter Property="FocusVisualStyle" Value="{x:Null}" /></Style>
+        <Style TargetType="MenuItem"><Setter Property="FocusVisualStyle" Value="{x:Null}" /></Style>
+        <Style TargetType="Expander"><Setter Property="FocusVisualStyle" Value="{x:Null}" /></Style>
+        <Style TargetType="ProgressBar"><Setter Property="FocusVisualStyle" Value="{x:Null}" /></Style>
     <!-- ═══════════════ Scrollbar ═══════════════ -->
     <Style x:Key="ScrollThumb" TargetType="Thumb">
         <Setter Property="MinHeight" Value="26" />
@@ -24,6 +44,7 @@
     </Style>
 
     <Style x:Key="ScrollPageButton" TargetType="RepeatButton">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Focusable" Value="False" />
         <Setter Property="IsTabStop" Value="False" />
         <Setter Property="Template">
@@ -125,6 +146,7 @@
 
     <!-- ═══════════════ Buttons ═══════════════ -->
     <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Background" Value="{StaticResource BrushAccent}" />
         <Setter Property="Foreground" Value="{StaticResource BrushTextOnAccent}" />
         <Setter Property="FontSize" Value="13" />
@@ -180,6 +202,7 @@
     </Style>
 
     <Style x:Key="SecondaryButton" TargetType="Button">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Background" Value="{StaticResource BrushSurface}" />
         <Setter Property="Foreground" Value="#FF3A5674" />
         <Setter Property="BorderBrush" Value="{StaticResource BrushBorderStrong}" />
@@ -238,6 +261,7 @@
     </Style>
 
     <Style x:Key="GhostButton" TargetType="Button">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Foreground" Value="{StaticResource BrushTextSecondary}" />
         <Setter Property="FontSize" Value="12.5" />
@@ -268,6 +292,7 @@
     </Style>
 
     <Style x:Key="DangerButton" TargetType="Button">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Background" Value="#FFFDF0F0" />
         <Setter Property="Foreground" Value="{StaticResource BrushDanger}" />
         <Setter Property="BorderBrush" Value="#FFF6D2D4" />
@@ -298,6 +323,7 @@
     </Style>
 
     <Style x:Key="IconButton" TargetType="Button">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Width" Value="32" />
         <Setter Property="Height" Value="32" />
         <Setter Property="Background" Value="Transparent" />
@@ -351,6 +377,7 @@
     </Style>
 
     <Style x:Key="LinkButton" TargetType="Button">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Foreground" Value="{StaticResource BrushAccent}" />
         <Setter Property="FontSize" Value="12" />
@@ -368,6 +395,7 @@
     </Style>
 
     <Style x:Key="ChipButton" TargetType="Button">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Background" Value="#FFF7FAFE" />
         <Setter Property="Foreground" Value="#FF3B6FA8" />
         <Setter Property="FontSize" Value="8.5" />
@@ -399,6 +427,7 @@
     </Style>
 
     <Style x:Key="TitleBarButton" TargetType="Button">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Width" Value="44" />
         <Setter Property="Height" Value="30" />
         <Setter Property="Background" Value="Transparent" />
@@ -433,6 +462,7 @@
 
     <!-- ═══════════════ Header tab ═══════════════ -->
     <Style x:Key="HeaderChipButton" TargetType="Button">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Height" Value="34" />
         <Setter Property="Padding" Value="10,0" />
         <Setter Property="Background" Value="#1FFFFFFF" />
@@ -483,6 +513,7 @@
     </Style>
 
     <Style x:Key="HeaderRoundButton" TargetType="Button">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Width" Value="34" />
         <Setter Property="Height" Value="34" />
         <Setter Property="Background" Value="#1FFFFFFF" />
@@ -508,6 +539,7 @@
     </Style>
 
     <Style x:Key="HeaderTabButton" TargetType="Button">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Foreground" Value="#D9FFFFFF" />
         <Setter Property="FontSize" Value="13" />
         <Setter Property="Height" Value="34" />
@@ -577,6 +609,7 @@
     </Style>
 
     <Style x:Key="HeaderTab" TargetType="ToggleButton">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Foreground" Value="#D9FFFFFF" />
         <Setter Property="FontSize" Value="13" />
         <Setter Property="Height" Value="34" />
@@ -606,6 +639,7 @@
 
     <!-- ═══════════════ Switch ═══════════════ -->
     <Style x:Key="Switch" TargetType="CheckBox">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Focusable" Value="False" />
         <Setter Property="Template">
@@ -637,6 +671,7 @@
 
     <!-- ═══════════════ Filter chip ═══════════════ -->
     <Style x:Key="FilterChip" TargetType="ToggleButton">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Foreground" Value="{StaticResource BrushTextSecondary}" />
         <Setter Property="FontSize" Value="12.5" />
         <Setter Property="Height" Value="32" />
@@ -666,6 +701,7 @@
 
     <!-- ═══════════════ Text input ═══════════════ -->
     <Style x:Key="InputTextBox" TargetType="TextBox">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Height" Value="40" />
         <Setter Property="Padding" Value="12,0" />
         <Setter Property="FontSize" Value="13" />
@@ -700,6 +736,7 @@
 
     <!-- ═══════════════ Slider ═══════════════ -->
     <Style x:Key="AccentSlider" TargetType="Slider">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Height" Value="28" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Template">
@@ -891,6 +928,7 @@
     </Style>
         <!-- ═══════════════ ComboBox ═══════════════ -->
         <Style x:Key="FilterComboItem" TargetType="ComboBoxItem">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
             <Setter Property="Padding" Value="10,7" />
             <Setter Property="FontSize" Value="10.5" />
             <Setter Property="Foreground" Value="{StaticResource BrushText}" />
@@ -918,6 +956,7 @@
         </Style>
 
         <Style x:Key="FilterCombo" TargetType="ComboBox">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
             <Setter Property="Height" Value="30" />
             <Setter Property="FontSize" Value="10.5" />
             <Setter Property="Foreground" Value="{StaticResource BrushText}" />
@@ -1035,8 +1074,12 @@
         </DataTemplate>
 
         <!-- 未显式指定样式的 ComboBox 也沿用启动器风格 -->
-        <Style TargetType="ComboBox" BasedOn="{StaticResource FilterCombo}" />
-        <Style TargetType="ComboBoxItem" BasedOn="{StaticResource FilterComboItem}" />
+        <Style TargetType="ComboBox" BasedOn="{StaticResource FilterCombo}">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        </Style>
+        <Style TargetType="ComboBoxItem" BasedOn="{StaticResource FilterComboItem}">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        </Style>
 
 
 </ResourceDictionary>
