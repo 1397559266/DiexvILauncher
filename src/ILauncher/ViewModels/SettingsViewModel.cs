@@ -23,6 +23,7 @@ public sealed class SettingsViewModel : ObservableObject
     private bool _autoMemory;
     private readonly Func<GameInstance?>? _currentInstance;
     private string _extraJvmArgs = "";
+    private string _downloadThreads = "16";
     private int _width;
     private int _height;
     private bool _closeLauncher;
@@ -52,6 +53,7 @@ public sealed class SettingsViewModel : ObservableObject
         _memoryMb = settings.Settings.MemoryMb;
         _autoMemory = !string.Equals(settings.Settings.MemoryMode, "manual", StringComparison.OrdinalIgnoreCase);
         _extraJvmArgs = settings.Settings.ExtraJvmArgs;
+        _downloadThreads = Math.Clamp(settings.Settings.DownloadThreads, 1, 64).ToString();
         _width = settings.Settings.WindowWidth;
         _height = settings.Settings.WindowHeight;
         _closeLauncher = settings.Settings.CloseLauncherOnGameStart;
@@ -212,6 +214,27 @@ public sealed class SettingsViewModel : ObservableObject
     public bool IsManualMemory => !IsAutoMemory;
 
     public string MemoryText => IsAutoMemory ? "自动分配" : $"{MemoryMb:N0} MB";
+
+    public IReadOnlyList<string> DownloadThreadOptions { get; } =
+        new[] { "1（单线程）", "4", "8", "16", "32", "64" };
+
+    /// <summary>下载线程数：对同一个文件做分段并发下载。</summary>
+    public string DownloadThreads
+    {
+        get => _downloadThreads;
+        set
+        {
+            if (!SetProperty(ref _downloadThreads, value ?? "16"))
+            {
+                return;
+            }
+
+            var number = int.TryParse(value?.Split('（')[0], out var parsed) ? parsed : 16;
+            _settings.Settings.DownloadThreads = Math.Clamp(number, 1, 64);
+            DownloadHelper.ThreadCount = _settings.Settings.DownloadThreads;
+            _settings.Save();
+        }
+    }
 
     /// <summary>自动模式的明细：当前版本估算值、可用内存、模组数量。</summary>
     public string AutoMemoryDetail

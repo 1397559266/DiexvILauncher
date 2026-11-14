@@ -110,6 +110,30 @@
                             </ComboBox.ItemTemplate>
                         </ComboBox>
                     </Grid>
+
+                    <Border Style="{StaticResource Divider}" Margin="0,12,0,12" />
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="下载线程数" FontSize="10.5" Foreground="{StaticResource BrushTextSecondary}" />
+                            <TextBlock Text="同一文件分段并发下载；网络不稳时可调低，1 为单连接。"
+                                       FontSize="9" Foreground="{StaticResource BrushTextMuted}" Margin="0,3,0,0" />
+                        </StackPanel>
+                        <ComboBox Grid.Column="1" Style="{StaticResource FilterCombo}" Width="180" Height="34"
+                                  ItemsSource="{Binding DownloadThreadOptions}"
+                                  SelectedItem="{Binding DownloadThreads, Mode=TwoWay}"
+                                  AutomationProperties.Name="下载线程数">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </Grid>
                 </StackPanel>
             </Border>
 

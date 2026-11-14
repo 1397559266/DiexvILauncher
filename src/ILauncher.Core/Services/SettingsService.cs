@@ -60,6 +60,9 @@ public sealed class LauncherSettings
     public string ExtraJvmArgs { get; set; } = "";
     public int HomeVersionsPerRow { get; set; } = 3;
     public string DownloadSource { get; set; } = "official";
+
+    /// <summary>下载线程数（单文件分段并发数），1 表示单连接。</summary>
+    public int DownloadThreads { get; set; } = 16;
     public int WindowWidth { get; set; } = 1280;
     public int WindowHeight { get; set; } = 720;
     public string LaunchWindowMode { get; set; } = "default";

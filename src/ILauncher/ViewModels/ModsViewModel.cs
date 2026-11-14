@@ -181,6 +181,12 @@ public sealed class ModsViewModel : ObservableObject
     private readonly McmodService _mcmod = new();
     private bool _chineseNamesStarted;
     private bool _bulkUpdating;
+    private CancellationTokenSource? _bulkCts;
+    private int _bulkIndex;
+    private int _bulkTotal;
+    private string _bulkCurrentName = "";
+    private double _bulkFilePercent;
+    private long _lastBulkReport;
     private readonly Dictionary<string, ModUpdateState> _updateStates = new(StringComparer.OrdinalIgnoreCase);
     private bool _hasUpdates;
     private bool _updateCheckStarted;
@@ -237,6 +243,7 @@ public sealed class ModsViewModel : ObservableObject
         DisableSelectedCommand = new AsyncRelayCommand(() => SetSelectedEnabledAsync(false), () => HasSelection);
         DeleteSelectedCommand = new AsyncRelayCommand(DeleteSelectedAsync, () => HasSelection);
         UpdateSelectedCommand = new AsyncRelayCommand(UpdateSelectedAsync, () => HasSelection && !_bulkUpdating);
+        CancelBulkUpdateCommand = new RelayCommand(() => _bulkCts?.Cancel());
     }
 
     public ObservableCollection<ModItemViewModel> Mods { get; } = new();
@@ -267,6 +274,66 @@ public sealed class ModsViewModel : ObservableObject
 
     /// <summary>批量更新选中的模组。</summary>
     public AsyncRelayCommand UpdateSelectedCommand { get; }
+
+    public RelayCommand CancelBulkUpdateCommand { get; }
+
+    public bool IsBulkUpdating
+    {
+        get => _bulkUpdating;
+        private set
+        {
+            if (SetProperty(ref _bulkUpdating, value))
+            {
+                OnPropertyChanged(nameof(ShowBulkProgress));
+            }
+        }
+    }
+
+    public bool ShowBulkProgress => _bulkUpdating;
+
+    public double BulkProgress => _bulkTotal <= 0
+        ? 0
+        : Math.Clamp((_bulkIndex + _bulkFilePercent / 100d) / _bulkTotal * 100, 0, 100);
+
+    public string BulkProgressText =>
+        $"正在更新 {Math.Min(_bulkIndex + 1, Math.Max(1, _bulkTotal))}/{_bulkTotal}：{_bulkCurrentName}";
+
+    public string BulkProgressDetail => $"{BulkProgress:0}%";
+
+    private void RaiseBulkProgress()
+    {
+        OnPropertyChanged(nameof(BulkProgress));
+        OnPropertyChanged(nameof(BulkProgressText));
+        OnPropertyChanged(nameof(BulkProgressDetail));
+    }
+
+    private void ReportFileProgress(long completed, long total)
+    {
+        if (total <= 0)
+        {
+            return;
+        }
+
+        var now = Environment.TickCount64;
+        if (now - _lastBulkReport < 100)
+        {
+            return;
+        }
+
+        _lastBulkReport = now;
+        var percent = completed * 100d / total;
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher == null)
+        {
+            return;
+        }
+
+        dispatcher.BeginInvoke(() =>
+        {
+            _bulkFilePercent = percent;
+            RaiseBulkProgress();
+        });
+    }
     public RelayCommand SelectAllCommand { get; }
     public RelayCommand ClearSelectionCommand { get; }
     public AsyncRelayCommand EnableSelectedCommand { get; }
@@ -967,7 +1034,7 @@ public sealed class ModsViewModel : ObservableObject
     }
     private async Task UpdateModAsync(ModItemViewModel item)
     {
-        if (await ApplyUpdateCoreAsync(item))
+        if ((await ApplyUpdateCoreAsync(item, CancellationToken.None)).Updated)
         {
             _toast($"{item.Name} 已更新到 v{item.LatestVersion}，旧版本已禁用。", false);
             await LoadAsync();
@@ -990,19 +1057,37 @@ public sealed class ModsViewModel : ObservableObject
             return;
         }
 
-        _bulkUpdating = true;
+        _bulkTotal = targets.Count;
+        _bulkIndex = 0;
+        _bulkFilePercent = 0;
+        _bulkCurrentName = targets[0].Name;
+        _bulkCts = new CancellationTokenSource();
+        IsBulkUpdating = true;
+        RaiseBulkProgress();
         UpdateSelectedCommand.RaiseCanExecuteChanged();
+
         var succeeded = 0;
         var failed = 0;
+        var cancelled = false;
         try
         {
             for (var index = 0; index < targets.Count; index++)
             {
-                var item = targets[index];
-                _toast($"正在更新 {index + 1}/{targets.Count}：{item.Name}", false);
-                if (await ApplyUpdateCoreAsync(item))
+                _bulkIndex = index;
+                _bulkFilePercent = 0;
+                _bulkCurrentName = targets[index].Name;
+                _lastBulkReport = 0;
+                RaiseBulkProgress();
+
+                var result = await ApplyUpdateCoreAsync(targets[index], _bulkCts.Token);
+                if (result.Updated)
                 {
                     succeeded++;
+                }
+                else if (result.Cancelled)
+                {
+                    cancelled = true;
+                    break;
                 }
                 else
                 {
@@ -1012,28 +1097,38 @@ public sealed class ModsViewModel : ObservableObject
         }
         finally
         {
-            _bulkUpdating = false;
+            _bulkCts.Dispose();
+            _bulkCts = null;
+            IsBulkUpdating = false;
+            _bulkFilePercent = 0;
             UpdateSelectedCommand.RaiseCanExecuteChanged();
         }
 
         await LoadAsync();
         _modsChanged?.Invoke();
+        if (cancelled)
+        {
+            _toast($"已取消批量更新：完成 {succeeded} 个，跳过其余 {_bulkTotal - succeeded - failed} 个。", false);
+            return;
+        }
+
         _toast(failed == 0
             ? $"已更新 {succeeded} 个模组，旧版本已禁用。"
             : $"批量更新完成：成功 {succeeded} 个，失败 {failed} 个。", failed > 0);
     }
 
     /// <summary>下载并替换单个模组；成功返回 true。</summary>
-    private async Task<bool> ApplyUpdateCoreAsync(ModItemViewModel item)
+    private async Task<(bool Updated, bool Cancelled)> ApplyUpdateCoreAsync(ModItemViewModel item,
+        CancellationToken cancellationToken)
     {
         if (_instance == null)
         {
-            return false;
+            return (false, false);
         }
 
         if (!await EnsureLatestFileAsync(item) || item.LatestVersionInfo?.File == null)
         {
-            return false;
+            return (false, false);
         }
 
         item.IsBusy = true;
@@ -1053,7 +1148,8 @@ public sealed class ModsViewModel : ObservableObject
             try
             {
                 // Download first; only disable the old file once the new one is complete.
-                await DownloadHelper.DownloadFileAsync(file.Url, tempTarget, null, CancellationToken.None, file.Sha1);
+                await DownloadHelper.DownloadFileAsync(file.Url, tempTarget, ReportFileProgress,
+                    cancellationToken, file.Sha1);
 
                 if (File.Exists(oldPath) && oldPath.EndsWith(".jar", StringComparison.OrdinalIgnoreCase))
                 {
@@ -1077,12 +1173,16 @@ public sealed class ModsViewModel : ObservableObject
                 }
             }
 
-            return true;
+            return (true, false);
+        }
+        catch (OperationCanceledException)
+        {
+            return (false, true);
         }
         catch (Exception ex)
         {
             _toast($"更新 {item.Name} 失败：{ex.Message}", true);
-            return false;
+            return (false, false);
         }
         finally
         {
@@ -1134,7 +1234,10 @@ public sealed class ModsViewModel : ObservableObject
             return true;
         }
 
-        _toast($"{item.Name} 没有拿到最新版本的文件信息，请点「检查更新」后重试。", true);
+        if (!_bulkUpdating)
+        {
+            _toast($"{item.Name} 没有拿到最新版本的文件信息，请点「检查更新」后重试。", true);
+        }
         return false;
     }
 

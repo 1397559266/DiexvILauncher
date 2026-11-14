@@ -1,3 +1,6 @@
+using System.Net;
+using System.Net.Http.Headers;
+
 namespace ILauncher.Core.Services;
 
 public sealed record DownloadProgress
@@ -51,6 +54,19 @@ public static class DownloadHelper
         var temp = destination + ".tmp";
         try
         {
+            // 优先尝试分段并发下载；服务器不支持 Range 或文件太小会返回 false，回退到单连接。
+            if (await TryDownloadSegmentedAsync(url, temp, progress, cancellationToken))
+            {
+                if (!await MatchesAsync(temp, expectedSha1, expectedSha256, cancellationToken))
+                {
+                    throw new InvalidOperationException(
+                        $"下载文件校验失败：{Path.GetFileName(destination)}（镜像或网络返回的内容与官方哈希不一致）。");
+                }
+
+                File.Move(temp, destination, overwrite: true);
+                return;
+            }
+
             await ExecuteWithRetryAsync(url, cancellationToken, async client =>
             {
                 TryDelete(temp);
@@ -86,6 +102,145 @@ public static class DownloadHelper
         {
             TryDelete(temp);
             throw;
+        }
+    }
+
+    /// <summary>单文件分段下载的并发连接数；1 表示只走单连接。</summary>
+    public static int ThreadCount { get; set; } = 16;
+
+    /// <summary>
+    /// 用 HTTP Range 把文件切成多段并发下载，直接写入同一个文件的对应偏移。
+    /// 服务器不支持 Range、文件太小或出现异常时返回 false，由调用方回退到单连接。
+    /// </summary>
+    private static async Task<bool> TryDownloadSegmentedAsync(string url, string path,
+        Action<long, long>? progress, CancellationToken cancellationToken)
+    {
+        var threads = Math.Clamp(ThreadCount, 1, 64);
+        if (threads <= 1)
+        {
+            return false;
+        }
+
+        long total;
+        try
+        {
+            using var probe = new HttpRequestMessage(HttpMethod.Get, url);
+            probe.Headers.Range = new RangeHeaderValue(0, 0);
+            using var probeResponse = await Client.SendAsync(probe, HttpCompletionOption.ResponseHeadersRead,
+                cancellationToken);
+            if (probeResponse.StatusCode != HttpStatusCode.PartialContent)
+            {
+                return false;
+            }
+
+            total = probeResponse.Content.Headers.ContentRange?.Length ?? 0;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            return false;
+        }
+
+        if (total <= 0)
+        {
+            return false;
+        }
+
+        // 小于 2 MB 的文件没必要分段，切出来的段也太多。
+        const long MinSegmentSize = 2L * 1024 * 1024;
+        var segmentCount = (int)Math.Min(threads, Math.Max(1, total / MinSegmentSize));
+        if (segmentCount <= 1)
+        {
+            return false;
+        }
+
+        TryDelete(path);
+        var handle = File.OpenHandle(path, FileMode.Create, FileAccess.Write, FileShare.Read);
+        try
+        {
+            RandomAccess.SetLength(handle, total);
+            long completed = 0;
+            var lastReport = Environment.TickCount64;
+            var segmentSize = (total + segmentCount - 1) / segmentCount;
+
+            async Task FetchSegmentAsync(int index)
+            {
+                var start = index * segmentSize;
+                var end = Math.Min(start + segmentSize - 1, total - 1);
+                Exception? last = null;
+                for (var attempt = 1; attempt <= MaxAttempts; attempt++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    try
+                    {
+                        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                        request.Headers.Range = new RangeHeaderValue(start, end);
+                        using var response = await Client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead,
+                            cancellationToken);
+                        response.EnsureSuccessStatusCode();
+                        if (response.StatusCode != HttpStatusCode.PartialContent)
+                        {
+                            throw new InvalidOperationException("服务器未按分段返回内容。");
+                        }
+
+                        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                        var buffer = new byte[81920];
+                        var offset = start;
+                        int read;
+                        while ((read = await stream.ReadAsync(buffer, cancellationToken)) > 0)
+                        {
+                            await RandomAccess.WriteAsync(handle, buffer.AsMemory(0, read), offset,
+                                cancellationToken);
+                            offset += read;
+                            var done = Interlocked.Add(ref completed, read);
+                            var now = Environment.TickCount64;
+                            if (now - lastReport > 90)
+                            {
+                                lastReport = now;
+                                progress?.Invoke(done, total);
+                            }
+                        }
+
+                        return;
+                    }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        last = ex;
+                        if (attempt < MaxAttempts)
+                        {
+                            await Task.Delay(TimeSpan.FromMilliseconds(250 * attempt), cancellationToken);
+                        }
+                    }
+                }
+
+                throw new HttpRequestException("分段下载失败。", last);
+            }
+
+            await Task.WhenAll(Enumerable.Range(0, segmentCount).Select(FetchSegmentAsync));
+            progress?.Invoke(total, total);
+            return true;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            TryDelete(path);
+            throw;
+        }
+        catch
+        {
+            // 任何一段失败都回退到单连接，避免留下半截文件。
+            TryDelete(path);
+            return false;
+        }
+        finally
+        {
+            handle.Dispose();
         }
     }
 

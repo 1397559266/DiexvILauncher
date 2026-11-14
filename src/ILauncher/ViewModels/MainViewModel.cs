@@ -69,6 +69,7 @@ public sealed class MainViewModel : ObservableObject
 
         InstallationService = new InstallationService(SettingsService);
         JavaService = new JavaService(SettingsService);
+        DownloadHelper.ThreadCount = Math.Clamp(SettingsService.Settings.DownloadThreads, 1, 64);
         ModService = new ModService();
         MojangGameService = new MojangGameService();
         FabricService = new FabricService();
