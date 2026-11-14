@@ -441,18 +441,22 @@
                             <Ellipse Width="170" Height="170" Fill="#16FFFFFF" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-70,-50,0" />
                             <Ellipse Width="110" Height="110" Fill="#10FFFFFF" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,40,-30,0" />
                             <StackPanel Margin="20,18,20,18">
-                                <StackPanel Orientation="Horizontal">
-                                    <Border Width="38" Height="38" CornerRadius="11" Background="#2BFFFFFF">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Width="38" Height="38" CornerRadius="11" Background="#2BFFFFFF" VerticalAlignment="Top">
                                         <controls:Icon Data="{StaticResource IconFlask}" Stroke="#FFFFFFFF" Fill="Transparent"
                                                        StrokeThickness="1.7" Width="21" Height="21" />
                                     </Border>
-                                    <StackPanel Margin="10,1,0,0">
+                                    <StackPanel Grid.Column="1" Margin="10,1,0,0">
                                         <TextBlock Text="测试游戏" FontSize="15" FontWeight="Bold" Foreground="#FFFFFFFF" />
                                         <TextBlock Text="{Binding TestCardLogText}" FontSize="9" Foreground="#BFFFFFFF"
-                                                   TextTrimming="CharacterEllipsis" MaxWidth="420"
+                                                   TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
                                                    ToolTip="{Binding TestCardLogText}" />
                                     </StackPanel>
-                                </StackPanel>
+                                </Grid>
                                 <TextBlock Text="在版本设置的左下角，一键启动并在日志面板中实时查看全部游戏输出。"
                                            Foreground="#E6FFFFFF" FontSize="11.5" TextWrapping="Wrap" Margin="0,13,0,0" LineHeight="19" />
                                 <Button Style="{StaticResource GhostButton}" Background="#FFFFFFFF" Foreground="{StaticResource BrushAccent}"
