@@ -226,9 +226,25 @@ public partial class JvmAgentPanel : UserControl, INotifyPropertyChanged
             return;
         }
 
+        // -javaagent 只对声明了 Premain-Class 的 jar 有效，Agent-Class 需要动态 attach。
+        if (!_scanned.ContainsKey(candidate.FilePath))
+        {
+            var info = JarAgentScanner.Inspect(candidate.FilePath);
+            if (info.HasAgent)
+            {
+                _scanned[candidate.FilePath] = info;
+                candidate.HasAgent = true;
+                candidate.AgentBadge = info.PremainClass is { Length: > 0 } premain
+                    ? $"Premain · {premain}"
+                    : $"Agent · {info.AgentClass}";
+            }
+        }
+
         var trimmed = current.TrimEnd();
         SetCurrentValue(TargetTextProperty, trimmed.Length == 0 ? argument : $"{trimmed} {argument}");
-        StatusText = $"已加入 {candidate.FileName}。";
+        StatusText = candidate.HasAgent
+            ? $"已加入 {candidate.FileName}。"
+            : $"已加入 {candidate.FileName}，但它没有 Premain-Class，-javaagent 启动时可能报错。";
     }
 
     private void Raise([CallerMemberName] string? name = null) =>
