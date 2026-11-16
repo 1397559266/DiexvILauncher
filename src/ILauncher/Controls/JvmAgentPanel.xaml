@@ -1,0 +1,91 @@
+<UserControl x:Class="ILauncher.Controls.JvmAgentPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:ILauncher.Controls">
+    <Border Background="#FFF8FBFF" BorderBrush="{StaticResource BrushBorder}" BorderThickness="1"
+            CornerRadius="10" Padding="12,10"
+            DataContext="{Binding RelativeSource={RelativeSource AncestorType=UserControl}}">
+        <StackPanel>
+            <Grid>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <controls:Icon Data="{StaticResource IconJava}" Fill="{StaticResource BrushAccent}"
+                                   Width="13" Height="13" />
+                    <TextBlock Text="快速添加 Agent 参数" FontSize="10.5" FontWeight="SemiBold" Margin="7,0,0,0" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding OnlyAgents, Mode=TwoWay}"
+                              AutomationProperties.Name="只显示含 Agent 的模组" />
+                    <TextBlock Text="只显示含 Agent" FontSize="9.5" Margin="7,0,0,0" VerticalAlignment="Center"
+                               Foreground="{StaticResource BrushTextSecondary}" />
+                </StackPanel>
+            </Grid>
+
+            <TextBox x:Name="SearchBox" Style="{StaticResource InputTextBox}" Height="30" Margin="0,9,0,0"
+                     FontSize="10.5" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="按模组文件名搜索，点击右侧「加入」把 -javaagent 参数写进上面的输入框"
+                     AutomationProperties.Name="搜索模组文件" />
+
+            <Border Margin="0,8,0,0" Background="#FFFFFFFF" BorderBrush="{StaticResource BrushBorder}"
+                    BorderThickness="1" CornerRadius="8" MaxHeight="168">
+                <Grid>
+                <TextBlock Text="没有匹配的模组" FontSize="9.5" HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Foreground="{StaticResource BrushTextMuted}"
+                           Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}" />
+                <ListBox x:Name="CandidateList" ItemsSource="{Binding Items}" Background="Transparent"
+                         BorderThickness="0" MaxHeight="166" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         HorizontalContentAlignment="Stretch">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Padding" Value="0" />
+                            <Setter Property="Margin" Value="3,1" />
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            <Setter Property="Focusable" Value="False" />
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <Border x:Name="Bd" Background="Transparent" CornerRadius="6" Padding="8,5">
+                                            <ContentPresenter />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Bd" Property="Background" Value="#FFF3F8FF" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding FileName}" FontSize="10" TextTrimming="CharacterEllipsis"
+                                               ToolTip="{Binding FilePath}" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,1,0,0">
+                                        <Border Background="{StaticResource BrushAccentSoft}" CornerRadius="4" Padding="5,1"
+                                                Visibility="{Binding HasAgent, Converter={StaticResource BoolToVisibility}}">
+                                            <TextBlock Text="{Binding AgentBadge}" FontSize="8"
+                                                       Foreground="{StaticResource BrushAccent}" />
+                                        </Border>
+                                    </StackPanel>
+                                </StackPanel>
+                                <Button Grid.Column="1" Content="加入" Height="24" Margin="8,0,0,0" Padding="10,0"
+                                        VerticalAlignment="Center" Style="{StaticResource SecondaryButton}"
+                                        FontSize="9.5" Click="Add_Click" Tag="{Binding}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+                </Grid>
+            </Border>
+
+            <TextBlock Text="{Binding StatusText}" FontSize="9" Margin="2,6,0,0" TextWrapping="Wrap"
+                       Foreground="{StaticResource BrushTextMuted}" />
+        </StackPanel>
+    </Border>
+</UserControl>

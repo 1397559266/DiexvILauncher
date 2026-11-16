@@ -719,6 +719,7 @@ public sealed class MainViewModel : ObservableObject
             OnPropertyChanged(nameof(PlayerInitial));
             OnPropertyChanged(nameof(MemoryText));
         });
+        _settingsPage.RefreshModsDirectory();
         _settingsPage.RefreshSkin();
         CurrentPage = _settingsPage;
         IsSettingsPage = true;

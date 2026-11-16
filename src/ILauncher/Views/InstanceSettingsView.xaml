@@ -121,6 +121,10 @@
                     <TextBlock Text="留空表示跟随全局；填写后只对这个版本生效"
                                FontSize="8.5" Foreground="{StaticResource BrushTextMuted}" Margin="2,4,0,0" />
 
+                    <controls:JvmAgentPanel Margin="0,10,0,0"
+                                            ModsDirectory="{Binding ModsDirectory}"
+                                            TargetText="{Binding ExtraJvmArgs, Mode=TwoWay}" />
+
                     <Border Style="{StaticResource Divider}" Margin="0,14,0,14" />
 
                     <Grid>

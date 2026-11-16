@@ -100,6 +100,9 @@ public sealed class InstanceSettingsViewModel : ObservableObject
         : $"此版本需要 Java {_instance.RequiredJavaMajor}+";
     public string PlayerName => _settings.ResolvePlayerName();
     public string GameDirectory => _instance.GameDirectory;
+
+    /// <summary>该版本的 mods 目录，供「快速添加 Agent 参数」面板使用。</summary>
+    public string ModsDirectory => _instance.ModsDirectory;
     public string VersionDirectory => _instance.Directory;
     public string IsolationText => LanguageService.Translate(_instance.IsIsolated
         ? "已启用版本隔离（模组、存档位于版本目录）"
