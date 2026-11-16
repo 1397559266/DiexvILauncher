@@ -176,17 +176,6 @@ public sealed class SettingsViewModel : ObservableObject
 
     public string SkinPath => SkinResolver.Resolve(_settings, (Application.Current as App)?.Skins);
 
-    private string _currentModsDirectory = "";
-
-    /// <summary>当前选中版本的 mods 目录，供「快速添加 Agent 参数」面板搜索模组。</summary>
-    public string CurrentModsDirectory
-    {
-        get => _currentModsDirectory;
-        private set => SetProperty(ref _currentModsDirectory, value);
-    }
-
-    /// <summary>打开设置页时刷新一次：实例可能在页面创建之后才被选中。</summary>
-    public void RefreshModsDirectory() => CurrentModsDirectory = _currentInstance?.Invoke()?.ModsDirectory ?? "";
 
     public void RefreshSkin() => OnPropertyChanged(nameof(SkinPath));
 
