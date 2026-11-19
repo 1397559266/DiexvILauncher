@@ -1036,7 +1036,7 @@ public sealed class ModsViewModel : ObservableObject
     {
         if ((await ApplyUpdateCoreAsync(item, CancellationToken.None)).Updated)
         {
-            _toast($"{item.Name} 已更新到 v{item.LatestVersion}，旧版本已禁用。", false);
+            _toast($"{item.Name} 已更新到 v{item.LatestVersion}，旧版本已删除。", false);
             await LoadAsync();
             _modsChanged?.Invoke();
         }
@@ -1113,7 +1113,7 @@ public sealed class ModsViewModel : ObservableObject
         }
 
         _toast(failed == 0
-            ? $"已更新 {succeeded} 个模组，旧版本已禁用。"
+            ? $"已更新 {succeeded} 个模组，旧版本已删除。"
             : $"批量更新完成：成功 {succeeded} 个，失败 {failed} 个。", failed > 0);
     }
 
@@ -1239,6 +1239,45 @@ public sealed class ModsViewModel : ObservableObject
             _toast($"{item.Name} 没有拿到最新版本的文件信息，请点「检查更新」后重试。", true);
         }
         return false;
+    }
+
+    /// <summary>
+    /// 删除旧版本文件；删除失败时退回改名 .disabled。
+    /// 返回 false 表示旧文件既删不掉也改不了名（通常游戏正在运行），调用方需要撤销更新。
+    /// </summary>
+    private bool TryRemoveOldMod(string oldPath)
+    {
+        try
+        {
+            if (!File.Exists(oldPath))
+            {
+                return true;
+            }
+
+            File.Delete(oldPath);
+            return true;
+        }
+        catch
+        {
+            // 落到改名逻辑。
+        }
+
+        try
+        {
+            var backup = oldPath + ".disabled";
+            var index = 2;
+            while (File.Exists(backup))
+            {
+                backup = $"{oldPath}.{index++}.disabled";
+            }
+
+            File.Move(oldPath, backup);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static string? LoaderKey(string loader) => loader switch
