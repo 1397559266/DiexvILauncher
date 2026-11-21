@@ -1,9 +1,11 @@
 using System.Diagnostics;
+using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using ILauncher.Core;
 using ILauncher.Core.Models;
 using ILauncher.Core.Services;
+using ILauncher.Views;
 using ILauncher.Localization;
 using ILauncher.Services;
 using Microsoft.Win32;
@@ -121,6 +123,9 @@ public sealed class OverviewViewModel : ObservableObject
     public RelayCommand ResetIconCommand { get; }
     public RelayCommand ExportScriptCommand { get; }
     public RelayCommand ExportInstanceCommand { get; }
+
+    /// <summary>从收藏里挑资源安装到当前版本。</summary>
+    public RelayCommand OpenFavoritesCommand { get; }
     public AsyncRelayCommand RefreshCommand { get; }
 
     public bool IsExporting
@@ -169,6 +174,15 @@ public sealed class OverviewViewModel : ObservableObject
         {
             _toast($"无法打开文件夹：{ex.Message}", true);
         }
+    }
+
+    private void OpenFavorites()
+    {
+        var window = new FavoritesPickerWindow(Instance)
+        {
+            Owner = Application.Current?.MainWindow
+        };
+        window.ShowDialog();
     }
 
     private async Task ExportScriptAsync()

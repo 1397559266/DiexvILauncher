@@ -486,6 +486,10 @@
                                                         CommandParameter="{Binding McmodUrl}" ToolTip="在 MC百科查看此模组"
                                                         Visibility="{Binding HasMcmod, Converter={StaticResource BoolToVisibility}}" />
                                             </StackPanel>
+                                                <Button Style="{StaticResource ChipButton}" Content="收藏"
+                                                        Foreground="{StaticResource BrushTextSecondary}"
+                                                        Command="{Binding DataContext.ToggleFavoriteCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                        CommandParameter="{Binding}" ToolTip="加入收藏，可在账户页管理" />
                                         </StackPanel>
                                     </Grid>
                                 </DataTemplate>
@@ -541,6 +545,14 @@
                         <TextBlock Text="{Binding ProgressTitle}" FontSize="12.5" FontWeight="SemiBold" />
                         <TextBlock Text="{Binding ProgressMessage}" FontSize="9" Foreground="{StaticResource BrushTextMuted}"
                                    Margin="0,3,0,0" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,70,0" VerticalAlignment="Center">
+                        <TextBlock Text="同时下载" FontSize="9" VerticalAlignment="Center"
+                                   Foreground="{StaticResource BrushTextMuted}" Margin="0,0,6,0" />
+                        <ComboBox Style="{StaticResource FilterCombo}" Width="66" Height="26" FontSize="10"
+                                  ItemsSource="{Binding ParallelDownloadOptions}"
+                                  SelectedItem="{Binding ParallelDownloads, Mode=TwoWay}"
+                                  AutomationProperties.Name="同时下载数" />
                     </StackPanel>
                     <Button Style="{StaticResource GhostButton}" Height="28" HorizontalAlignment="Right" Content="取消"
                             Command="{Binding CancelCommand}" />

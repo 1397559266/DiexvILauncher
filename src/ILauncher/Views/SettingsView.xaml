@@ -134,6 +134,43 @@
                             </ComboBox.ItemTemplate>
                         </ComboBox>
                     </Grid>
+
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="同时下载数" FontSize="10.5" Foreground="{StaticResource BrushTextSecondary}" />
+                            <TextBlock Text="批量更新/安装时同时下载的文件数量。" FontSize="9"
+                                       Foreground="{StaticResource BrushTextMuted}" Margin="0,3,0,0" />
+                        </StackPanel>
+                        <ComboBox Grid.Column="1" Style="{StaticResource FilterCombo}" Width="180" Height="34"
+                                  ItemsSource="{Binding ParallelDownloadOptions}"
+                                  SelectedItem="{Binding ParallelDownloads, Mode=TwoWay}"
+                                  AutomationProperties.Name="同时下载数">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </Grid>
+
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="收藏时保存文件" FontSize="10.5" Foreground="{StaticResource BrushTextSecondary}" />
+                            <TextBlock Text="关闭时只记录项目信息，需要时再下载；开启会把文件存到启动器目录。" FontSize="9"
+                                       Foreground="{StaticResource BrushTextMuted}" Margin="0,3,0,0" />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" Style="{StaticResource Switch}" VerticalAlignment="Center"
+                                  IsChecked="{Binding FavoriteKeepsFile, Mode=TwoWay}"
+                                  AutomationProperties.Name="收藏时保存文件" />
+                    </Grid>
                 </StackPanel>
             </Border>
 

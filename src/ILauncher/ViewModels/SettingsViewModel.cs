@@ -24,6 +24,8 @@ public sealed class SettingsViewModel : ObservableObject
     private readonly Func<GameInstance?>? _currentInstance;
     private string _extraJvmArgs = "";
     private string _downloadThreads = "16";
+    private string _parallelDownloads = "3";
+    private bool _favoriteKeepsFile;
     private int _width;
     private int _height;
     private bool _closeLauncher;
@@ -54,6 +56,8 @@ public sealed class SettingsViewModel : ObservableObject
         _autoMemory = !string.Equals(settings.Settings.MemoryMode, "manual", StringComparison.OrdinalIgnoreCase);
         _extraJvmArgs = settings.Settings.ExtraJvmArgs;
         _downloadThreads = Math.Clamp(settings.Settings.DownloadThreads, 1, 64).ToString();
+        _parallelDownloads = Math.Clamp(settings.Settings.MaxParallelDownloads, 1, 8).ToString();
+        _favoriteKeepsFile = settings.Settings.FavoriteKeepsFile;
         _width = settings.Settings.WindowWidth;
         _height = settings.Settings.WindowHeight;
         _closeLauncher = settings.Settings.CloseLauncherOnGameStart;
@@ -220,6 +224,41 @@ public sealed class SettingsViewModel : ObservableObject
         new[] { "1（单线程）", "4", "8", "16", "32", "64" };
 
     /// <summary>下载线程数：对同一个文件做分段并发下载。</summary>
+    public IReadOnlyList<string> ParallelDownloadOptions { get; } = new[] { "1", "2", "3", "4", "6", "8" };
+
+    /// <summary>批量更新/安装时同时下载的文件数。</summary>
+    public string ParallelDownloads
+    {
+        get => _parallelDownloads;
+        set
+        {
+            if (!SetProperty(ref _parallelDownloads, value ?? "3"))
+            {
+                return;
+            }
+
+            var number = int.TryParse(value, out var parsed) ? parsed : 3;
+            _settings.Settings.MaxParallelDownloads = Math.Clamp(number, 1, 8);
+            _settings.Save();
+        }
+    }
+
+    /// <summary>收藏资源时是否同时把文件保存到启动器目录。</summary>
+    public bool FavoriteKeepsFile
+    {
+        get => _favoriteKeepsFile;
+        set
+        {
+            if (!SetProperty(ref _favoriteKeepsFile, value))
+            {
+                return;
+            }
+
+            _settings.Settings.FavoriteKeepsFile = value;
+            _settings.Save();
+        }
+    }
+
     public string DownloadThreads
     {
         get => _downloadThreads;

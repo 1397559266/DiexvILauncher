@@ -132,6 +132,7 @@ public sealed class DownloadViewModel : ObservableObject
     private readonly ModLoaderInstallerService _installers;
     private readonly ModpackService _modpacks;
     private readonly Action<string, bool> _toast;
+    private readonly FavoritesService _favorites = new();
     private readonly Func<GameInstance?> _selectedInstance;
     private readonly Func<IReadOnlyList<GameInstance>> _allInstances;
     private readonly Func<string> _root;
@@ -148,6 +149,7 @@ public sealed class DownloadViewModel : ObservableObject
     private string _searchStatus = "";
     private string _progressTitle = "";
     private string _progressMessage = "";
+    private string _parallelDownloads = "";
     private double _progressValue;
     private bool _progressIndeterminate;
     private string _targetMinecraftVersion = "";
@@ -312,6 +314,7 @@ public sealed class DownloadViewModel : ObservableObject
             }
         }, _ => !IsDownloading &&
                 (_contextInstance != null || CurrentTab == DownloadTab.Modpacks));
+        ToggleFavoriteCommand = new RelayCommand(ToggleFavorite);
         OpenProjectDetailsCommand = new RelayCommand(parameter =>
         {
             if (parameter is ModrinthProject project)
@@ -368,6 +371,9 @@ public sealed class DownloadViewModel : ObservableObject
     public AsyncRelayCommand InstallProjectCommand { get; }
     public AsyncRelayCommand OpenVersionPickerCommand { get; }
     public RelayCommand OpenProjectDetailsCommand { get; }
+
+    /// <summary>收藏 / 取消收藏当前项目。</summary>
+    public RelayCommand ToggleFavoriteCommand { get; }
     public RelayCommand SetTabCommand { get; }
     public RelayCommand CancelCommand { get; }
 
@@ -735,6 +741,33 @@ public sealed class DownloadViewModel : ObservableObject
     {
         get => _searchStatus;
         private set => SetProperty(ref _searchStatus, LanguageService.Translate(value));
+    }
+
+    /// <summary>下载面板里可直接调整「同时下载数」，和设置页共用同一项配置。</summary>
+    public IReadOnlyList<string> ParallelDownloadOptions { get; } = new[] { "1", "2", "3", "4", "6", "8" };
+
+    public string ParallelDownloads
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(_parallelDownloads))
+            {
+                _parallelDownloads = Math.Clamp(_settings.Settings.MaxParallelDownloads, 1, 8).ToString();
+            }
+
+            return _parallelDownloads;
+        }
+        set
+        {
+            if (!SetProperty(ref _parallelDownloads, value ?? "3"))
+            {
+                return;
+            }
+
+            var number = int.TryParse(value, out var parsed) ? parsed : 3;
+            _settings.Settings.MaxParallelDownloads = Math.Clamp(number, 1, 8);
+            _settings.Save();
+        }
     }
 
     public string ProgressTitle
@@ -2505,6 +2538,103 @@ public sealed class DownloadViewModel : ObservableObject
         "quilt" => "Quilt",
         _ => null
     };
+    private void ToggleFavorite(object? parameter)
+    {
+        if (parameter is not ModrinthProject project)
+        {
+            return;
+        }
+
+        var useCurseForge = !project.HasModrinth && project.CurseForgeModId is > 0;
+        var source = useCurseForge ? "CurseForge" : "Modrinth";
+        var projectId = useCurseForge ? $"cf:{project.CurseForgeModId}" : project.Id;
+        if (string.IsNullOrWhiteSpace(projectId))
+        {
+            _toast("这个条目没有可收藏的项目 id。", true);
+            return;
+        }
+
+        if (_favorites.Contains(source, projectId))
+        {
+            _favorites.Remove($"{source}:{projectId}");
+            _toast($"已取消收藏「{project.Title}」。", false);
+            return;
+        }
+
+        var kind = _currentTab switch
+        {
+            DownloadTab.Modpacks => FavoriteKinds.Modpack,
+            DownloadTab.Shaders => FavoriteKinds.Shader,
+            DownloadTab.ResourcePacks => FavoriteKinds.ResourcePack,
+            _ => FavoriteKinds.Mod
+        };
+
+        var entry = new FavoriteEntry
+        {
+            Source = source,
+            ProjectId = projectId,
+            Kind = kind,
+            Title = project.Title,
+            Slug = project.Slug,
+            IconUrl = project.IconUrl
+        };
+        _favorites.Add(entry);
+        _toast($"已收藏「{project.Title}」，可在账户页查看。", false);
+
+        if (_settings.Settings.FavoriteKeepsFile)
+        {
+            _ = SaveFavoriteFileAsync(entry);
+        }
+    }
+
+
+    /// <summary>按设置把收藏项目的文件也下载到启动器目录，之后可离线安装。</summary>
+    private async Task SaveFavoriteFileAsync(FavoriteEntry entry)
+    {
+        try
+        {
+            var directory = Path.Combine(FavoritesService.FilesDirectory,
+                string.IsNullOrWhiteSpace(entry.Kind) ? "misc" : entry.Kind);
+            Directory.CreateDirectory(directory);
+
+            string? url = null;
+            string? fileName = null;
+            string? sha1 = null;
+            if (string.Equals(entry.Source, "Modrinth", StringComparison.OrdinalIgnoreCase))
+            {
+                var versions = await _modrinth.GetVersionsAsync(entry.ProjectId, null, null);
+                var file = versions.FirstOrDefault(v => v.File != null)?.File;
+                url = file?.Url;
+                fileName = file?.FileName;
+                sha1 = file?.Sha1;
+            }
+            else if (entry.ProjectId.StartsWith("cf:", StringComparison.OrdinalIgnoreCase) &&
+                     long.TryParse(entry.ProjectId[3..], out var modId))
+            {
+                var files = await _curseForge.GetFilesAsync(modId, null, null);
+                var file = files.FirstOrDefault(f => f.File != null)?.File;
+                url = file?.Url;
+                fileName = file?.FileName;
+                sha1 = file?.Sha1;
+            }
+
+            if (string.IsNullOrWhiteSpace(url) || string.IsNullOrWhiteSpace(fileName))
+            {
+                _toast("没有找到可保存的收藏文件。", true);
+                return;
+            }
+
+            var safeName = string.Join("_", fileName.Split(Path.GetInvalidFileNameChars()));
+            var path = Path.Combine(directory, safeName);
+            await DownloadHelper.DownloadFileAsync(url, path, null, CancellationToken.None, sha1);
+            _favorites.SaveLocalFile(entry.Id, path, fileName);
+            _toast("收藏文件已保存到启动器目录。", false);
+        }
+        catch (Exception ex)
+        {
+            _toast($"保存收藏文件失败：{ex.Message}", true);
+        }
+    }
 }
 
 

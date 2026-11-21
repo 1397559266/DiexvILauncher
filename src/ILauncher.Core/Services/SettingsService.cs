@@ -63,6 +63,12 @@ public sealed class LauncherSettings
 
     /// <summary>下载线程数（单文件分段并发数），1 表示单连接。</summary>
     public int DownloadThreads { get; set; } = 16;
+
+    /// <summary>批量操作时同时下载的文件数（1-8）。</summary>
+    public int MaxParallelDownloads { get; set; } = 3;
+
+    /// <summary>收藏项目时是否把文件本身也存到启动器目录（默认否）。</summary>
+    public bool FavoriteKeepsFile { get; set; }
     public int WindowWidth { get; set; } = 1280;
     public int WindowHeight { get; set; } = 720;
     public string LaunchWindowMode { get; set; } = "default";

@@ -53,7 +53,7 @@ public sealed class InstanceViewModel : ObservableObject
             SelectedNav = NavItems.First(n => n.Section == InstanceSection.Settings);
         });
 
-        Mods = new ModsViewModel(_modService, _main.ModrinthService, _main.Toast, OnModsChanged);
+        Mods = new ModsViewModel(_modService, _main.ModrinthService, _main.Toast, OnModsChanged, _settings);
         Mods.Attach(Instance);
         _pages[InstanceSection.Mods] = Mods;
 

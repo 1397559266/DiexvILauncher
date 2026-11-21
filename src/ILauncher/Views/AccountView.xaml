@@ -259,6 +259,74 @@
 
                 <TextBlock Text="皮肤文件要求 64×64（或旧版 64×32）；导入后可在左侧切换 Steve / Alex 模型。"
                            FontSize="9" Foreground="{StaticResource BrushTextMuted}" Margin="2,10,0,0" />
+
+                <!-- Favorites -->
+                <Border Style="{StaticResource Card}" Padding="18,15" Margin="0,12,0,0">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,12">
+                            <StackPanel Orientation="Horizontal">
+                                <controls:Icon Data="{StaticResource IconPuzzle}" Fill="{StaticResource BrushAccent}" Width="15" Height="15" />
+                                <TextBlock Text="收藏" FontSize="13" FontWeight="SemiBold" Margin="7,0,0,0" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding FavoriteCountText}" FontSize="9.5" VerticalAlignment="Center"
+                                           Foreground="{StaticResource BrushTextMuted}" Margin="0,0,10,0" />
+                                <Button Style="{StaticResource LinkButton}" Content="刷新" Command="{Binding RefreshFavoritesCommand}" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Style="{StaticResource InputTextBox}" Height="32" FontSize="10.5"
+                                     Text="{Binding FavoriteSearch, UpdateSourceTrigger=PropertyChanged}"
+                                     AutomationProperties.Name="搜索收藏" />
+                            <ComboBox Grid.Column="1" Style="{StaticResource FilterCombo}" Width="120" Height="32" Margin="8,0,0,0"
+                                      ItemsSource="{Binding FavoriteKindFilters}"
+                                      SelectedItem="{Binding SelectedFavoriteKind, Mode=TwoWay}"
+                                      AutomationProperties.Name="收藏类型筛选" />
+                        </Grid>
+
+                        <ListBox ItemsSource="{Binding Favorites}" MaxHeight="280" Background="Transparent" BorderThickness="0"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Height="46" Margin="6,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="34" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border Width="30" Height="30" CornerRadius="7" Background="#FFF2F8FF" VerticalAlignment="Center">
+                                            <Image Source="{Binding IconUrl, Converter={StaticResource RemoteIcon}}" Stretch="Uniform"
+                                                   RenderOptions.BitmapScalingMode="HighQuality" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="9,0,9,0" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Title}" FontSize="11" FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding KindLabel}" FontSize="8.5"
+                                                       Foreground="{StaticResource BrushTextMuted}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Button Style="{StaticResource LinkButton}" Content="打开" Margin="0,0,8,0"
+                                                    Command="{Binding DataContext.OpenFavoriteCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                    CommandParameter="{Binding}" />
+                                            <Button Style="{StaticResource LinkButton}" Content="移除"
+                                                    Foreground="{StaticResource BrushDanger}"
+                                                    Command="{Binding DataContext.RemoveFavoriteCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                    CommandParameter="{Binding}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <TextBlock Text="{Binding FavoriteEmptyText}" FontSize="9.5"
+                                   Foreground="{StaticResource BrushTextMuted}" Margin="2,8,0,0" />
+                    </StackPanel>
+                </Border>
             </StackPanel>
         </ScrollViewer>
     </Grid>

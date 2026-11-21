@@ -35,6 +35,9 @@ public sealed class AccountViewModel : ObservableObject
     private bool _isLookingUp;
     private bool _autoRotate = true;
     private SkinEntry? _selectedSkin;
+    private readonly FavoritesService _favorites = new();
+    private string _favoriteSearch = "";
+    private string _selectedFavoriteKind = "全部";
 
     public AccountViewModel(SettingsService settings, SkinService skins, MojangProfileService mojang,
         Action<string, bool> toast, Action? saved = null)
@@ -84,10 +87,53 @@ public sealed class AccountViewModel : ObservableObject
         RefreshLibraryCommand = new RelayCommand(LoadLibrary);
 
         LoadLibrary();
+
+        Favorites = new ObservableCollection<FavoriteEntry>();
+        FavoriteKindFilters = new[] { "全部", "模组", "整合包", "光影包", "资源包" };
+        RemoveFavoriteCommand = new RelayCommand(RemoveFavorite);
+        OpenFavoriteCommand = new RelayCommand(OpenFavorite);
+        RefreshFavoritesCommand = new RelayCommand(LoadFavorites);
+        LoadFavorites();
         _ = RefreshAccountSkinAsync();
     }
 
     public ObservableCollection<SkinEntry> Skins { get; }
+
+    public ObservableCollection<FavoriteEntry> Favorites { get; }
+
+    public IReadOnlyList<string> FavoriteKindFilters { get; }
+
+    public string FavoriteSearch
+    {
+        get => _favoriteSearch;
+        set
+        {
+            if (SetProperty(ref _favoriteSearch, value ?? ""))
+            {
+                LoadFavorites();
+            }
+        }
+    }
+
+    public string SelectedFavoriteKind
+    {
+        get => _selectedFavoriteKind;
+        set
+        {
+            if (SetProperty(ref _selectedFavoriteKind, value ?? "全部"))
+            {
+                LoadFavorites();
+            }
+        }
+    }
+
+    public string FavoriteCountText => $"共 {Favorites.Count} 项";
+
+    public string FavoriteEmptyText => Favorites.Count == 0 ? "还没有收藏；在下载页点「收藏」即可加入。" : "";
+
+    public RelayCommand RemoveFavoriteCommand { get; }
+    public RelayCommand OpenFavoriteCommand { get; }
+    public RelayCommand RefreshFavoritesCommand { get; }
 
     public ICommand SaveCommand { get; }
     public RelayCommand ImportSkinCommand { get; }
@@ -651,5 +697,61 @@ public sealed class AccountViewModel : ObservableObject
         bytes[8] = (byte)((bytes[8] & 0x3F) | 0x80);
         var hex = Convert.ToHexString(bytes).ToLowerInvariant();
         return $"{hex[..8]}-{hex[8..12]}-{hex[12..16]}-{hex[16..20]}-{hex[20..]}";
+    }
+
+    private void LoadFavorites()
+    {
+        var keyword = FavoriteSearch.Trim();
+        var kind = SelectedFavoriteKind switch
+        {
+            "模组" => FavoriteKinds.Mod,
+            "整合包" => FavoriteKinds.Modpack,
+            "光影包" => FavoriteKinds.Shader,
+            "资源包" => FavoriteKinds.ResourcePack,
+            _ => null
+        };
+
+        Favorites.Clear();
+        foreach (var item in _favorites.All
+                     .Where(f => kind == null || string.Equals(f.Kind, kind, StringComparison.OrdinalIgnoreCase))
+                     .Where(f => keyword.Length == 0 || f.Title.Contains(keyword, StringComparison.OrdinalIgnoreCase)))
+        {
+            Favorites.Add(item);
+        }
+
+        OnPropertyChanged(nameof(FavoriteCountText));
+        OnPropertyChanged(nameof(FavoriteEmptyText));
+    }
+
+    private void RemoveFavorite(object? parameter)
+    {
+        if (parameter is not FavoriteEntry entry)
+        {
+            return;
+        }
+
+        _favorites.Remove(entry.Id);
+        LoadFavorites();
+        _toast($"已移除收藏「{entry.Title}」。", false);
+    }
+
+    private void OpenFavorite(object? parameter)
+    {
+        if (parameter is not FavoriteEntry entry)
+        {
+            return;
+        }
+
+        try
+        {
+            var url = string.Equals(entry.Source, "Modrinth", StringComparison.OrdinalIgnoreCase)
+                ? $"https://modrinth.com/project/{Uri.EscapeDataString(entry.Slug)}"
+                : $"https://www.curseforge.com/search?search={Uri.EscapeDataString(entry.Title)}";
+            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            _toast($"无法打开页面：{ex.Message}", true);
+        }
     }
 }

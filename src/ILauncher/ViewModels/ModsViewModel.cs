@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -182,17 +183,19 @@ public sealed class ModsViewModel : ObservableObject
     private bool _chineseNamesStarted;
     private bool _bulkUpdating;
     private CancellationTokenSource? _bulkCts;
-    private int _bulkIndex;
     private int _bulkTotal;
     private string _bulkCurrentName = "";
-    private double _bulkFilePercent;
     private long _lastBulkReport;
+    private int _bulkCompleted;
+    private readonly ConcurrentDictionary<ModItemViewModel, double> _bulkPercents = new();
+    private SettingsService? _settings;
     private readonly Dictionary<string, ModUpdateState> _updateStates = new(StringComparer.OrdinalIgnoreCase);
     private bool _hasUpdates;
     private bool _updateCheckStarted;
     private Task _loadTask = Task.CompletedTask;
 
-    public ModsViewModel(ModService modService, ModrinthService modrinth, Action<string, bool> toast, Action? modsChanged = null)
+    public ModsViewModel(ModService modService, ModrinthService modrinth, Action<string, bool> toast,
+        Action? modsChanged = null, SettingsService? settings = null)
     {
         _modService = modService;
         _modrinth = modrinth;
@@ -297,10 +300,10 @@ public sealed class ModsViewModel : ObservableObject
 
     public double BulkProgress => _bulkTotal <= 0
         ? 0
-        : Math.Clamp((_bulkIndex + _bulkFilePercent / 100d) / _bulkTotal * 100, 0, 100);
+        : Math.Clamp((_bulkCompleted + _bulkPercents.Values.Sum() / 100d) / _bulkTotal * 100, 0, 100);
 
     public string BulkProgressText =>
-        $"正在更新 {Math.Min(_bulkIndex + 1, Math.Max(1, _bulkTotal))}/{_bulkTotal}：{_bulkCurrentName}";
+        $"正在更新 {Math.Min(_bulkCompleted + 1, Math.Max(1, _bulkTotal))}/{_bulkTotal}：{_bulkCurrentName}";
 
     public string BulkProgressDetail => $"{BulkProgress:0}%";
 
@@ -311,13 +314,15 @@ public sealed class ModsViewModel : ObservableObject
         OnPropertyChanged(nameof(BulkProgressDetail));
     }
 
-    private void ReportFileProgress(long completed, long total)
+    private void ReportFileProgress(ModItemViewModel item, long completed, long total)
     {
         if (total <= 0)
         {
             return;
         }
 
+        _bulkPercents[item] = completed * 100d / total;
+        _bulkCurrentName = item.Name;
         var now = Environment.TickCount64;
         if (now - _lastBulkReport < 100)
         {
@@ -325,18 +330,13 @@ public sealed class ModsViewModel : ObservableObject
         }
 
         _lastBulkReport = now;
-        var percent = completed * 100d / total;
         var dispatcher = Application.Current?.Dispatcher;
         if (dispatcher == null)
         {
             return;
         }
 
-        dispatcher.BeginInvoke(() =>
-        {
-            _bulkFilePercent = percent;
-            RaiseBulkProgress();
-        });
+        dispatcher.BeginInvoke(RaiseBulkProgress);
     }
     public RelayCommand SelectAllCommand { get; }
     public RelayCommand ClearSelectionCommand { get; }
@@ -1191,9 +1191,10 @@ public sealed class ModsViewModel : ObservableObject
         }
 
         _bulkTotal = targets.Count;
-        _bulkIndex = 0;
-        _bulkFilePercent = 0;
+        _bulkCompleted = 0;
+        _bulkPercents.Clear();
         _bulkCurrentName = targets[0].Name;
+
         _bulkCts = new CancellationTokenSource();
         IsBulkUpdating = true;
         RaiseBulkProgress();
@@ -1201,31 +1202,53 @@ public sealed class ModsViewModel : ObservableObject
 
         var succeeded = 0;
         var failed = 0;
-        var cancelled = false;
+        var cancelled = 0;
+        var parallel = Math.Clamp(_settings?.Settings.MaxParallelDownloads ?? 3, 1, 8);
+        using var gate = new SemaphoreSlim(parallel);
         try
         {
-            for (var index = 0; index < targets.Count; index++)
+            var tasks = targets.Select(async item =>
             {
-                _bulkIndex = index;
-                _bulkFilePercent = 0;
-                _bulkCurrentName = targets[index].Name;
-                _lastBulkReport = 0;
-                RaiseBulkProgress();
+                await gate.WaitAsync(_bulkCts.Token).ConfigureAwait(false);
+                try
+                {
+                    _bulkPercents[item] = 0;
+                    var result = await ApplyUpdateCoreAsync(item, _bulkCts.Token).ConfigureAwait(false);
+                    if (result.Updated)
+                    {
+                        Interlocked.Increment(ref succeeded);
+                        Interlocked.Increment(ref _bulkCompleted);
+                        _bulkPercents[item] = 100;
+                    }
+                    else if (result.Cancelled)
+                    {
+                        Interlocked.Increment(ref cancelled);
+                    }
+                    else
+                    {
+                        Interlocked.Increment(ref failed);
+                        Interlocked.Increment(ref _bulkCompleted);
+                    }
 
-                var result = await ApplyUpdateCoreAsync(targets[index], _bulkCts.Token);
-                if (result.Updated)
-                {
-                    succeeded++;
+                    RaiseBulkProgress();
                 }
-                else if (result.Cancelled)
+                catch (OperationCanceledException)
                 {
-                    cancelled = true;
-                    break;
+                    Interlocked.Increment(ref cancelled);
                 }
-                else
+                finally
                 {
-                    failed++;
+                    gate.Release();
                 }
+            }).ToList();
+
+            try
+            {
+                await Task.WhenAll(tasks);
+            }
+            catch (OperationCanceledException)
+            {
+                // 取消由每个任务自行处理。
             }
         }
         finally
@@ -1233,13 +1256,13 @@ public sealed class ModsViewModel : ObservableObject
             _bulkCts.Dispose();
             _bulkCts = null;
             IsBulkUpdating = false;
-            _bulkFilePercent = 0;
+            _bulkPercents.Clear();
             UpdateSelectedCommand.RaiseCanExecuteChanged();
         }
 
         await LoadAsync();
         _modsChanged?.Invoke();
-        if (cancelled)
+        if (cancelled > 0)
         {
             _toast($"已取消批量更新：完成 {succeeded} 个，跳过其余 {_bulkTotal - succeeded - failed} 个。", false);
             return;
@@ -1281,8 +1304,8 @@ public sealed class ModsViewModel : ObservableObject
             try
             {
                 // 先完整下载并校验，再替换；旧版本在新文件就位后删除（和 PCL2 行为一致）。
-                await DownloadHelper.DownloadFileAsync(file.Url, tempTarget, ReportFileProgress,
-                    cancellationToken, file.Sha1);
+                await DownloadHelper.DownloadFileAsync(file.Url, tempTarget,
+                    (done, total) => ReportFileProgress(item, done, total), cancellationToken, file.Sha1);
 
                 var samePath = string.Equals(target, oldPath, StringComparison.OrdinalIgnoreCase);
                 if (samePath)
