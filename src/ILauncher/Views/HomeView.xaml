@@ -452,11 +452,15 @@
                                     </Border>
                                     <StackPanel Grid.Column="1" Margin="10,1,0,0">
                                         <TextBlock Text="测试游戏" FontSize="15" FontWeight="Bold" Foreground="#FFFFFFFF" />
-                                        <TextBlock Text="{Binding TestCardLogText}" FontSize="9" Foreground="#BFFFFFFF"
-                                                   Height="13" LineHeight="13" LineStackingStrategy="BlockLineHeight"
-                                                   TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
-                                                   ClipToBounds="True" VerticalAlignment="Center"
-                                                   ToolTip="{Binding TestCardLogText}" />
+                                        <!-- 日志行放在 Canvas 里：Canvas 不参与父级测量，TextBlock 再长也不会改变布局 -->
+                                        <Canvas Height="14" Margin="0,2,0,0" ClipToBounds="True"
+                                                HorizontalAlignment="Stretch">
+                                            <TextBlock Canvas.Left="0" Canvas.Top="0"
+                                                       Text="{Binding TestCardStatusText}" FontSize="9" Foreground="#BFFFFFFF"
+                                                       TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                                                       Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Canvas}}"
+                                                       ToolTip="{Binding TestCardStatusText}" />
+                                        </Canvas>
                                     </StackPanel>
                                 </Grid>
                                 <TextBlock Text="在版本设置的左下角，一键启动并在日志面板中实时查看全部游戏输出。"

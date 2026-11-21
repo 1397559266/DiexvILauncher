@@ -165,7 +165,6 @@ public sealed class MainViewModel : ObservableObject
         });
 
         LaunchLog.PropertyChanged += OnLaunchLogPropertyChanged;
-        LaunchLog.Logs.CollectionChanged += (_, _) => QueueTestCardLogUpdate();
     }
 
     public SettingsService SettingsService { get; }
@@ -421,47 +420,10 @@ public sealed class MainViewModel : ObservableObject
         private set => SetProperty(ref _selectedJavaText, value);
     }
 
-    private DispatcherTimer? _testCardLogTimer;
-
-    /// <summary>日志可能一秒几十行，合并成 300ms 一次刷新，避免主页频繁重排。</summary>
-    private void QueueTestCardLogUpdate()
-    {
-        if (_testCardLogTimer == null)
-        {
-            _testCardLogTimer = new DispatcherTimer(DispatcherPriority.Background)
-            {
-                Interval = TimeSpan.FromMilliseconds(300)
-            };
-            _testCardLogTimer.Tick += (_, _) =>
-            {
-                _testCardLogTimer!.Stop();
-                OnPropertyChanged(nameof(TestCardLogText));
-            };
-        }
-
-        if (!_testCardLogTimer.IsEnabled)
-        {
-            _testCardLogTimer.Start();
-        }
-    }
-
-    /// <summary>测试游戏卡片上的一行实时日志。</summary>
-    public string TestCardLogText
-    {
-        get
-        {
-            var last = LaunchLog.Logs.LastOrDefault();
-            if (last != null && !string.IsNullOrWhiteSpace(last.DisplayMessage))
-            {
-                var text = last.DisplayMessage.Length > 64
-                    ? last.DisplayMessage[..64] + "…"
-                    : last.DisplayMessage;
-                return LaunchLog.IsRunning ? $"运行中 · {text}" : $"上次启动 · {text}";
-            }
-
-            return LaunchLog.IsRunning ? "正在启动游戏…" : "点击下方按钮启动测试，这里会显示实时日志";
-        }
-    }
+    /// <summary>卡片上的状态文案：只在开始/结束运行时变化，不跟着日志逐行刷新。</summary>
+    public string TestCardStatusText => LaunchLog.IsRunning
+        ? "游戏运行中，日志显示在下方的日志面板"
+        : "点击下方按钮启动测试";
 
     public string PlayerName => SettingsService.ResolvePlayerName();
 
