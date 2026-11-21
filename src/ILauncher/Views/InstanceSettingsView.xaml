@@ -89,6 +89,45 @@
                 </StackPanel>
             </Border>
 
+            <!-- Mod loader -->
+            <Border Style="{StaticResource Card}" Padding="20,16" Margin="0,14,0,0"
+                    Visibility="{Binding CanUpdateLoader, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel>
+                    <Grid Margin="0,0,0,12">
+                        <StackPanel Orientation="Horizontal">
+                            <controls:Icon Data="{StaticResource IconPuzzle}" Fill="{StaticResource BrushAccent}" Width="15" Height="15" />
+                            <TextBlock Text="模组加载器" FontSize="13" FontWeight="SemiBold" Margin="7,0,0,0" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding LoaderCurrentText}" FontSize="9.5" HorizontalAlignment="Right"
+                                   VerticalAlignment="Center" Foreground="{StaticResource BrushTextMuted}" />
+                    </Grid>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <ComboBox Style="{StaticResource FilterCombo}" Height="34" MaxWidth="280"
+                                  HorizontalAlignment="Left" MinWidth="180"
+                                  ItemsSource="{Binding LoaderVersions}"
+                                  SelectedItem="{Binding SelectedLoaderVersion, Mode=TwoWay}"
+                                  DisplayMemberPath="Label"
+                                  AutomationProperties.Name="模组加载器版本" />
+                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                            <Button Style="{StaticResource SecondaryButton}" Height="34" Content="刷新"
+                                    Command="{Binding RefreshLoaderVersionsCommand}" Margin="0,0,8,0" />
+                            <Button Style="{StaticResource PrimaryButton}" Height="34" Content="更新加载器"
+                                    Command="{Binding ApplyLoaderCommand}"
+                                    IsEnabled="{Binding IsLoaderIdle}"
+                                    AutomationProperties.Name="更新模组加载器" />
+                        </StackPanel>
+                    </Grid>
+
+                    <TextBlock Text="{Binding LoaderStatus}" FontSize="9" Margin="2,8,0,0" TextWrapping="Wrap"
+                               Foreground="{StaticResource BrushTextMuted}" />
+                </StackPanel>
+            </Border>
+
             <!-- Memory & window -->
             <Border Style="{StaticResource Card}" Padding="20,16" Margin="0,14,0,0">
                 <StackPanel>

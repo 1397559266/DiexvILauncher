@@ -68,9 +68,10 @@ public sealed class InstanceViewModel : ObservableObject
             OpenSettingsCommand);
         _pages[InstanceSection.Overview] = Overview;
 
-        InstanceSettings = new InstanceSettingsViewModel(instance, _settings, _javaService, _main.Toast, () =>
+        InstanceSettings = new InstanceSettingsViewModel(instance, _settings, _javaService, _main.Toast, async () =>
         {
-            _ = Overview.LoadAsync();
+            await _main.ReloadInstancesAsync();
+            await Overview.LoadAsync();
         });
         _pages[InstanceSection.Settings] = InstanceSettings;
 

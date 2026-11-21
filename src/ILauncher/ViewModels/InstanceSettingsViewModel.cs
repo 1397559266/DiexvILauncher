@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using System.Windows.Input;
 using ILauncher.Core;
 using ILauncher.Core.Models;
@@ -23,6 +24,10 @@ public sealed class InstanceSettingsViewModel : ObservableObject
     private int _height;
     private string _javaSummary = "";
     private JavaOption? _selectedJava;
+    private readonly LoaderUpdateService _loaderUpdates;
+    private LoaderVersionOption? _selectedLoaderVersion;
+    private bool _isLoaderBusy;
+    private string _loaderStatus = "";
 
     public InstanceSettingsViewModel(
         GameInstance instance,
@@ -66,6 +71,14 @@ public sealed class InstanceSettingsViewModel : ObservableObject
         _javaSummary = overrides.JavaPath is { Length: > 0 } custom ? custom : "跟随全局设置";
         _extraJvmArgs = overrides.ExtraJvmArgs;
         _ = LoadJavaAsync();
+
+        _loaderUpdates = new LoaderUpdateService(javaService, settings);
+        ApplyLoaderCommand = new AsyncRelayCommand(ApplyLoaderAsync, () => CanUpdateLoader && !IsLoaderBusy);
+        RefreshLoaderVersionsCommand = new AsyncRelayCommand(LoadLoaderVersionsAsync);
+        if (CanUpdateLoader)
+        {
+            _ = LoadLoaderVersionsAsync();
+        }
     }
 
     public GameInstance Instance => _instance;
@@ -92,6 +105,46 @@ public sealed class InstanceSettingsViewModel : ObservableObject
             JavaSummary = value.IsAuto ? "自动选择最合适的 Java" : value.Path;
         }
     }
+
+    /// <summary>原版实例没有加载器，卡片直接隐藏。</summary>
+    public bool CanUpdateLoader => LoaderUpdateService.CanUpdate(_instance);
+
+    public string LoaderCurrentText => CanUpdateLoader
+        ? $"当前 {_instance.Loader} {_instance.LoaderVersion}"
+        : "原版";
+
+    public ObservableCollection<LoaderVersionOption> LoaderVersions { get; } = new();
+
+    public LoaderVersionOption? SelectedLoaderVersion
+    {
+        get => _selectedLoaderVersion;
+        set => SetProperty(ref _selectedLoaderVersion, value);
+    }
+
+    public bool IsLoaderBusy
+    {
+        get => _isLoaderBusy;
+        private set
+        {
+            if (SetProperty(ref _isLoaderBusy, value))
+            {
+                OnPropertyChanged(nameof(IsLoaderIdle));
+                ApplyLoaderCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    public bool IsLoaderIdle => !_isLoaderBusy;
+
+    public string LoaderStatus
+    {
+        get => _loaderStatus;
+        private set => SetProperty(ref _loaderStatus, value);
+    }
+
+    public AsyncRelayCommand ApplyLoaderCommand { get; }
+
+    public AsyncRelayCommand RefreshLoaderVersionsCommand { get; }
 
     public string VersionName => _instance.Id;
     public string VersionSubtitle => _instance.Subtitle;
@@ -299,5 +352,100 @@ public sealed class InstanceSettingsViewModel : ObservableObject
         SelectJava(AutoOption);
         _toast("已恢复为全局设置。", false);
         _saved?.Invoke();
+    }
+
+    /// <summary>实例里的 LoaderVersion 可能是「1.20.1-47.4.20」「forge-47.4.20-1.20.1」等带前缀的写法。</summary>
+    private bool IsCurrentLoaderVersion(string version) =>
+        !string.IsNullOrWhiteSpace(version) &&
+        (string.Equals(version, _instance.LoaderVersion, StringComparison.OrdinalIgnoreCase) ||
+         _instance.LoaderVersion.EndsWith("-" + version, StringComparison.OrdinalIgnoreCase) ||
+         _instance.LoaderVersion.Contains(version, StringComparison.OrdinalIgnoreCase));
+
+    private async Task LoadLoaderVersionsAsync()
+    {
+        if (!CanUpdateLoader)
+        {
+            return;
+        }
+
+        LoaderStatus = "正在获取加载器版本列表…";
+        try
+        {
+            var versions = await _loaderUpdates.GetVersionsAsync(_instance);
+            LoaderVersions.Clear();
+            foreach (var version in versions)
+            {
+                LoaderVersions.Add(version);
+            }
+
+            // 默认选中最新版本；当前版本在列表里的话也标记出来。
+            SelectedLoaderVersion = LoaderVersions.FirstOrDefault(v =>
+                                        string.Equals(v.Version, _instance.LoaderVersion, StringComparison.OrdinalIgnoreCase))
+                                    ?? LoaderVersions.FirstOrDefault();
+            LoaderStatus = versions.Count == 0
+                ? $"没有找到适用于 {_instance.MinecraftVersion} 的 {_instance.Loader} 版本。"
+                : $"共 {versions.Count} 个版本；当前 {_instance.LoaderVersion}。";
+        }
+        catch (Exception ex)
+        {
+            LoaderStatus = $"获取加载器版本失败：{ex.Message}";
+        }
+    }
+
+    private async Task ApplyLoaderAsync()
+    {
+        if (IsLoaderBusy || SelectedLoaderVersion == null)
+        {
+            return;
+        }
+
+        var target = SelectedLoaderVersion.Version;
+        if (IsCurrentLoaderVersion(target))
+        {
+            _toast("选中的就是当前版本。", false);
+            return;
+        }
+
+        var confirm = LocalizedDialog.Show(
+            $"把 {_instance.Id} 的 {_instance.Loader} 从 {_instance.LoaderVersion} 更新到 {target}？\n\n" +
+            "模组、存档和设置都会保留；原来的版本 JSON 会备份为 " +
+            $"{_instance.Id}.json.bak，更新后需要重启游戏。",
+            "更新模组加载器", MessageBoxButton.OKCancel, MessageBoxImage.Warning);
+        if (confirm != MessageBoxResult.OK)
+        {
+            return;
+        }
+
+        IsLoaderBusy = true;
+        LoaderStatus = "正在安装新的加载器…";
+        try
+        {
+            var progress = new Action<DownloadProgress>(report =>
+            {
+                var text = string.IsNullOrWhiteSpace(report.Message) ? "正在安装…" : report.Message;
+                var dispatcher = Application.Current?.Dispatcher;
+                if (dispatcher == null || dispatcher.CheckAccess())
+                {
+                    LoaderStatus = text;
+                }
+                else
+                {
+                    dispatcher.BeginInvoke(() => LoaderStatus = text);
+                }
+            });
+            await _loaderUpdates.UpdateAsync(_instance, target, progress);
+            LoaderStatus = $"{_instance.Loader} 已更新到 {target}，重启游戏后生效。";
+            _toast($"{_instance.Loader} 已更新到 {target}。", false);
+            _saved?.Invoke();
+        }
+        catch (Exception ex)
+        {
+            LoaderStatus = $"更新失败：{ex.Message}";
+            _toast($"更新加载器失败：{ex.Message}", true);
+        }
+        finally
+        {
+            IsLoaderBusy = false;
+        }
     }
 }
