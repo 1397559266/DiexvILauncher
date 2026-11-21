@@ -453,7 +453,9 @@
                                     <StackPanel Grid.Column="1" Margin="10,1,0,0">
                                         <TextBlock Text="测试游戏" FontSize="15" FontWeight="Bold" Foreground="#FFFFFFFF" />
                                         <TextBlock Text="{Binding TestCardLogText}" FontSize="9" Foreground="#BFFFFFFF"
+                                                   Height="13" LineHeight="13" LineStackingStrategy="BlockLineHeight"
                                                    TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                                                   ClipToBounds="True" VerticalAlignment="Center"
                                                    ToolTip="{Binding TestCardLogText}" />
                                     </StackPanel>
                                 </Grid>

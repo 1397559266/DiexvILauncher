@@ -244,6 +244,7 @@ public sealed class ModsViewModel : ObservableObject
         DeleteSelectedCommand = new AsyncRelayCommand(DeleteSelectedAsync, () => HasSelection);
         UpdateSelectedCommand = new AsyncRelayCommand(UpdateSelectedAsync, () => HasSelection && !_bulkUpdating);
         CancelBulkUpdateCommand = new RelayCommand(() => _bulkCts?.Cancel());
+        CleanupLeftoversCommand = new AsyncRelayCommand(CleanupLeftoversAsync);
     }
 
     public ObservableCollection<ModItemViewModel> Mods { get; } = new();
@@ -276,6 +277,9 @@ public sealed class ModsViewModel : ObservableObject
     public AsyncRelayCommand UpdateSelectedCommand { get; }
 
     public RelayCommand CancelBulkUpdateCommand { get; }
+
+    /// <summary>清理与已启用模组同名的 .jar.disabled 残留（旧版本更新留下的副本）。</summary>
+    public AsyncRelayCommand CleanupLeftoversCommand { get; }
 
     public bool IsBulkUpdating
     {
@@ -479,16 +483,55 @@ public sealed class ModsViewModel : ObservableObject
         try
         {
             var models = await _modService.LoadModsAsync(instance);
-            Mods.Clear();
+
+            // 差量刷新：文件没变就复用原有行，避免整表重建造成的闪烁与选中丢失。
+            var existing = new Dictionary<string, ModItemViewModel>(StringComparer.OrdinalIgnoreCase);
+            foreach (var item in Mods)
+            {
+                existing[item.Model.FilePath] = item;
+            }
+
+            var keep = new HashSet<string>(models.Select(m => m.FilePath), StringComparer.OrdinalIgnoreCase);
+            for (var index = Mods.Count - 1; index >= 0; index--)
+            {
+                if (!keep.Contains(Mods[index].Model.FilePath))
+                {
+                    Mods.RemoveAt(index);
+                }
+            }
+
             foreach (var model in models)
             {
-                var item = new ModItemViewModel
+                if (!existing.ContainsKey(model.FilePath))
                 {
-                    Model = model,
-                    Enabled = model.Enabled
-                };
-                item.PropertyChanged += OnSelectionChanged;
-                Mods.Add(item);
+                    var added = new ModItemViewModel
+                    {
+                        Model = model,
+                        Enabled = model.Enabled
+                    };
+                    added.PropertyChanged += OnSelectionChanged;
+                    Mods.Add(added);
+                }
+            }
+
+            // 顺序变化时用 Move 微调，避免 Clear/Add 的整表重绘。
+            for (var target = 0; target < models.Count; target++)
+            {
+                var wanted = models[target].FilePath;
+                var current = -1;
+                for (var index = target; index < Mods.Count; index++)
+                {
+                    if (string.Equals(Mods[index].Model.FilePath, wanted, StringComparison.OrdinalIgnoreCase))
+                    {
+                        current = index;
+                        break;
+                    }
+                }
+
+                if (current > target)
+                {
+                    Mods.Move(current, target);
+                }
             }
 
             RecalculateCounts();
@@ -623,35 +666,66 @@ public sealed class ModsViewModel : ObservableObject
 
         try
         {
-            // 同名文件（通常是同一个模组）直接跳过，避免拖两次就多出一个副本。
-            var existing = new HashSet<string>(
-                Directory.EnumerateFiles(_instance.ModsDirectory).Select(path => Path.GetFileName(path)),
-                StringComparer.OrdinalIgnoreCase);
-            var toCopy = new List<string>();
-            var skipped = 0;
+            var added = 0;
+            var replaced = 0;
+            var failed = 0;
             foreach (var jar in jars)
             {
-                if (existing.Contains(Path.GetFileName(jar)))
+                var name = Path.GetFileName(jar);
+                var destination = Path.Combine(_instance.ModsDirectory, name);
+                try
                 {
-                    skipped++;
+                    var existed = File.Exists(destination);
+
+                    // 覆盖同名文件：拖进来的版本优先，旧版（含 .disabled 残留）一并清掉。
+                    if (existed)
+                    {
+                        File.Delete(destination);
+                    }
+
+                    var disabled = destination + ".disabled";
+                    if (File.Exists(disabled))
+                    {
+                        File.Delete(disabled);
+                    }
+
+                    File.Copy(jar, destination, overwrite: true);
+                    if (existed)
+                    {
+                        replaced++;
+                    }
+                    else
+                    {
+                        added++;
+                    }
                 }
-                else
+                catch
                 {
-                    toCopy.Add(jar);
+                    failed++;
                 }
             }
 
-            if (toCopy.Count == 0)
-            {
-                _toast($"{skipped} 个模组已存在（同名），没有覆盖。", true);
-                return;
-            }
-
-            var copied = await _modService.InstallAsync(toCopy, _instance.ModsDirectory);
             await LoadAsync();
             _modsChanged?.Invoke();
-            var skippedText = skipped > 0 ? $"，跳过 {skipped} 个同名文件" : "";
-            _toast($"已安装 {copied} 个模组{skippedText}，重启游戏后生效。", false);
+            var parts = new List<string>();
+            if (added > 0)
+            {
+                parts.Add($"新增 {added} 个");
+            }
+
+            if (replaced > 0)
+            {
+                parts.Add($"覆盖 {replaced} 个");
+            }
+
+            if (failed > 0)
+            {
+                parts.Add($"失败 {failed} 个");
+            }
+
+            _toast(parts.Count == 0
+                ? "没有需要安装的模组。"
+                : $"已安装：{string.Join("，", parts)}，重启游戏后生效。", failed > 0);
         }
         catch (Exception ex)
         {
@@ -886,6 +960,65 @@ public sealed class ModsViewModel : ObservableObject
     }
 
     /// <summary>用 MC百科补全模组中文名；MC百科限流，按顺序慢慢查，结果有本地缓存。</summary>
+    private async Task CleanupLeftoversAsync()
+    {
+        if (_instance == null)
+        {
+            return;
+        }
+
+        var leftovers = new List<string>();
+        try
+        {
+            foreach (var disabled in Directory.EnumerateFiles(_instance.ModsDirectory, "*.jar.disabled"))
+            {
+                var enabled = disabled[..^".disabled".Length];
+                if (File.Exists(enabled))
+                {
+                    leftovers.Add(disabled);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _toast($"扫描残留失败：{ex.Message}", true);
+            return;
+        }
+
+        if (leftovers.Count == 0)
+        {
+            _toast("没有发现更新残留的 .disabled 文件。", false);
+            return;
+        }
+
+        var confirm = LocalizedDialog.Show(
+            $"发现 {leftovers.Count} 个与已启用模组同名的 .disabled 文件，通常是旧版本更新留下的副本。\n\n确定删除它们？",
+            "清理更新残留", MessageBoxButton.OKCancel, MessageBoxImage.Warning);
+        if (confirm != MessageBoxResult.OK)
+        {
+            return;
+        }
+
+        var removed = 0;
+        await Task.Run(() =>
+        {
+            foreach (var file in leftovers)
+            {
+                try
+                {
+                    File.Delete(file);
+                    removed++;
+                }
+                catch
+                {
+                    // 单个删除失败不影响其它文件。
+                }
+            }
+        });
+
+        await LoadAsync();
+        _toast($"已清理 {removed} 个残留文件。", false);
+    }
     private async Task EnrichChineseNamesAsync()
     {
         if (_chineseNamesStarted || LanguageService.CurrentLanguage == LanguageService.English)
@@ -1147,23 +1280,36 @@ public sealed class ModsViewModel : ObservableObject
             var tempTarget = target + "." + Guid.NewGuid().ToString("N") + ".download";
             try
             {
-                // Download first; only disable the old file once the new one is complete.
+                // 先完整下载并校验，再替换；旧版本在新文件就位后删除（和 PCL2 行为一致）。
                 await DownloadHelper.DownloadFileAsync(file.Url, tempTarget, ReportFileProgress,
                     cancellationToken, file.Sha1);
 
-                if (File.Exists(oldPath) && oldPath.EndsWith(".jar", StringComparison.OrdinalIgnoreCase))
+                var samePath = string.Equals(target, oldPath, StringComparison.OrdinalIgnoreCase);
+                if (samePath)
                 {
-                    var backup = oldPath + ".disabled";
-                    var index = 2;
-                    while (File.Exists(backup))
-                    {
-                        backup = $"{oldPath}.{index++}.disabled";
-                    }
-
-                    File.Move(oldPath, backup);
+                    // 同名覆盖：直接替换旧文件。
+                    File.Move(tempTarget, target, overwrite: true);
                 }
+                else
+                {
+                    File.Move(tempTarget, target, overwrite: true);
 
-                File.Move(tempTarget, target, overwrite: true);
+                    // 旧版本删不掉（通常是被游戏占用）时撤销本次更新，避免新旧同时启用。
+                    if (!TryRemoveOldMod(oldPath))
+                    {
+                        try
+                        {
+                            File.Delete(target);
+                        }
+                        catch
+                        {
+                            // 新文件也删不掉就只能保留，至少提示到位。
+                        }
+
+                        _toast($"旧版本 {Path.GetFileName(oldPath)} 被占用，已撤销本次更新，请关闭游戏后重试。", true);
+                        return (false, false);
+                    }
+                }
             }
             finally
             {

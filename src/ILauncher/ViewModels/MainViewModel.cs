@@ -165,7 +165,7 @@ public sealed class MainViewModel : ObservableObject
         });
 
         LaunchLog.PropertyChanged += OnLaunchLogPropertyChanged;
-        LaunchLog.Logs.CollectionChanged += (_, _) => OnPropertyChanged(nameof(TestCardLogText));
+        LaunchLog.Logs.CollectionChanged += (_, _) => QueueTestCardLogUpdate();
     }
 
     public SettingsService SettingsService { get; }
@@ -419,6 +419,30 @@ public sealed class MainViewModel : ObservableObject
     {
         get => _selectedJavaText;
         private set => SetProperty(ref _selectedJavaText, value);
+    }
+
+    private DispatcherTimer? _testCardLogTimer;
+
+    /// <summary>日志可能一秒几十行，合并成 300ms 一次刷新，避免主页频繁重排。</summary>
+    private void QueueTestCardLogUpdate()
+    {
+        if (_testCardLogTimer == null)
+        {
+            _testCardLogTimer = new DispatcherTimer(DispatcherPriority.Background)
+            {
+                Interval = TimeSpan.FromMilliseconds(300)
+            };
+            _testCardLogTimer.Tick += (_, _) =>
+            {
+                _testCardLogTimer!.Stop();
+                OnPropertyChanged(nameof(TestCardLogText));
+            };
+        }
+
+        if (!_testCardLogTimer.IsEnabled)
+        {
+            _testCardLogTimer.Start();
+        }
     }
 
     /// <summary>测试游戏卡片上的一行实时日志。</summary>
