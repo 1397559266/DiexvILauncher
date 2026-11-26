@@ -45,7 +45,8 @@
         </Style>
 
         <Style x:Key="ModRowActionButton" TargetType="Button">
-            <Setter Property="Visibility" Value="Collapsed" />
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="IsHitTestVisible" Value="False" />
             <Setter Property="Width" Value="28" />
             <Setter Property="Height" Value="28" />
             <Setter Property="Margin" Value="4,0,0,0" />
@@ -62,6 +63,12 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                    <Setter Property="Opacity" Value="1" />
+                    <Setter Property="IsHitTestVisible" Value="True" />
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
 
         <Style x:Key="FavoriteStar" TargetType="Button">
@@ -325,19 +332,18 @@
                                                 </Style>
                                             </TextBlock.Style>
                                         </TextBlock>
+                                        <Button Style="{StaticResource ModRowActionButton}"
+                                                Command="{Binding DataContext.OpenModFileCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip="在资源管理器中打开这个 jar"
+                                                AutomationProperties.Name="打开模组文件">
+                                            <controls:Icon Data="{StaticResource IconFolderOpen}" Fill="#FF6B829B" Width="13" Height="13" />
+                                        </Button>
                                         <Button Style="{StaticResource ModToggleButton}"
                                                 Command="{Binding DataContext.ToggleCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
                                                 CommandParameter="{Binding}"
                                                 AutomationProperties.Name="{Binding Name}"
                                                 ToolTip="启用 / 禁用此模组" />
-                                        <Button Style="{StaticResource ModRowActionButton}"
-                                                Command="{Binding DataContext.OpenModFileCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                                CommandParameter="{Binding}"
-                                                ToolTip="在资源管理器中打开这个 jar"
-                                                Visibility="{Binding IsMouseOver, ElementName=ModRowRoot, Converter={StaticResource BoolToVisibility}}"
-                                                AutomationProperties.Name="打开模组文件">
-                                            <controls:Icon Data="{StaticResource IconFolderOpen}" Fill="#FF6B829B" Width="13" Height="13" />
-                                        </Button>
                                         <Button Style="{StaticResource FavoriteStar}"
                                                 Content="{Binding FavoriteGlyph}"
                                                 Command="{Binding DataContext.ToggleFavoriteCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
