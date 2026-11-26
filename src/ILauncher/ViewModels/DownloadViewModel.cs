@@ -129,6 +129,7 @@ public sealed class DownloadViewModel : ObservableObject
         }
     }
     private readonly McmodService _mcmod = new();
+    private readonly McmodNameCache _nameCache = new();
     private readonly ModLoaderInstallerService _installers;
     private readonly ModpackService _modpacks;
     private readonly Action<string, bool> _toast;
@@ -1550,8 +1551,23 @@ public sealed class DownloadViewModel : ObservableObject
         SearchResults.Clear();
         foreach (var project in projects)
         {
+            project.IsFavorite = IsFavoriteProject(project);
             SearchResults.Add(project);
         }
+    }
+
+    private bool IsFavoriteProject(ModrinthProject project)
+    {
+        var (source, projectId) = ResolveFavoriteIdentity(project);
+        return !string.IsNullOrWhiteSpace(projectId) && _favorites.Contains(source, projectId);
+    }
+
+    private static (string Source, string ProjectId) ResolveFavoriteIdentity(ModrinthProject project)
+    {
+        var useCurseForge = !project.HasModrinth && project.CurseForgeModId is > 0;
+        return useCurseForge
+            ? ("CurseForge", $"cf:{project.CurseForgeModId}")
+            : ("Modrinth", project.Id);
     }
 
     private void NotifySearchPageChanged()
@@ -1671,7 +1687,16 @@ public sealed class DownloadViewModel : ObservableObject
                 return;
             }
 
-            var info = await _mcmod.LookupAsync(project.Title);
+            // 先查本地中文名缓存，命中就不请求 MC百科。
+            McmodInfo? info;
+            if (_nameCache.TryGet(project.Title, out var cachedChinese, out var cachedMcmodUrl))
+            {
+                info = new McmodInfo(cachedChinese, cachedMcmodUrl ?? "");
+            }
+            else
+            {
+                info = await _mcmod.LookupAsync(project.Title);
+            }
             if (searchVersion != _searchVersion)
             {
                 return;
@@ -1691,13 +1716,12 @@ public sealed class DownloadViewModel : ObservableObject
                 continue;
             }
 
-            SearchResults[index] = project with
-            {
-                ChineseName = LanguageService.CurrentLanguage == LanguageService.English
-                    ? null
-                    : HasCjk(info.Name) ? info.Name : null,
-                McmodUrl = info.Url
-            };
+            // 直接改对象属性：列表不换实例，收藏状态和滚动位置都不会被打断。
+            SearchResults[index].ChineseName = LanguageService.CurrentLanguage == LanguageService.English
+                ? null
+                : HasCjk(info.Name) ? info.Name : null;
+            SearchResults[index].McmodUrl = info.Url;
+            _nameCache.Set(project.Title, info.Name, info.Url);
 
             if (_searchCache.TryGetValue(cacheKey, out var cachedPage))
             {
@@ -1718,6 +1742,7 @@ public sealed class DownloadViewModel : ObservableObject
                 SaveSearchCacheToDisk();
             }
         }
+        _nameCache.Flush();
     }
 
     private async Task<IReadOnlyList<ModDependencyItem>> AnalyzeDependenciesAsync(ModrinthVersion version,
@@ -2557,6 +2582,7 @@ public sealed class DownloadViewModel : ObservableObject
         if (_favorites.Contains(source, projectId))
         {
             _favorites.Remove($"{source}:{projectId}");
+            project.IsFavorite = false;
             _toast($"已取消收藏「{project.Title}」。", false);
             return;
         }
@@ -2579,6 +2605,7 @@ public sealed class DownloadViewModel : ObservableObject
             IconUrl = project.IconUrl
         };
         _favorites.Add(entry);
+        project.IsFavorite = true;
         _toast($"已收藏「{project.Title}」，可在账户页查看。", false);
 
         if (_settings.Settings.FavoriteKeepsFile)

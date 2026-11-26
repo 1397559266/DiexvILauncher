@@ -480,16 +480,30 @@
                                                         Foreground="{StaticResource BrushTextSecondary}"
                                                         Command="{Binding DataContext.OpenProjectDetailsCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
                                                         CommandParameter="{Binding}" ToolTip="查看项目介绍、截图和链接" />
+                                                <Button Command="{Binding DataContext.ToggleFavoriteCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                        CommandParameter="{Binding}"
+                                                        ToolTip="{Binding FavoriteTooltip}"
+                                                        AutomationProperties.Name="{Binding FavoriteTooltip}">
+                                                    <Button.Style>
+                                                        <Style TargetType="Button" BasedOn="{StaticResource ChipButton}">
+                                                            <Setter Property="Content" Value="{Binding FavoriteGlyph}" />
+                                                            <Setter Property="FontSize" Value="13" />
+                                                            <Setter Property="Padding" Value="8,2" />
+                                                            <Setter Property="Foreground" Value="{StaticResource BrushTextSecondary}" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsFavorite}" Value="True">
+                                                                    <Setter Property="Foreground" Value="#FFF5B301" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Button.Style>
+                                                </Button>
                                                 <Button Style="{StaticResource ChipButton}" Content="MC百科"
                                                         Foreground="{StaticResource BrushTextSecondary}"
                                                         Command="{Binding DataContext.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
                                                         CommandParameter="{Binding McmodUrl}" ToolTip="在 MC百科查看此模组"
                                                         Visibility="{Binding HasMcmod, Converter={StaticResource BoolToVisibility}}" />
                                             </StackPanel>
-                                                <Button Style="{StaticResource ChipButton}" Content="收藏"
-                                                        Foreground="{StaticResource BrushTextSecondary}"
-                                                        Command="{Binding DataContext.ToggleFavoriteCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                                        CommandParameter="{Binding}" ToolTip="加入收藏，可在账户页管理" />
                                         </StackPanel>
                                     </Grid>
                                 </DataTemplate>

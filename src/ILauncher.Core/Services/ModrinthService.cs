@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Net;
 using System.Text.Json;
 
@@ -15,8 +16,41 @@ public sealed record ModrinthProject(
 {
     public static bool PreferChineseNames { get; set; } = true;
 
-    public string? ChineseName { get; init; }
-    public string? McmodUrl { get; init; }
+    private string? _chineseName;
+    private string? _mcmodUrl;
+
+    /// <summary>MC百科中文名；后续补全时会直接更新，避免整行对象被替换。</summary>
+    public string? ChineseName
+    {
+        get => _chineseName;
+        set
+        {
+            if (_chineseName == value)
+            {
+                return;
+            }
+
+            _chineseName = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ChineseName)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DisplayTitle)));
+        }
+    }
+
+    public string? McmodUrl
+    {
+        get => _mcmodUrl;
+        set
+        {
+            if (_mcmodUrl == value)
+            {
+                return;
+            }
+
+            _mcmodUrl = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(McmodUrl)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasMcmod)));
+        }
+    }
 
     /// <summary>合并条目时指向 CurseForge 的 mod id；为空表示只有 Modrinth 有。</summary>
     public long? CurseForgeModId { get; init; }
@@ -89,6 +123,32 @@ public sealed record ModrinthProject(
     }
 
     public string CategoryText => string.Join(" · ", Categories.Take(3));
+
+    private bool _isFavorite;
+
+    /// <summary>列表里的收藏状态（决定星星是否点亮）。</summary>
+    public bool IsFavorite
+    {
+        get => _isFavorite;
+        set
+        {
+            if (_isFavorite == value)
+            {
+                return;
+            }
+
+            _isFavorite = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsFavorite)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FavoriteGlyph)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FavoriteTooltip)));
+        }
+    }
+
+    public string FavoriteGlyph => _isFavorite ? "★" : "☆";
+
+    public string FavoriteTooltip => _isFavorite ? "取消收藏" : "收藏（可在账户页管理）";
+
+    public event PropertyChangedEventHandler? PropertyChanged;
 }
 
 public sealed record ModrinthGalleryImage(string Url, string Title, bool Featured);

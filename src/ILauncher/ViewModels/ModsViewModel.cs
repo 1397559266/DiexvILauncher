@@ -81,6 +81,56 @@ public sealed class ModItemViewModel : ObservableObject
         set => SetProperty(ref _isSelected, value);
     }
 
+    private bool _isFavorite;
+    private string? _favoriteSource;
+    private string? _favoriteProjectId;
+    private string? _favoriteTitle;
+    private string? _favoriteIcon;
+
+    /// <summary>是否已收藏（决定星星是实心黄色还是线框）。</summary>
+    public bool IsFavorite
+    {
+        get => _isFavorite;
+        set
+        {
+            if (SetProperty(ref _isFavorite, value))
+            {
+                OnPropertyChanged(nameof(FavoriteGlyph));
+                OnPropertyChanged(nameof(FavoriteTooltip));
+            }
+        }
+    }
+
+    /// <summary>实心星 / 空心星，直接作为按钮文字。</summary>
+    public string FavoriteGlyph => _isFavorite ? "★" : "☆";
+
+    /// <summary>按钮的无障碍名与提示文字，随收藏状态变化。</summary>
+    public string FavoriteTooltip => _isFavorite ? "取消收藏" : "收藏（可在账户页管理）";
+
+    public string? FavoriteSource
+    {
+        get => _favoriteSource;
+        set => SetProperty(ref _favoriteSource, value);
+    }
+
+    public string? FavoriteProjectId
+    {
+        get => _favoriteProjectId;
+        set => SetProperty(ref _favoriteProjectId, value);
+    }
+
+    public string? FavoriteTitle
+    {
+        get => _favoriteTitle;
+        set => SetProperty(ref _favoriteTitle, value);
+    }
+
+    public string? FavoriteIcon
+    {
+        get => _favoriteIcon;
+        set => SetProperty(ref _favoriteIcon, value);
+    }
+
     public bool HasRemoteIcon => !string.IsNullOrWhiteSpace(_remoteIconUrl);
     public bool HasLocalIcon => !HasRemoteIcon;
 
@@ -179,7 +229,10 @@ public sealed class ModsViewModel : ObservableObject
     private int _enabledCount;
     private int _disabledCount;
     private readonly ModUpdateService _updates = new();
+    private readonly FavoritesService _favorites = new();
+    private readonly CurseForgeService _curseForge = new();
     private readonly McmodService _mcmod = new();
+    private readonly McmodNameCache _nameCache = new();
     private bool _chineseNamesStarted;
     private bool _bulkUpdating;
     private CancellationTokenSource? _bulkCts;
@@ -248,6 +301,8 @@ public sealed class ModsViewModel : ObservableObject
         UpdateSelectedCommand = new AsyncRelayCommand(UpdateSelectedAsync, () => HasSelection && !_bulkUpdating);
         CancelBulkUpdateCommand = new RelayCommand(() => _bulkCts?.Cancel());
         CleanupLeftoversCommand = new AsyncRelayCommand(CleanupLeftoversAsync);
+        ToggleFavoriteCommand = new AsyncRelayCommand(parameter => ToggleFavoriteAsync(parameter as ModItemViewModel));
+        RefreshChineseNamesCommand = new AsyncRelayCommand(RefreshChineseNamesAsync);
     }
 
     public ObservableCollection<ModItemViewModel> Mods { get; } = new();
@@ -277,10 +332,171 @@ public sealed class ModsViewModel : ObservableObject
     public AsyncRelayCommand UpdateModCommand { get; }
 
     /// <summary>批量更新选中的模组。</summary>
+    /// <summary>收藏 / 取消收藏单个模组（行尾星星）。</summary>
+    public AsyncRelayCommand ToggleFavoriteCommand { get; }
+
+    /// <summary>清空本地中文名缓存并重新解析。</summary>
+    public AsyncRelayCommand RefreshChineseNamesCommand { get; }
+
     public AsyncRelayCommand UpdateSelectedCommand { get; }
 
     public RelayCommand CancelBulkUpdateCommand { get; }
 
+    /// <summary>刷新每行的收藏状态（依赖已解析出的项目 id）。</summary>
+    private void RefreshFavoriteStates()
+    {
+        foreach (var item in Mods)
+        {
+            if (string.IsNullOrWhiteSpace(item.FavoriteProjectId) &&
+                !string.IsNullOrWhiteSpace(item.CachedSha1) &&
+                _updateStates.TryGetValue(item.CachedSha1, out var state) &&
+                !string.IsNullOrWhiteSpace(state.ProjectId))
+            {
+                item.FavoriteSource = state.ProjectId.StartsWith("cf:", StringComparison.OrdinalIgnoreCase)
+                    ? "CurseForge"
+                    : "Modrinth";
+                item.FavoriteProjectId = state.ProjectId;
+                item.FavoriteTitle ??= state.ProjectTitle;
+                item.FavoriteIcon ??= state.IconUrl;
+            }
+
+            // 没解析出项目 id 时按名称兜底，保证收藏过的模组重启后星星仍是实心。
+            if (string.IsNullOrWhiteSpace(item.FavoriteProjectId))
+            {
+                var known = _favorites.All.FirstOrDefault(favorite =>
+                    string.Equals(favorite.Kind, FavoriteKinds.Mod, StringComparison.OrdinalIgnoreCase) &&
+                    (string.Equals(favorite.FileName, Path.GetFileName(item.Model.FilePath), StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(favorite.Title, item.Name, StringComparison.OrdinalIgnoreCase)));
+                if (known != null)
+                {
+                    item.FavoriteSource = known.Source;
+                    item.FavoriteProjectId = known.ProjectId;
+                    item.FavoriteTitle = known.Title;
+                    item.FavoriteIcon = known.IconUrl;
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(item.FavoriteProjectId))
+            {
+                item.IsFavorite = _favorites.Contains(item.FavoriteSource!, item.FavoriteProjectId!);
+            }
+        }
+    }
+
+    private async Task ToggleFavoriteAsync(ModItemViewModel? item)
+    {
+        if (item == null)
+        {
+            return;
+        }
+
+        if (!await EnsureFavoriteIdentityAsync(item))
+        {
+            _toast($"无法识别「{item.Name}」对应的在线项目，收藏失败。", true);
+            return;
+        }
+
+        var source = item.FavoriteSource!;
+        var projectId = item.FavoriteProjectId!;
+        var id = $"{source}:{projectId}";
+        if (_favorites.Contains(source, projectId))
+        {
+            _favorites.Remove(id);
+            item.IsFavorite = false;
+            _toast($"已取消收藏「{item.Name}」。", false);
+            return;
+        }
+
+        _favorites.Add(new FavoriteEntry
+        {
+            Id = id,
+            Source = source,
+            ProjectId = projectId,
+            Kind = FavoriteKinds.Mod,
+            Title = string.IsNullOrWhiteSpace(item.FavoriteTitle) ? item.Name : item.FavoriteTitle!,
+            Slug = "",
+            FileName = Path.GetFileName(item.Model.FilePath),
+            IconUrl = item.FavoriteIcon ?? item.RemoteIconUrl
+        });
+        item.IsFavorite = true;
+        _toast($"已收藏「{item.Name}」，可在账户页查看。", false);
+    }
+
+    /// <summary>依次用更新缓存、Modrinth 哈希、CurseForge 指纹解析模组对应的在线项目。</summary>
+    private async Task<bool> EnsureFavoriteIdentityAsync(ModItemViewModel item)
+    {
+        if (!string.IsNullOrWhiteSpace(item.FavoriteProjectId))
+        {
+            return true;
+        }
+
+        var sha1 = item.CachedSha1;
+        if (string.IsNullOrWhiteSpace(sha1) && File.Exists(item.Model.FilePath))
+        {
+            sha1 = await Task.Run(() => ModHashCache.GetSha1(item.Model.FilePath));
+            item.CachedSha1 = sha1;
+        }
+
+        if (!string.IsNullOrWhiteSpace(sha1) && _updateStates.TryGetValue(sha1, out var state) &&
+            !string.IsNullOrWhiteSpace(state.ProjectId))
+        {
+            item.FavoriteSource = state.ProjectId.StartsWith("cf:", StringComparison.OrdinalIgnoreCase)
+                ? "CurseForge"
+                : "Modrinth";
+            item.FavoriteProjectId = state.ProjectId;
+            item.FavoriteTitle = state.ProjectTitle;
+            item.FavoriteIcon = state.IconUrl;
+            return true;
+        }
+
+        if (string.IsNullOrWhiteSpace(sha1))
+        {
+            return false;
+        }
+
+        try
+        {
+            var version = await _modrinth.GetVersionByHashAsync(sha1);
+            if (version != null && !string.IsNullOrWhiteSpace(version.ProjectId))
+            {
+                var project = await _modrinth.GetProjectAsync(version.ProjectId);
+                item.FavoriteSource = "Modrinth";
+                item.FavoriteProjectId = version.ProjectId;
+                item.FavoriteTitle = project?.Title ?? item.Name;
+                item.FavoriteIcon = project?.IconUrl;
+                return true;
+            }
+        }
+        catch
+        {
+            // 继续尝试 CurseForge 指纹。
+        }
+
+        try
+        {
+            var fingerprint = CurseForgeService.ComputeFingerprint(item.Model.FilePath);
+            if (fingerprint is > 0)
+            {
+                var matches = await _curseForge.GetFingerprintMatchesAsync([fingerprint.Value]);
+                var match = matches.FirstOrDefault();
+                if (match.ModId > 0)
+                {
+                    var project = await _curseForge.GetModAsync(match.ModId);
+                    item.FavoriteSource = "CurseForge";
+                    item.FavoriteProjectId = $"cf:{match.ModId}";
+                    item.FavoriteTitle = project?.Title ?? item.Name;
+                    item.FavoriteIcon = project?.IconUrl;
+                    return true;
+                }
+            }
+        }
+        catch
+        {
+            // 解析失败由调用方提示。
+        }
+
+        return false;
+    }
     /// <summary>清理与已启用模组同名的 .jar.disabled 残留（旧版本更新留下的副本）。</summary>
     public AsyncRelayCommand CleanupLeftoversCommand { get; }
 
@@ -537,6 +753,7 @@ public sealed class ModsViewModel : ObservableObject
             RecalculateCounts();
             _ = ApplyCachedUpdatesAsync();
             RecalculateCounts();
+        RefreshFavoriteStates();
             ModsView.Refresh();
             OnPropertyChanged(nameof(IsEmpty));
             OnPropertyChanged(nameof(SummaryText));
@@ -567,6 +784,7 @@ public sealed class ModsViewModel : ObservableObject
             item.Enabled = item.Model.Enabled;
             item.RefreshBindings();
             RecalculateCounts();
+        RefreshFavoriteStates();
             ModsView.Refresh();
             OnPropertyChanged(nameof(IsEmpty));
             _modsChanged?.Invoke();
@@ -833,6 +1051,7 @@ public sealed class ModsViewModel : ObservableObject
 
         SaveUpdateCache(result);
         RecalculateCounts();
+        RefreshFavoriteStates();
         ModsView.Refresh();
         return available;
     }
@@ -899,6 +1118,7 @@ public sealed class ModsViewModel : ObservableObject
         }
 
         RecalculateCounts();
+        RefreshFavoriteStates();
         ModsView.Refresh();
         _modsChanged?.Invoke();
         _toast($"已{(enable ? "启用" : "禁用")} {targets.Count} 个模组，下次启动游戏时生效。", false);
@@ -954,6 +1174,7 @@ public sealed class ModsViewModel : ObservableObject
         }
 
         RecalculateCounts();
+        RefreshFavoriteStates();
         ModsView.Refresh();
         _modsChanged?.Invoke();
         _toast($"已删除 {removed} 个模组，文件在 {trash}。", false);
@@ -1029,6 +1250,14 @@ public sealed class ModsViewModel : ObservableObject
         _chineseNamesStarted = true;
         foreach (var item in Mods.ToList())
         {
+            // 先查本地缓存：重开启动器时中文名能立即显示，且不占用 MC百科的请求。
+            if (_nameCache.TryGet(item.Name, out var cachedName, out var cachedUrl))
+            {
+                item.ChineseName = cachedName;
+                item.McmodUrl = cachedUrl;
+                continue;
+            }
+
             try
             {
                 var info = await _mcmod.LookupAsync(item.Name);
@@ -1039,19 +1268,37 @@ public sealed class ModsViewModel : ObservableObject
                 }
 
                 // 只有真的是中文名才覆盖，避免把英文名替换成另一个英文名。
-                if (!info.Name.Any(c => c >= 0x4E00 && c <= 0x9FFF))
+                if (!McmodNameCache.HasChinese(info.Name))
                 {
                     continue;
                 }
 
                 item.ChineseName = info.Name;
                 item.McmodUrl = info.Url;
+                _nameCache.Set(item.Name, info.Name, info.Url);
             }
             catch
             {
                 // 单个查询失败不影响其余模组。
             }
         }
+
+        _nameCache.Flush();
+
+    }
+    /// <summary>清空本地中文名缓存并重新获取（名字错配或想更新时用）。</summary>
+    private async Task RefreshChineseNamesAsync()
+    {
+        _nameCache.Clear();
+        foreach (var item in Mods)
+        {
+            item.ChineseName = null;
+            item.McmodUrl = null;
+        }
+
+        _chineseNamesStarted = false;
+        await EnrichChineseNamesAsync();
+        _toast("已重新获取 MC百科中文名。", false);
     }
 
     private async Task AutoCheckUpdatesAsync()
@@ -1163,6 +1410,7 @@ public sealed class ModsViewModel : ObservableObject
         }
 
         RecalculateCounts();
+        RefreshFavoriteStates();
         ModsView.Refresh();
     }
     private async Task UpdateModAsync(ModItemViewModel item)
