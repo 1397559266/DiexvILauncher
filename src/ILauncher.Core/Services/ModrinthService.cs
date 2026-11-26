@@ -141,6 +141,7 @@ public sealed record ModrinthProject(
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsFavorite)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FavoriteGlyph)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FavoriteTooltip)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));
         }
     }
 

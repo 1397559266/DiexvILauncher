@@ -1556,6 +1556,22 @@ public sealed class DownloadViewModel : ObservableObject
         }
     }
 
+    /// <summary>把收藏状态同步到所有同 id 的行，并用新实例替换以强制该行重绘。</summary>
+    private void SyncFavoriteState(string projectId, bool favorite)
+    {
+        for (var index = 0; index < SearchResults.Count; index++)
+        {
+            var row = SearchResults[index];
+            if (!string.Equals(row.Id, projectId, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            row.IsFavorite = favorite;
+            SearchResults[index] = row with { };
+        }
+    }
+
     private bool IsFavoriteProject(ModrinthProject project)
     {
         var (source, projectId) = ResolveFavoriteIdentity(project);
@@ -2585,6 +2601,7 @@ public sealed class DownloadViewModel : ObservableObject
         {
             _favorites.Remove($"{source}:{projectId}");
             project.IsFavorite = false;
+            SyncFavoriteState(project.Id, false);
             _toast($"已取消收藏「{project.Title}」。", false);
             return;
         }
@@ -2608,6 +2625,7 @@ public sealed class DownloadViewModel : ObservableObject
         };
         _favorites.Add(entry);
         project.IsFavorite = true;
+        SyncFavoriteState(project.Id, true);
         _toast($"已收藏「{project.Title}」，可在账户页查看。", false);
 
         if (_settings.Settings.FavoriteKeepsFile)
