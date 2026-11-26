@@ -1689,7 +1689,8 @@ public sealed class DownloadViewModel : ObservableObject
 
             // 先查本地中文名缓存，命中就不请求 MC百科。
             McmodInfo? info;
-            if (_nameCache.TryGet(project.Title, out var cachedChinese, out var cachedMcmodUrl))
+            if (_nameCache.TryGet($"id:{project.Id}", out var cachedChinese, out var cachedMcmodUrl) ||
+                _nameCache.TryGet(project.Title, out cachedChinese, out cachedMcmodUrl))
             {
                 info = new McmodInfo(cachedChinese, cachedMcmodUrl ?? "");
             }
@@ -1722,6 +1723,7 @@ public sealed class DownloadViewModel : ObservableObject
                 : HasCjk(info.Name) ? info.Name : null;
             SearchResults[index].McmodUrl = info.Url;
             _nameCache.Set(project.Title, info.Name, info.Url);
+            _nameCache.Set($"id:{project.Id}", info.Name, info.Url);
 
             if (_searchCache.TryGetValue(cacheKey, out var cachedPage))
             {

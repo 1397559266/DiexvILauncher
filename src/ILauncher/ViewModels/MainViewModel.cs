@@ -125,6 +125,7 @@ public sealed class MainViewModel : ObservableObject
         GoSettingsCommand = new RelayCommand(GoSettings);
         GoAccountCommand = new RelayCommand(GoAccount);
         GoDownloadCommand = new RelayCommand(GoDownload);
+        OpenSelectedInstanceFolderCommand = new RelayCommand(OpenSelectedInstanceFolder);
         OpenSettingsCommand = new RelayCommand(GoSettings);
         OpenInstanceCommand = new RelayCommand(parameter =>
         {
@@ -495,6 +496,9 @@ public sealed class MainViewModel : ObservableObject
     public RelayCommand GoDownloadCommand { get; }
     public RelayCommand OpenSettingsCommand { get; }
     public RelayCommand OpenInstanceCommand { get; }
+
+    /// <summary>在资源管理器中打开当前版本的目录。</summary>
+    public RelayCommand OpenSelectedInstanceFolderCommand { get; }
     public RelayCommand SelectInstanceCommand { get; }
     public RelayCommand LaunchCommand { get; }
     public AsyncRelayCommand RefreshCommand { get; }
@@ -668,6 +672,25 @@ public sealed class MainViewModel : ObservableObject
         }
 
         return changed;
+    }
+
+    private void OpenSelectedInstanceFolder()
+    {
+        var instance = SelectedInstance;
+        if (instance == null || !Directory.Exists(instance.Directory))
+        {
+            Toast("版本目录不存在。", true);
+            return;
+        }
+
+        Process.Start(new ProcessStartInfo("explorer.exe", $"\"{instance.Directory}\"") { UseShellExecute = true });
+    }
+
+    /// <summary>切到下载页并选中指定分类（整合包/模组/资源包/光影）。</summary>
+    public void OpenDownloadTab(DownloadTab tab)
+    {
+        GoDownload();
+        _downloadPage?.SetTabCommand.Execute(tab.ToString());
     }
 
     public void OpenInstance(GameInstance instance, InstanceSection section = InstanceSection.Overview)

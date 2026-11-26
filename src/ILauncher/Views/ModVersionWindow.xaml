@@ -17,12 +17,18 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <StackPanel>
-            <TextBlock Text="{Binding Project.DisplayTitle}" FontSize="18" FontWeight="Bold"
-                       TextTrimming="CharacterEllipsis" />
-            <TextBlock Text="选择下载版本、加载器和文件版本" FontSize="10" Foreground="{StaticResource BrushTextSecondary}"
-                       Margin="0,4,0,0" />
-        </StackPanel>
+        <Grid>
+            <StackPanel>
+                <TextBlock Text="{Binding Project.DisplayTitle}" FontSize="18" FontWeight="Bold"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="选择下载版本、加载器和文件版本" FontSize="10" Foreground="{StaticResource BrushTextSecondary}"
+                           Margin="0,4,0,0" />
+            </StackPanel>
+            <Button Style="{StaticResource SecondaryButton}" Height="32" MinWidth="84" Content="模组详情"
+                    HorizontalAlignment="Right" VerticalAlignment="Top"
+                    Click="Details_Click"
+                    AutomationProperties.Name="查看模组详情" />
+        </Grid>
 
         <Grid Grid.Row="1" Margin="0,14,0,10">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">

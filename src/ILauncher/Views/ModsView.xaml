@@ -44,6 +44,26 @@
             </Setter>
         </Style>
 
+        <Style x:Key="ModRowActionButton" TargetType="Button">
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Margin" Value="4,0,0,0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="Transparent" CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="FavoriteStar" TargetType="Button">
             <Setter Property="Width" Value="26" />
             <Setter Property="Height" Value="26" />
@@ -151,15 +171,6 @@
                             <TextBlock Text="清理残留" Margin="6,0,0,0" FontSize="11.5" />
                         </StackPanel>
                     </Button>
-                        <Button Style="{StaticResource SecondaryButton}" Height="36" Margin="8,0,0,0"
-                                Command="{Binding RefreshChineseNamesCommand}"
-                                AutomationProperties.Name="刷新中文名"
-                                ToolTip="清空本地 MC百科中文名缓存并重新获取">
-                            <StackPanel Orientation="Horizontal">
-                                <controls:Icon Data="{StaticResource IconRefresh}" Fill="#FF3A5674" Width="13" Height="13" />
-                                <TextBlock Text="中文名" Margin="6,0,0,0" FontSize="11.5" />
-                            </StackPanel>
-                        </Button>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                     <Ellipse Width="6" Height="6" Fill="{StaticResource BrushSuccess}" VerticalAlignment="Center" />
@@ -232,9 +243,17 @@
                     <ListBox ItemsSource="{Binding ModsView}" ItemContainerStyle="{StaticResource ModRowItem}"
                              Style="{StaticResource CleanListBox}" Background="Transparent"
                              SelectionMode="Single" PreviewMouseLeftButtonUp="OnRowClick">
+                        <ListBox.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="安装模组（打开下载页）" Command="{Binding PlacementTarget.DataContext.OpenModInstallerCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                <MenuItem Header="打开所在文件夹" Command="{Binding PlacementTarget.DataContext.OpenFolderCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                <Separator />
+                                <MenuItem Header="刷新列表" Command="{Binding PlacementTarget.DataContext.RefreshCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                            </ContextMenu>
+                        </ListBox.ContextMenu>
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <Grid Height="64" Margin="7,0">
+                                <Grid x:Name="ModRowRoot" Height="64" Margin="7,0">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="44" />
                                         <ColumnDefinition Width="*" />
@@ -311,6 +330,14 @@
                                                 CommandParameter="{Binding}"
                                                 AutomationProperties.Name="{Binding Name}"
                                                 ToolTip="启用 / 禁用此模组" />
+                                        <Button Style="{StaticResource ModRowActionButton}"
+                                                Command="{Binding DataContext.OpenModFileCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip="在资源管理器中打开这个 jar"
+                                                Visibility="{Binding IsMouseOver, ElementName=ModRowRoot, Converter={StaticResource BoolToVisibility}}"
+                                                AutomationProperties.Name="打开模组文件">
+                                            <controls:Icon Data="{StaticResource IconFolderOpen}" Fill="#FF6B829B" Width="13" Height="13" />
+                                        </Button>
                                         <Button Style="{StaticResource FavoriteStar}"
                                                 Content="{Binding FavoriteGlyph}"
                                                 Command="{Binding DataContext.ToggleFavoriteCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"

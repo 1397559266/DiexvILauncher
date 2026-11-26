@@ -441,6 +441,7 @@
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="48" />
                                             <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <Border Width="42" Height="42" CornerRadius="9" Background="#FFF3F8FF" VerticalAlignment="Center">
                                             <Grid>
@@ -480,24 +481,6 @@
                                                         Foreground="{StaticResource BrushTextSecondary}"
                                                         Command="{Binding DataContext.OpenProjectDetailsCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
                                                         CommandParameter="{Binding}" ToolTip="查看项目介绍、截图和链接" />
-                                                <Button Command="{Binding DataContext.ToggleFavoriteCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                                        CommandParameter="{Binding}"
-                                                        ToolTip="{Binding FavoriteTooltip}"
-                                                        AutomationProperties.Name="{Binding FavoriteTooltip}">
-                                                    <Button.Style>
-                                                        <Style TargetType="Button" BasedOn="{StaticResource ChipButton}">
-                                                            <Setter Property="Content" Value="{Binding FavoriteGlyph}" />
-                                                            <Setter Property="FontSize" Value="13" />
-                                                            <Setter Property="Padding" Value="8,2" />
-                                                            <Setter Property="Foreground" Value="{StaticResource BrushTextSecondary}" />
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding IsFavorite}" Value="True">
-                                                                    <Setter Property="Foreground" Value="#FFF5B301" />
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </Button.Style>
-                                                </Button>
                                                 <Button Style="{StaticResource ChipButton}" Content="MC百科"
                                                         Foreground="{StaticResource BrushTextSecondary}"
                                                         Command="{Binding DataContext.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
@@ -505,6 +488,42 @@
                                                         Visibility="{Binding HasMcmod, Converter={StaticResource BoolToVisibility}}" />
                                             </StackPanel>
                                         </StackPanel>
+                                        <Button Grid.Column="2" VerticalAlignment="Center" Margin="6,0,0,0"
+                                                Command="{Binding DataContext.ToggleFavoriteCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip="{Binding FavoriteTooltip}"
+                                                AutomationProperties.Name="{Binding FavoriteTooltip}">
+                                            <Button.Style>
+                                                <Style TargetType="Button">
+                                                    <Setter Property="Width" Value="32" />
+                                                    <Setter Property="Height" Value="32" />
+                                                    <Setter Property="Cursor" Value="Hand" />
+                                                    <Setter Property="Focusable" Value="False" />
+                                                    <Setter Property="Background" Value="Transparent" />
+                                                    <Setter Property="BorderThickness" Value="0" />
+                                                    <Setter Property="FontSize" Value="19" />
+                                                    <Setter Property="Content" Value="{Binding FavoriteGlyph}" />
+                                                    <Setter Property="Foreground" Value="#FFC3D0DE" />
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="Button">
+                                                                <Border Background="Transparent" CornerRadius="7">
+                                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                                </Border>
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsFavorite}" Value="True">
+                                                            <Setter Property="Foreground" Value="#FFF5B301" />
+                                                        </DataTrigger>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter Property="Background" Value="#0F1B2B3F" />
+                                                        </Trigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
                                     </Grid>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>

@@ -242,18 +242,21 @@ public sealed class ModsViewModel : ObservableObject
     private int _bulkCompleted;
     private readonly ConcurrentDictionary<ModItemViewModel, double> _bulkPercents = new();
     private SettingsService? _settings;
+    private readonly Action? _openInstaller;
     private readonly Dictionary<string, ModUpdateState> _updateStates = new(StringComparer.OrdinalIgnoreCase);
     private bool _hasUpdates;
     private bool _updateCheckStarted;
     private Task _loadTask = Task.CompletedTask;
 
     public ModsViewModel(ModService modService, ModrinthService modrinth, Action<string, bool> toast,
-        Action? modsChanged = null, SettingsService? settings = null)
+        Action? modsChanged = null, SettingsService? settings = null, Action? openInstaller = null)
     {
         _modService = modService;
         _modrinth = modrinth;
         _toast = toast;
         _modsChanged = modsChanged;
+        _settings = settings;
+        _openInstaller = openInstaller;
 
         ModsView = CollectionViewSource.GetDefaultView(Mods);
         ModsView.Filter = FilterMod;
@@ -302,7 +305,8 @@ public sealed class ModsViewModel : ObservableObject
         CancelBulkUpdateCommand = new RelayCommand(() => _bulkCts?.Cancel());
         CleanupLeftoversCommand = new AsyncRelayCommand(CleanupLeftoversAsync);
         ToggleFavoriteCommand = new AsyncRelayCommand(parameter => ToggleFavoriteAsync(parameter as ModItemViewModel));
-        RefreshChineseNamesCommand = new AsyncRelayCommand(RefreshChineseNamesAsync);
+        OpenModFileCommand = new RelayCommand(OpenModFile);
+        OpenModInstallerCommand = new RelayCommand(() => _openInstaller?.Invoke());
     }
 
     public ObservableCollection<ModItemViewModel> Mods { get; } = new();
@@ -335,8 +339,11 @@ public sealed class ModsViewModel : ObservableObject
     /// <summary>收藏 / 取消收藏单个模组（行尾星星）。</summary>
     public AsyncRelayCommand ToggleFavoriteCommand { get; }
 
-    /// <summary>清空本地中文名缓存并重新解析。</summary>
-    public AsyncRelayCommand RefreshChineseNamesCommand { get; }
+    /// <summary>在资源管理器中定位这个模组的 jar 文件。</summary>
+    public RelayCommand OpenModFileCommand { get; }
+
+    /// <summary>右键菜单：跳到下载页的模组安装界面。</summary>
+    public RelayCommand OpenModInstallerCommand { get; }
 
     public AsyncRelayCommand UpdateSelectedCommand { get; }
 
@@ -380,6 +387,30 @@ public sealed class ModsViewModel : ObservableObject
             {
                 item.IsFavorite = _favorites.Contains(item.FavoriteSource!, item.FavoriteProjectId!);
             }
+        }
+    }
+
+    private void OpenModFile(object? parameter)
+    {
+        if (parameter is not ModItemViewModel item)
+        {
+            return;
+        }
+
+        var path = item.Model.FilePath;
+        if (!File.Exists(path))
+        {
+            _toast("文件已经不在磁盘上了，刷新一下列表。", true);
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{path}\"") { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            _toast($"无法打开文件位置：{ex.Message}", true);
         }
     }
 
@@ -1286,21 +1317,6 @@ public sealed class ModsViewModel : ObservableObject
         _nameCache.Flush();
 
     }
-    /// <summary>清空本地中文名缓存并重新获取（名字错配或想更新时用）。</summary>
-    private async Task RefreshChineseNamesAsync()
-    {
-        _nameCache.Clear();
-        foreach (var item in Mods)
-        {
-            item.ChineseName = null;
-            item.McmodUrl = null;
-        }
-
-        _chineseNamesStarted = false;
-        await EnrichChineseNamesAsync();
-        _toast("已重新获取 MC百科中文名。", false);
-    }
-
     private async Task AutoCheckUpdatesAsync()
     {
         if (_updateCheckStarted || _instance == null)

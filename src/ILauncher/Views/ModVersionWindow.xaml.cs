@@ -22,6 +22,7 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
     private readonly Func<ModrinthVersion, string, string?, Action<DownloadProgress>?, Task> _installMissingDependencies;
     private readonly Func<ModDependencyItem, string, string?, Action<DownloadProgress>?, Task> _installDependency;
     private readonly List<ModrinthVersion> _allVersions = new();
+    private readonly ModrinthService _detailsService = new();
     private string _selectedGameVersion;
     private string? _selectedLoader;
     private string _selectedReleaseFilter = "全部";
@@ -580,6 +581,22 @@ public partial class ModVersionWindow : Window, INotifyPropertyChanged
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+    /// <summary>打开项目详情窗口（简介、截图、链接）。</summary>
+    private void Details_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            new ProjectDetailWindow(Project, _detailsService)
+            {
+                Owner = this
+            }.ShowDialog();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "无法打开详情", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
 }
 
 

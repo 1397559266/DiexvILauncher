@@ -465,14 +465,25 @@
                                 </Grid>
                                 <TextBlock Text="在版本设置的左下角，一键启动并在日志面板中实时查看全部游戏输出。"
                                            Foreground="#E6FFFFFF" FontSize="11.5" TextWrapping="Wrap" Margin="0,13,0,0" LineHeight="19" />
-                                <Button Style="{StaticResource GhostButton}" Background="#FFFFFFFF" Foreground="{StaticResource BrushAccent}"
-                                        Height="34" Margin="0,14,0,0" HorizontalAlignment="Left" Padding="14,0"
-                                        Command="{Binding OpenInstanceCommand}" CommandParameter="{Binding SelectedInstance}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="打开版本设置" FontSize="11.5" FontWeight="SemiBold" />
-                                        <controls:Icon Data="{StaticResource IconChevronRight}" Fill="{StaticResource BrushAccent}" Width="12" Height="12" Margin="4,0,0,0" />
-                                    </StackPanel>
-                                </Button>
+                                <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                                    <Button Style="{StaticResource GhostButton}" Background="#FFFFFFFF" Foreground="{StaticResource BrushAccent}"
+                                            Height="34" HorizontalAlignment="Left" Padding="14,0"
+                                            Command="{Binding OpenInstanceCommand}" CommandParameter="{Binding SelectedInstance}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="打开版本设置" FontSize="11.5" FontWeight="SemiBold" />
+                                            <controls:Icon Data="{StaticResource IconChevronRight}" Fill="{StaticResource BrushAccent}" Width="12" Height="12" Margin="4,0,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Style="{StaticResource GhostButton}" Background="#33FFFFFF" Foreground="#FFFFFFFF"
+                                            Height="34" Margin="8,0,0,0" Padding="14,0"
+                                            Command="{Binding OpenSelectedInstanceFolderCommand}"
+                                            AutomationProperties.Name="打开版本文件夹">
+                                        <StackPanel Orientation="Horizontal">
+                                            <controls:Icon Data="{StaticResource IconFolderOpen}" Fill="#FFFFFFFF" Width="12" Height="12" />
+                                            <TextBlock Text="打开版本文件夹" FontSize="11.5" FontWeight="SemiBold" Margin="5,0,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
                             </StackPanel>
                         </Grid>
                     </Border>
