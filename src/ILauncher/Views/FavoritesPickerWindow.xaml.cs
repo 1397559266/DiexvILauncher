@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
+using System.Windows.Controls;
 using ILauncher.Core;
 using ILauncher.Core.Models;
 using ILauncher.Core.Services;
@@ -42,12 +43,17 @@ public partial class FavoritesPickerWindow : Window, INotifyPropertyChanged
     /// <summary>一键安装全部模组收藏。</summary>
     public AsyncRelayCommand InstallAllCommand { get; }
 
+    private int _selectedCount;
+
+    public string InstallSelectedText =>
+        _selectedCount <= 0 ? "安装选中的" : $"安装选中的（{_selectedCount}）";
+
     public string InstallAllText
     {
         get
         {
-            var count = Items.Count(item => string.Equals(item.Kind, FavoriteKinds.Mod, StringComparison.OrdinalIgnoreCase));
-            return count == 0 ? "安装全部模组收藏" : $"安装全部模组收藏（{count}）";
+            var count = Items.Count(item => !string.Equals(item.Kind, FavoriteKinds.Modpack, StringComparison.OrdinalIgnoreCase));
+            return count == 0 ? "安装全部收藏" : $"安装全部收藏（{count}）";
         }
     }
 
@@ -172,14 +178,49 @@ public partial class FavoritesPickerWindow : Window, INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
     /// <summary>把收藏里的模组一次性下载到当前版本。</summary>
-    private async Task InstallAllModsAsync()
+    private Task InstallAllModsAsync() => InstallBatchAsync(Items.ToList(), "模组");
+
+    private void ItemList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        var mods = Items
-            .Where(item => string.Equals(item.Kind, FavoriteKinds.Mod, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-        if (mods.Count == 0)
+        _selectedCount = ItemList.SelectedItems.Count;
+        Raise(nameof(InstallSelectedText));
+        if (_selectedCount > 0)
         {
-            StatusText = "收藏里还没有模组。";
+            StatusText = $"已选中 {_selectedCount} 项，点「安装选中的」下载到 {_instance.Id}。";
+        }
+        else
+        {
+            StatusText = $"共 {Items.Count} 项收藏，选择后下载到 {_instance.Id}。";
+        }
+    }
+
+    private async void InstallSelected_Click(object sender, RoutedEventArgs e)
+    {
+        var items = ItemList.SelectedItems.OfType<FavoriteEntry>().ToList();
+        if (items.Count == 0)
+        {
+            StatusText = "先点选要安装的收藏（按住 Ctrl 可多选）。";
+            return;
+        }
+
+        await InstallBatchAsync(items, "收藏");
+        ItemList.SelectedItems.Clear();
+    }
+
+    /// <summary>按顺序安装一批收藏，跳过不支持的整包类型。</summary>
+    private async Task InstallBatchAsync(IReadOnlyList<FavoriteEntry> entries, string label)
+    {
+        if (!CanInstall)
+        {
+            return;
+        }
+
+        var installable = entries
+            .Where(entry => !string.Equals(entry.Kind, FavoriteKinds.Modpack, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (installable.Count == 0)
+        {
+            StatusText = "选中的都是整合包，整合包请到下载页安装。";
             return;
         }
 
@@ -188,9 +229,9 @@ public partial class FavoritesPickerWindow : Window, INotifyPropertyChanged
         var failed = 0;
         try
         {
-            foreach (var entry in mods)
+            foreach (var entry in installable)
             {
-                StatusText = $"正在安装 {entry.Title}（{done + failed + 1}/{mods.Count}）…";
+                StatusText = $"正在安装 {entry.Title}（{done + failed + 1}/{installable.Count}）…";
                 try
                 {
                     await _installer.InstallAsync(entry, _instance, null);
@@ -203,8 +244,8 @@ public partial class FavoritesPickerWindow : Window, INotifyPropertyChanged
             }
 
             StatusText = failed == 0
-                ? $"已安装 {done} 个模组，重启游戏后生效。"
-                : $"安装完成：成功 {done} 个，失败 {failed} 个。";
+                ? $"已安装 {done} 项{label}，重启游戏后生效。"
+                : $"安装完成：成功 {done} 项，失败 {failed} 项。";
         }
         finally
         {
