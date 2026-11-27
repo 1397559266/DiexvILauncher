@@ -116,7 +116,14 @@ public sealed class InstanceSettingsViewModel : ObservableObject
     public string NewVersionName
     {
         get => _versionName;
-        set => SetProperty(ref _versionName, value);
+        set
+        {
+            if (SetProperty(ref _versionName, value))
+            {
+                OnPropertyChanged(nameof(CanRename));
+                RenameCommand.RaiseCanExecuteChanged();
+            }
+        }
     }
 
     public bool IsRenaming

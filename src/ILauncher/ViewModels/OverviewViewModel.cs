@@ -63,6 +63,7 @@ public sealed class OverviewViewModel : ObservableObject
         });
         ChangeIconCommand = new RelayCommand(ChangeIcon);
         ResetIconCommand = new RelayCommand(ResetIcon);
+        OpenFavoritesCommand = new RelayCommand(OpenFavorites);
         ExportScriptCommand = new RelayCommand(() => _ = ExportScriptAsync(), () => !IsExporting);
         ExportInstanceCommand = new RelayCommand(() => _ = ExportInstanceAsync(), () => !IsExporting);
         RefreshCommand = new AsyncRelayCommand(LoadAsync);
