@@ -773,6 +773,9 @@ public sealed class LaunchLogViewModel : ObservableObject
         }
     }
 
+    /// <summary>供视图层提示用（复制日志等）。</summary>
+    public void Notify(string message, bool error = false) => _toast(message, error);
+
     private void CopyAll()
     {
         try

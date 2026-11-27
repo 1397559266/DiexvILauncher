@@ -35,6 +35,32 @@
                 </StackPanel>
             </Grid>
 
+            <!-- Version name -->
+            <Border Style="{StaticResource Card}" Padding="20,16" Margin="0,0,0,14">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <controls:Icon Data="{StaticResource IconEdit}" Fill="{StaticResource BrushAccent}" Width="15" Height="15" />
+                        <TextBlock Text="版本名" FontSize="13" FontWeight="SemiBold" Margin="7,0,0,0" />
+                        <TextBlock Text="改名会同时重命名版本文件夹和 JSON，模组与存档保留。" FontSize="9"
+                                   Foreground="{StaticResource BrushTextMuted}" Margin="10,3,0,0" />
+                    </StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Style="{StaticResource InputTextBox}" Height="34" FontSize="11.5" MaxWidth="320"
+                                 HorizontalAlignment="Left" MinWidth="240"
+                                 Text="{Binding NewVersionName, UpdateSourceTrigger=PropertyChanged}"
+                                 AutomationProperties.Name="版本名" />
+                        <Button Grid.Column="1" Style="{StaticResource PrimaryButton}" Height="34" MinWidth="96"
+                                Content="重命名" Command="{Binding RenameCommand}"
+                                IsEnabled="{Binding CanRename}"
+                                AutomationProperties.Name="重命名版本" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
             <!-- Java -->
             <Border Style="{StaticResource Card}" Padding="20,16">
                 <StackPanel>

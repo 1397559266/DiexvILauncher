@@ -69,11 +69,22 @@ public sealed class InstanceViewModel : ObservableObject
             OpenSettingsCommand);
         _pages[InstanceSection.Overview] = Overview;
 
-        InstanceSettings = new InstanceSettingsViewModel(instance, _settings, _javaService, _main.Toast, async () =>
-        {
-            await _main.ReloadInstancesAsync();
-            await Overview.LoadAsync();
-        });
+        InstanceSettings = new InstanceSettingsViewModel(instance, _settings, _javaService, _main.Toast,
+            saved: async () =>
+            {
+                await _main.ReloadInstancesAsync();
+                await Overview.LoadAsync();
+            },
+            renamed: async newId =>
+            {
+                await _main.ReloadInstancesAsync();
+                var target = _main.Instances.FirstOrDefault(item =>
+                    string.Equals(item.Id, newId, StringComparison.OrdinalIgnoreCase));
+                if (target != null)
+                {
+                    _main.OpenInstance(target, InstanceSection.Settings);
+                }
+            });
         _pages[InstanceSection.Settings] = InstanceSettings;
 
         _main.LaunchLog.PropertyChanged += OnLogPropertyChanged;

@@ -195,6 +195,22 @@ public sealed class SettingsService
         return new InstanceOverrides();
     }
 
+    /// <summary>版本改名后把它的覆盖设置也搬过去。</summary>
+    public void RenameInstance(string oldId, string newId)
+    {
+        if (string.Equals(oldId, newId, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        if (Settings.Instances.TryGetValue(oldId, out var overrides))
+        {
+            Settings.Instances.Remove(oldId);
+            Settings.Instances[newId] = overrides;
+            Save();
+        }
+    }
+
     public void SaveInstanceSettings(string instanceId, InstanceOverrides overrides)
     {
         Settings.Instances[instanceId] = overrides;

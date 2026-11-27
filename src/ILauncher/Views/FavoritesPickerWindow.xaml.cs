@@ -27,6 +27,7 @@ public partial class FavoritesPickerWindow : Window, INotifyPropertyChanged
         DataContext = this;
         TargetText = $"{instance.Id} · {instance.MinecraftVersion} · {instance.Loader}";
         InstallCommand = new RelayCommand(parameter => _ = InstallAsync(parameter as FavoriteEntry));
+        InstallAllCommand = new AsyncRelayCommand(InstallAllModsAsync, () => CanInstall);
         Reload();
     }
 
@@ -37,6 +38,18 @@ public partial class FavoritesPickerWindow : Window, INotifyPropertyChanged
     public IReadOnlyList<string> KindFilters { get; } = new[] { "全部", "模组", "整合包", "光影包", "资源包" };
 
     public RelayCommand InstallCommand { get; }
+
+    /// <summary>一键安装全部模组收藏。</summary>
+    public AsyncRelayCommand InstallAllCommand { get; }
+
+    public string InstallAllText
+    {
+        get
+        {
+            var count = Items.Count(item => string.Equals(item.Kind, FavoriteKinds.Mod, StringComparison.OrdinalIgnoreCase));
+            return count == 0 ? "安装全部模组收藏" : $"安装全部模组收藏（{count}）";
+        }
+    }
 
     public string TargetText { get; }
 
@@ -89,6 +102,7 @@ public partial class FavoritesPickerWindow : Window, INotifyPropertyChanged
         {
             _canInstall = value;
             Raise();
+            InstallAllCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -115,6 +129,7 @@ public partial class FavoritesPickerWindow : Window, INotifyPropertyChanged
         StatusText = Items.Count == 0
             ? "没有匹配的收藏；可以先去下载页收藏几个项目。"
             : $"共 {Items.Count} 项收藏，选择后下载到 {_instance.Id}。";
+        Raise(nameof(InstallAllText));
     }
 
     private async Task InstallAsync(FavoriteEntry? entry)
@@ -155,4 +170,45 @@ public partial class FavoritesPickerWindow : Window, INotifyPropertyChanged
 
     private void Raise([CallerMemberName] string? name = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+    /// <summary>把收藏里的模组一次性下载到当前版本。</summary>
+    private async Task InstallAllModsAsync()
+    {
+        var mods = Items
+            .Where(item => string.Equals(item.Kind, FavoriteKinds.Mod, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (mods.Count == 0)
+        {
+            StatusText = "收藏里还没有模组。";
+            return;
+        }
+
+        CanInstall = false;
+        var done = 0;
+        var failed = 0;
+        try
+        {
+            foreach (var entry in mods)
+            {
+                StatusText = $"正在安装 {entry.Title}（{done + failed + 1}/{mods.Count}）…";
+                try
+                {
+                    await _installer.InstallAsync(entry, _instance, null);
+                    done++;
+                }
+                catch
+                {
+                    failed++;
+                }
+            }
+
+            StatusText = failed == 0
+                ? $"已安装 {done} 个模组，重启游戏后生效。"
+                : $"安装完成：成功 {done} 个，失败 {failed} 个。";
+        }
+        finally
+        {
+            CanInstall = true;
+        }
+    }
 }

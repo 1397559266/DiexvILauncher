@@ -200,7 +200,7 @@
 
                 <!-- Rows -->
                 <Grid Grid.Row="1">
-                    <ListBox x:Name="LogList" ItemsSource="{Binding LogsView}" Style="{StaticResource LogListBox}"
+                    <ListBox x:Name="LogList" ItemsSource="{Binding LogsView}" Style="{StaticResource LogListBox}" KeyDown="LogList_KeyDown"
                              Background="#FFFBFDFF">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
@@ -233,7 +233,8 @@
                                                    FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center"
                                                    Foreground="{Binding Kind, Converter={StaticResource LogLevelBrush}}" />
                                         <TextBlock Grid.Column="2" Text="{Binding DisplayMessage}" FontFamily="{StaticResource FontMono}"
-                                                   FontSize="11" VerticalAlignment="Center" ToolTip="{Binding DisplayMessage}">
+                                                   FontSize="11" VerticalAlignment="Center" ToolTipService.InitialShowDelay="300"
+                                                   ToolTipOpening="LogMessage_ToolTipOpening">
                                             <TextBlock.Style>
                                                 <Style TargetType="TextBlock">
                                                     <Setter Property="Foreground" Value="#FF334155" />

@@ -549,16 +549,14 @@
 
                     <Border Grid.Row="2" BorderBrush="{StaticResource BrushBorder}" BorderThickness="0,1,0,0"
                             Padding="16,8">
-                        <Grid>
-                            <TextBlock Text="{Binding SearchPageText}" FontSize="9.5"
-                                       Foreground="{StaticResource BrushTextMuted}" VerticalAlignment="Center" />
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                <Button Style="{StaticResource GhostButton}" Height="28" Content="上一页"
-                                        Command="{Binding PreviousPageCommand}" Margin="0,0,8,0" />
-                                <Button Style="{StaticResource GhostButton}" Height="28" Content="下一页"
-                                        Command="{Binding NextPageCommand}" />
-                            </StackPanel>
-                        </Grid>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Button Style="{StaticResource GhostButton}" Height="28" Content="上一页"
+                                    Command="{Binding PreviousPageCommand}" Margin="0,0,10,0" />
+                            <TextBlock Text="{Binding SearchPageText}" FontSize="9.5" VerticalAlignment="Center"
+                                       Foreground="{StaticResource BrushTextMuted}" Margin="0,0,10,0" />
+                            <Button Style="{StaticResource GhostButton}" Height="28" Content="下一页"
+                                    Command="{Binding NextPageCommand}" />
+                        </StackPanel>
                     </Border>
                 </Grid>
             </Border>

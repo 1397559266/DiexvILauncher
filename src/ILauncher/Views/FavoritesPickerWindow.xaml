@@ -73,6 +73,12 @@
         <Grid Grid.Row="3" Margin="0,12,0,0">
             <TextBlock Text="{Binding StatusText}" FontSize="9.5" Foreground="{StaticResource BrushTextMuted}"
                        VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left" />
+            <Button Style="{StaticResource PrimaryButton}" Height="32" MinWidth="150" Margin="0,0,8,0"
+                    HorizontalAlignment="Right"
+                    Content="{Binding InstallAllText}"
+                    Command="{Binding InstallAllCommand}"
+                    IsEnabled="{Binding CanInstall}"
+                    AutomationProperties.Name="安装全部模组收藏" />
             <Button Style="{StaticResource SecondaryButton}" Height="32" MinWidth="80" Content="关闭"
                     HorizontalAlignment="Right" IsCancel="True" />
         </Grid>

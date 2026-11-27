@@ -2,8 +2,10 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using ILauncher.Models;
 using ILauncher.ViewModels;
 
 namespace ILauncher.Views;
@@ -162,5 +164,48 @@ public partial class LaunchLogView : UserControl
         }
 
         return null;
+    }
+
+    /// <summary>Ctrl+C 复制选中的日志行。</summary>
+    private void LogList_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.C && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+        {
+            CopySelectedLogs();
+            e.Handled = true;
+        }
+    }
+
+    private void CopySelected_Click(object sender, RoutedEventArgs e) => CopySelectedLogs();
+
+    private void CopySelectedLogs()
+    {
+        var lines = LogList.SelectedItems.OfType<LogEntry>()
+            .Select(entry => entry.DisplayMessage)
+            .ToList();
+        if (lines.Count == 0)
+        {
+            _viewModel?.Notify("先选中要复制的日志行（可拖动或按住 Ctrl 多选）。", true);
+            return;
+        }
+
+        try
+        {
+            Clipboard.SetText(string.Join(Environment.NewLine, lines));
+            _viewModel?.Notify($"已复制 {lines.Count} 行日志。", false);
+        }
+        catch (Exception ex)
+        {
+            _viewModel?.Notify($"复制失败：{ex.Message}", true);
+        }
+    }
+
+    /// <summary>悬停提示按当前行重新取值，避免 WPF 复用上一个提示的文本。</summary>
+    private void LogMessage_ToolTipOpening(object sender, ToolTipEventArgs e)
+    {
+        if (sender is FrameworkElement element && element.DataContext is LogEntry entry)
+        {
+            element.ToolTip = entry.DisplayMessage;
+        }
     }
 }

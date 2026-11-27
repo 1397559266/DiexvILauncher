@@ -16,6 +16,7 @@ public sealed class InstanceSettingsViewModel : ObservableObject
     private readonly JavaService _javaService;
     private readonly Action<string, bool> _toast;
     private readonly Action? _saved;
+    private readonly Action<string>? _renamed;
     private int _memoryMb;
     private int _memoryBaseline;
     private string _extraJvmArgs = "";
@@ -28,19 +29,21 @@ public sealed class InstanceSettingsViewModel : ObservableObject
     private LoaderVersionOption? _selectedLoaderVersion;
     private bool _isLoaderBusy;
     private string _loaderStatus = "";
-
+    private string _versionName = "";
+    private bool _isRenaming;
     public InstanceSettingsViewModel(
         GameInstance instance,
         SettingsService settings,
         JavaService javaService,
         Action<string, bool> toast,
-        Action? saved = null)
+        Action? saved = null, Action<string>? renamed = null)
     {
         _instance = instance;
         _settings = settings;
         _javaService = javaService;
         _toast = toast;
         _saved = saved;
+        _renamed = renamed;
 
         var overrides = settings.GetInstanceSettings(instance.Id);
         _memoryBaseline = settings.ResolveMemoryMb(instance.Id, instance.ModCount,
@@ -72,8 +75,10 @@ public sealed class InstanceSettingsViewModel : ObservableObject
         _extraJvmArgs = overrides.ExtraJvmArgs;
         _ = LoadJavaAsync();
 
+        _versionName = instance.Id;
         _loaderUpdates = new LoaderUpdateService(javaService, settings);
         ApplyLoaderCommand = new AsyncRelayCommand(ApplyLoaderAsync, () => CanUpdateLoader && !IsLoaderBusy);
+        RenameCommand = new AsyncRelayCommand(RenameAsync, () => CanRename);
         RefreshLoaderVersionsCommand = new AsyncRelayCommand(LoadLoaderVersionsAsync);
         if (CanUpdateLoader)
         {
@@ -107,6 +112,30 @@ public sealed class InstanceSettingsViewModel : ObservableObject
     }
 
     /// <summary>原版实例没有加载器，卡片直接隐藏。</summary>
+    /// <summary>版本名（目录名），可修改。</summary>
+    public string NewVersionName
+    {
+        get => _versionName;
+        set => SetProperty(ref _versionName, value);
+    }
+
+    public bool IsRenaming
+    {
+        get => _isRenaming;
+        private set
+        {
+            if (SetProperty(ref _isRenaming, value))
+            {
+                OnPropertyChanged(nameof(CanRename));
+                RenameCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    public bool CanRename => !_isRenaming &&
+                            !string.IsNullOrWhiteSpace(NewVersionName) &&
+                            !string.Equals(NewVersionName.Trim(), _instance.Id, StringComparison.OrdinalIgnoreCase);
+
     public bool CanUpdateLoader => LoaderUpdateService.CanUpdate(_instance);
 
     public string LoaderCurrentText => CanUpdateLoader
@@ -141,6 +170,8 @@ public sealed class InstanceSettingsViewModel : ObservableObject
         get => _loaderStatus;
         private set => SetProperty(ref _loaderStatus, value);
     }
+
+public AsyncRelayCommand RenameCommand { get; }
 
     public AsyncRelayCommand ApplyLoaderCommand { get; }
 
@@ -389,6 +420,44 @@ public sealed class InstanceSettingsViewModel : ObservableObject
         catch (Exception ex)
         {
             LoaderStatus = $"获取加载器版本失败：{ex.Message}";
+        }
+    }
+
+    private async Task RenameAsync()
+    {
+        if (IsRenaming)
+        {
+            return;
+        }
+
+        var newId = NewVersionName.Trim();
+        IsRenaming = true;
+        try
+        {
+            InstanceRenameService.Validate(newId, _instance);
+            var confirm = LocalizedDialog.Show(
+                $"把版本「{_instance.Id}」改名为「{newId}」？\n\n版本文件夹和 JSON 会一起改名，模组、存档和配置都会保留。",
+                "修改版本名", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+            if (confirm != MessageBoxResult.OK)
+            {
+                return;
+            }
+
+            await Task.Run(() =>
+            {
+                InstanceRenameService.Rename(_instance, newId);
+                _settings.RenameInstance(_instance.Id, newId);
+            });
+            _toast($"已改名为「{newId}」。", false);
+            _renamed?.Invoke(newId);
+        }
+        catch (Exception ex)
+        {
+            _toast($"改名失败：{ex.Message}", true);
+        }
+        finally
+        {
+            IsRenaming = false;
         }
     }
 
